@@ -1,9 +1,9 @@
-const CACHE_NAME = 'kardex-cache-v10';
+const CACHE_NAME = 'kardex-cache-v11';
 
 const ASSETS = [
-  './manifest.webmanifest?v=10',
-  './assets/icon-192.png?v=10',
-  './assets/icon-512.png?v=10',
+  './manifest.webmanifest?v=11',
+  './assets/icon-192.png?v=11',
+  './assets/icon-512.png?v=11',
   './data/kardex.json',
   'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js'
 ];
@@ -22,7 +22,7 @@ self.addEventListener('fetch', (e) => {
   const req = e.request;
   const url = new URL(req.url);
 
-  // Network-first per HTML/navigazioni e app.js (per aggiornarsi subito)
+  // Network-first per HTML e app.js
   const isHTML = req.mode === 'navigate' || (req.destination === 'document');
   if (isHTML || url.pathname.endsWith('/app.js')) {
     e.respondWith(
@@ -35,7 +35,7 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // Network-first per icone del logo
+  // Network-first per icone
   if (url.pathname.includes('/assets/icon-') && url.pathname.endsWith('.png')) {
     e.respondWith(
       fetch(req).then(resp => {
@@ -56,5 +56,6 @@ self.addEventListener('fetch', (e) => {
     }).catch(()=>resp))
   );
 });
+
 
 

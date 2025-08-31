@@ -1,4 +1,4 @@
-// v11 – colonne ordinabili + mobile card + ricerca rapida + FILTRI COMBINATI
+// v12 – multi-sort (SHIFT+click), memoria impostazioni, filtri combinati, mobile card
 let ROWS = [];
 const $ = (id) => document.getElementById(id);
 const tbody = $('tbody');
@@ -9,6 +9,7 @@ const exportBtn = $('export');
 const fileInput = $('file');
 const count = $('count');
 const themeBtn = $('theme');
+const resetBtn = $('reset');
 
 // Filtri avanzati
 const fRip = $('f_rip');
@@ -25,10 +26,46 @@ const fPos = $('f_pos');
     document.documentElement.setAttribute('data-theme', next);
     localStorage.setItem('kardex-theme', next);
     themeBtn.textContent = (next === 'dark') ? '🌙 Tema' : '☀️ Tema';
+    saveState();
   });
   const cur = document.documentElement.getAttribute('data-theme') || 'auto';
   themeBtn && (themeBtn.textContent = (cur === 'dark') ? '🌙 Tema' : '☀️ Tema');
 })();
+
+// ===== Stato persistente =====
+const STATE_KEY = 'kardex-state-v12';
+function saveState() {
+  const state = {
+    q: q?.value ?? '',
+    campo: selCampo?.value ?? 'ALL',
+    fRip: fRip?.value ?? '',
+    fTip: fTip?.value ?? '',
+    fPos: fPos?.value ?? '',
+    sort: sortOrder,
+    theme: document.documentElement.getAttribute('data-theme') || 'auto'
+  };
+  try { localStorage.setItem(STATE_KEY, JSON.stringify(state)); } catch {}
+}
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STATE_KEY);
+    if (!raw) return;
+    const s = JSON.parse(raw);
+    if (q) q.value = s.q ?? '';
+    if (selCampo) selCampo.value = s.campo ?? 'ALL';
+    if (fRip) fRip.value = s.fRip ?? '';
+    if (fTip) fTip.value = s.fTip ?? '';
+    if (fPos) fPos.value = s.fPos ?? '';
+    if (Array.isArray(s.sort)) {
+      sortOrder = s.sort.filter(x => x && x.key);
+      updateSortIndicators();
+    }
+    if (s.theme === 'light' || s.theme === 'dark') {
+      document.documentElement.setAttribute('data-theme', s.theme);
+      themeBtn && (themeBtn.textContent = (s.theme === 'dark') ? '🌙 Tema' : '☀️ Tema');
+    }
+  } catch {}
+}
 
 // ===== Ricerca =====
 const norm = (s) => String(s ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
@@ -38,10 +75,11 @@ async function loadData() {
     const resp = await fetch('./data/kardex.json', { cache: 'no-store' });
     ROWS = await resp.json();
   } catch { ROWS = []; }
+  loadState(); // applica eventuale stato salvato
   render();
 }
 
-// Filtro rapido per campo (come prima)
+// Filtro rapido per campo
 function quickMatch(r, campo, txtRaw) {
   const txt = norm(txtRaw);
   if (!txt) return true;
@@ -70,7 +108,6 @@ function advancedMatch(r) {
 
   const rip = norm(r.RIPIANO), tip = norm(r.TIPO), pos = norm(r.POSIZIONE);
 
-  // Ripiano: se solo numeri → match esatto sul numero iniziale
   let okRip = true;
   if (fr) {
     const onlyDigits = /^\d+$/.test(fr);
@@ -94,35 +131,67 @@ function filtered() {
   return ROWS.filter(r => quickMatch(r, campo, txtRaw) && advancedMatch(r));
 }
 
-// ===== Ordinamento =====
-let sortKey = null;
-let sortDir = 'asc';
+// ===== Multi-sort (SHIFT + click) =====
+let sortOrder = []; // es. [{key:'RIPIANO', dir:'asc'}, {key:'TIPO', dir:'desc'}]
 const ths = Array.from(document.querySelectorAll('th.sortable'));
-ths.forEach(th => th.addEventListener('click', () => {
-  const key = th.dataset.key;
-  if (sortKey === key) sortDir = (sortDir === 'asc' ? 'desc' : 'asc');
-  else { sortKey = key; sortDir = 'asc'; }
+
+function toggleSort(key, additive) {
+  if (!additive) {
+    // click normale: reset alla singola colonna
+    const current = sortOrder[0];
+    if (current && current.key === key) {
+      current.dir = current.dir === 'asc' ? 'desc' : 'asc';
+    } else {
+      sortOrder = [{ key, dir: 'asc' }];
+    }
+  } else {
+    // SHIFT+click: aggiungi/aggiorna come secondario
+    const idx = sortOrder.findIndex(s => s.key === key);
+    if (idx === -1) {
+      sortOrder.push({ key, dir: 'asc' });
+    } else {
+      // se è già presente, inverte la direzione
+      sortOrder[idx].dir = sortOrder[idx].dir === 'asc' ? 'desc' : 'asc';
+    }
+    // limita a max 3 chiavi per semplicità
+    sortOrder = sortOrder.slice(0, 3);
+  }
   updateSortIndicators();
   render();
+  saveState();
+}
+
+ths.forEach(th => th.addEventListener('click', (ev) => {
+  const key = th.dataset.key;
+  toggleSort(key, ev.shiftKey === true);
 }));
+
 function updateSortIndicators() {
   ths.forEach(th => {
     const s = th.querySelector('.sort');
     if (!s) return;
-    s.textContent = (th.dataset.key === sortKey) ? (sortDir === 'asc' ? '▲' : '▼') : '';
+    const idx = sortOrder.findIndex(x => x.key === th.dataset.key);
+    if (idx === -1) { s.textContent = ''; return; }
+    const item = sortOrder[idx];
+    const rank = (idx + 1); // 1,2,3…
+    s.textContent = (item.dir === 'asc' ? '▲' : '▼') + rank;
   });
 }
+
 function sortRows(rows) {
-  if (!sortKey) return rows;
-  const dir = sortDir === 'asc' ? 1 : -1;
+  if (!sortOrder.length) return rows;
   return rows.slice().sort((a, b) => {
-    const av = String(a[sortKey] ?? '').toLowerCase();
-    const bv = String(b[sortKey] ?? '').toLowerCase();
-    const an = av.match(/^\d+/), bn = bv.match(/^\d+/);
-    let cmp;
-    if (an && bn) cmp = parseInt(an[0],10) - parseInt(bn[0],10);
-    else cmp = av.localeCompare(bv, 'it', { numeric:true, sensitivity:'base' });
-    return dir * cmp;
+    for (const { key, dir } of sortOrder) {
+      const mul = dir === 'asc' ? 1 : -1;
+      const av = String(a[key] ?? '').toLowerCase();
+      const bv = String(b[key] ?? '').toLowerCase();
+      const an = av.match(/^\d+/), bn = bv.match(/^\d+/);
+      let cmp;
+      if (an && bn) cmp = parseInt(an[0],10) - parseInt(bn[0],10);
+      else cmp = av.localeCompare(bv, 'it', { numeric:true, sensitivity:'base' });
+      if (cmp !== 0) return mul * cmp;
+    }
+    return 0;
   });
 }
 
@@ -169,15 +238,31 @@ clearBtn?.addEventListener('click', () => {
   if (fRip) fRip.value='';
   if (fTip) fTip.value='';
   if (fPos) fPos.value='';
+  sortOrder = [];
+  updateSortIndicators();
   render();
+  saveState();
 });
 
-// Eventi
-q?.addEventListener('input', render);
-selCampo?.addEventListener('change', render);
-selCampo?.addEventListener('input', render);
-[fRip, fTip, fPos].forEach(el => el && el.addEventListener('input', render));
-document.addEventListener('change', (e) => { if (e.target && e.target.id === 'campo') render(); });
+resetBtn?.addEventListener('click', () => {
+  localStorage.removeItem(STATE_KEY);
+  if (q) q.value='';
+  if (selCampo) selCampo.value='ALL';
+  if (fRip) fRip.value='';
+  if (fTip) fTip.value='';
+  if (fPos) fPos.value='';
+  sortOrder = [];
+  updateSortIndicators();
+  render();
+  saveState();
+});
+
+// Eventi che salvano lo stato
+[q, selCampo, fRip, fTip, fPos].forEach(el => {
+  el && el.addEventListener('input', () => { render(); saveState(); });
+});
+selCampo?.addEventListener('change', () => { render(); saveState(); });
+document.addEventListener('change', (e) => { if (e.target && e.target.id === 'campo') { render(); saveState(); }});
 
 // ===== Import =====
 fileInput?.addEventListener('change', async (ev) => {
@@ -210,9 +295,11 @@ fileInput?.addEventListener('change', async (ev) => {
   }
   fileInput.value = '';
   render();
+  saveState();
 });
 
 loadData();
+
 
 
 loadData();

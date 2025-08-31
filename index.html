@@ -54,7 +54,8 @@
     footer { text-align:center; margin:16px 0; color:var(--muted); font-size:12px; }
   </style>
   <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script defer src="app.js?v=6"></script>
+  <!-- v7 -->
+  <script defer src="app.js?v=7"></script>
 </head>
 <body>
   <header>
@@ -82,8 +83,38 @@
           <option value="TIPO">Tipo</option>
           <option value="POSIZIONE">Posizione</option>
         </select>
-        <button id="clear" class="second
+        <button id="clear" class="secondary">Pulisci</button>
+        <button id="export">Export CSV</button>
+        <span class="count" id="count">0 risultati</span>
+      </div>
 
+      <div class="row">
+        <input id="file" type="file" accept=".xlsx,.csv" />
+        <span class="muted">Carica un file per aggiornare la tabella (usa la prima sheet)</span>
+      </div>
 
+      <table>
+        <thead>
+          <tr><th>RIPIANO</th><th>TIPO</th><th>POSIZIONE</th></tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+
+      <p class="hint">Suggerimento: con <b>Ripiano</b> selezionato, se scrivi solo numeri (es. <b>10</b>) il filtro è <b>esatto</b>.</p>
+    </div>
+
+    <p class="muted" style="margin-top:10px">Dopo il primo caricamento, il sito funziona anche offline (Aggiungi a schermata Home su Android).</p>
+  </main>
+
+  <footer>
+    Versione UI: <strong>v7</strong>
+  </footer>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', ()=> navigator.serviceWorker.register('./sw.js?v=7'));
+    }
+  </script>
 </body>
 </html>
+

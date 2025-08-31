@@ -1,4 +1,4 @@
-// v5 – UI migliorata + ricerca per campo + tema chiaro/scuro
+// v6 – UI migliorata + ricerca per campo + tema chiaro/scuro
 let ROWS = [];
 const $ = (id) => document.getElementById(id);
 const tbody = $('tbody');
@@ -54,6 +54,7 @@ function filtered() {
     const rip = norm(r.RIPIANO);
     const tip = norm(r.TIPO);
     const pos = norm(r.POSIZIONE);
+
     if (campo === 'RIPIANO') {
       if (onlyDigits) {
         const ripRaw = String(r.RIPIANO ?? '');
@@ -65,8 +66,10 @@ function filtered() {
       }
       return rip.includes(txt);
     }
+
     if (campo === 'TIPO') return tip.includes(txt);
     if (campo === 'POSIZIONE') return pos.includes(txt);
+
     return rip.includes(txt) || tip.includes(txt) || pos.includes(txt);
   });
 }
@@ -90,7 +93,9 @@ function render() {
 }
 
 function escapeHtml(x) {
-  return String(x).replace(/[&<>"]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[s]));
+  return String(x).replace(/[&<>"]/g, s => (
+    {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[s]
+  ));
 }
 
 function toCSV(rows) {
@@ -108,10 +113,17 @@ exportBtn.addEventListener('click', () => {
   const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url; a.download = 'kardex_export.csv'; a.click(); URL.revokeObjectURL(url);
+  a.href = url; 
+  a.download = 'kardex_export.csv'; 
+  a.click(); 
+  URL.revokeObjectURL(url);
 });
 
-clearBtn.addEventListener('click', () => { q.value=''; selCampo.value='ALL'; render(); });
+clearBtn.addEventListener('click', () => { 
+  q.value=''; 
+  selCampo.value='ALL'; 
+  render(); 
+});
 
 q.addEventListener('input', render);
 selCampo.addEventListener('change', render);
@@ -121,6 +133,7 @@ fileInput.addEventListener('change', async (ev) => {
   const f = ev.target.files?.[0];
   if (!f) return;
   const ext = (f.name.split('.').pop()||'').toLowerCase();
+
   if (ext === 'csv') {
     const text = await f.text();
     const lines = text.split(/\r?\n/).filter(x=>x.length);
@@ -129,21 +142,35 @@ fileInput.addEventListener('change', async (ev) => {
     const idxR = headers.findIndex(h => h.includes('RIPIANO'));
     const idxT = headers.findIndex(h => h.includes('TIPO'));
     const idxP = headers.findIndex(h => h.includes('POSIZIONE'));
+
     const parseLine = (line) => {
       const parts = (line.match(/("[^"]*"|[^,]+)/g) || []).map(s=>s.replace(/^"|"$/g,''));
-      return { RIPIANO: parts[idxR]||'', TIPO: parts[idxT]||'', POSIZIONE: parts[idxP]||'' };
+      return { 
+        RIPIANO: parts[idxR]||'', 
+        TIPO: parts[idxT]||'', 
+        POSIZIONE: parts[idxP]||'' 
+      };
     };
     ROWS = rest.map(parseLine).filter(r=>r.RIPIANO||r.TIPO||r.POSIZIONE);
     render();
+
   } else {
     const buf = await f.arrayBuffer();
     const wb = XLSX.read(buf, { type:'array' });
     const ws = wb.Sheets[wb.SheetNames[0]];
     const arr = XLSX.utils.sheet_to_json(ws, { defval:'' });
+
     const mapRow = (r) => {
       const keys = Object.keys(r);
-      const get = (pred) => { const k = keys.find(k => pred(k.toUpperCase())); return k ? r[k] : ''; };
-      return { RIPIANO: get(k=>k.includes('RIPIANO')), TIPO: get(k=>k.includes('TIPO')), POSIZIONE: get(k=>k.includes('POSIZIONE')) };
+      const get = (pred) => { 
+        const k = keys.find(k => pred(k.toUpperCase())); 
+        return k ? r[k] : ''; 
+      };
+      return { 
+        RIPIANO: get(k=>k.includes('RIPIANO')), 
+        TIPO: get(k=>k.includes('TIPO')), 
+        POSIZIONE: get(k=>k.includes('POSIZIONE')) 
+      };
     };
     ROWS = arr.map(mapRow).filter(r=>r.RIPIANO||r.TIPO||r.POSIZIONE);
     render();

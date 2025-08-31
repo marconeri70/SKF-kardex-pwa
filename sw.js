@@ -1,9 +1,9 @@
-const CACHE_NAME = 'kardex-cache-v12';
+const CACHE_NAME = 'kardex-cache-v13';
 
 const ASSETS = [
-  './manifest.webmanifest?v=12',
-  './assets/icon-192.png?v=12',
-  './assets/icon-512.png?v=12',
+  './manifest.webmanifest?v=13',
+  './assets/icon-192.png?v=13',
+  './assets/icon-512.png?v=13',
   './data/kardex.json',
   'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js'
 ];
@@ -13,9 +13,11 @@ self.addEventListener('install', (e) => {
 });
 
 self.addEventListener('activate', (e) => {
-  e.waitUntil(caches.keys().then(keys =>
-    Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-  ));
+  e.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+    )
+  );
 });
 
 self.addEventListener('fetch', (e) => {
@@ -35,7 +37,7 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // Network-first per icone
+  // Network-first per icone (logo PWA)
   if (url.pathname.includes('/assets/icon-') && url.pathname.endsWith('.png')) {
     e.respondWith(
       fetch(req).then(resp => {
@@ -47,7 +49,7 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // Cache-first per il resto
+  // Cache-first per tutto il resto
   e.respondWith(
     caches.match(req).then(resp => resp || fetch(req).then(fresp => {
       const clone = fresp.clone();
@@ -56,6 +58,7 @@ self.addEventListener('fetch', (e) => {
     }).catch(()=>resp))
   );
 });
+
 
 
 

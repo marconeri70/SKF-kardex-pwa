@@ -1,4 +1,4 @@
-// v6 – UI migliorata + ricerca per campo + tema chiaro/scuro
+// v7 – fix eventi selezione + indicator campo attivo
 let ROWS = [];
 const $ = (id) => document.getElementById(id);
 const tbody = $('tbody');
@@ -8,10 +8,15 @@ const clearBtn = $('clear');
 const exportBtn = $('export');
 const fileInput = $('file');
 const count = $('count');
-const themeBtn = $('theme');
 
-// ===== Tema chiaro/scuro persistente =====
+// piccolo badge del campo attivo
+const campoBadge = document.createElement('span');
+campoBadge.className = 'muted';
+campoBadge.style.marginLeft = '8px';
+count?.insertAdjacentElement('afterend', campoBadge);
+
 (function initTheme(){
+  const themeBtn = $('theme');
   const saved = localStorage.getItem('kardex-theme');
   if (saved === 'light' || saved === 'dark') {
     document.documentElement.setAttribute('data-theme', saved);
@@ -24,10 +29,9 @@ const themeBtn = $('theme');
     themeBtn.textContent = (next === 'dark') ? '🌙 Tema' : '☀️ Tema';
   });
   const cur = document.documentElement.getAttribute('data-theme') || 'auto';
-  themeBtn.textContent = (cur === 'dark') ? '🌙 Tema' : '☀️ Tema';
+  if (themeBtn) themeBtn.textContent = (cur === 'dark') ? '🌙 Tema' : '☀️ Tema';
 })();
 
-// ===== Utils ricerca =====
 const norm = (s) => String(s ?? '')
   .toLowerCase()
   .normalize('NFD')
@@ -44,8 +48,8 @@ async function loadData() {
 }
 
 function filtered() {
-  const txtRaw = q.value.trim();
-  const campo = selCampo.value; // ALL | RIPIANO | TIPO | POSIZIONE
+  const txtRaw = q?.value?.trim() ?? '';
+  const campo = selCampo?.value ?? 'ALL';
   const txt = norm(txtRaw);
   if (!txt) return ROWS.slice();
   const onlyDigits = /^\d+$/.test(txtRaw);
@@ -66,36 +70,36 @@ function filtered() {
       }
       return rip.includes(txt);
     }
-
     if (campo === 'TIPO') return tip.includes(txt);
     if (campo === 'POSIZIONE') return pos.includes(txt);
-
     return rip.includes(txt) || tip.includes(txt) || pos.includes(txt);
   });
 }
 
-function pill(text) {
-  const t = String(text || '');
-  if (!t) return '';
-  return `<span class="chip">${escapeHtml(t)}</span>`;
+function labelCampo(v) {
+  return v === 'RIPIANO' ? 'Ripiano'
+       : v === 'TIPO' ? 'Tipo'
+       : v === 'POSIZIONE' ? 'Posizione'
+       : 'Tutti';
 }
 
 function render() {
   const rows = filtered();
-  count.textContent = rows.length + ' risultati';
-  tbody.innerHTML = rows.map(r =>
-    `<tr>
-      <td>${escapeHtml(r.RIPIANO ?? '')}</td>
-      <td>${escapeHtml(r.TIPO ?? '')}</td>
-      <td>${pill(r.POSIZIONE)}</td>
-    </tr>`
-  ).join('');
+  if (count) count.textContent = rows.length + ' risultati';
+  if (campoBadge && selCampo) campoBadge.textContent = ' • Campo: ' + labelCampo(selCampo.value);
+  if (tbody) {
+    tbody.innerHTML = rows.map(r =>
+      `<tr>
+        <td>${escapeHtml(r.RIPIANO ?? '')}</td>
+        <td>${escapeHtml(r.TIPO ?? '')}</td>
+        <td><span class="chip">${escapeHtml(r.POSIZIONE ?? '')}</span></td>
+      </tr>`
+    ).join('');
+  }
 }
 
 function escapeHtml(x) {
-  return String(x).replace(/[&<>"]/g, s => (
-    {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[s]
-  ));
+  return String(x).replace(/[&<>"]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[s]));
 }
 
 function toCSV(rows) {
@@ -108,28 +112,29 @@ function toCSV(rows) {
   return lines.join('\n');
 }
 
-exportBtn.addEventListener('click', () => {
+exportBtn?.addEventListener('click', () => {
   const csv = toCSV(filtered());
   const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url; 
-  a.download = 'kardex_export.csv'; 
-  a.click(); 
-  URL.revokeObjectURL(url);
+  a.href = url; a.download = 'kardex_export.csv'; a.click(); URL.revokeObjectURL(url);
 });
 
-clearBtn.addEventListener('click', () => { 
-  q.value=''; 
-  selCampo.value='ALL'; 
-  render(); 
+clearBtn?.addEventListener('click', () => { if (q) q.value=''; if (selCampo) selCampo.value='ALL'; render(); });
+
+// Eventi robusti per la selezione
+q?.addEventListener('input', render);
+selCampo?.addEventListener('change', render);
+selCampo?.addEventListener('input', render);
+
+// Fallback globale (alcuni webview vecchi)
+document.addEventListener('change', (e) => {
+  const t = e.target;
+  if (t && t.id === 'campo') render();
 });
 
-q.addEventListener('input', render);
-selCampo.addEventListener('change', render);
-
-// ===== Import CSV / XLSX =====
-fileInput.addEventListener('change', async (ev) => {
+// Import CSV / XLSX
+fileInput?.addEventListener('change', async (ev) => {
   const f = ev.target.files?.[0];
   if (!f) return;
   const ext = (f.name.split('.').pop()||'').toLowerCase();
@@ -142,43 +147,26 @@ fileInput.addEventListener('change', async (ev) => {
     const idxR = headers.findIndex(h => h.includes('RIPIANO'));
     const idxT = headers.findIndex(h => h.includes('TIPO'));
     const idxP = headers.findIndex(h => h.includes('POSIZIONE'));
-
     const parseLine = (line) => {
       const parts = (line.match(/("[^"]*"|[^,]+)/g) || []).map(s=>s.replace(/^"|"$/g,''));
-      return { 
-        RIPIANO: parts[idxR]||'', 
-        TIPO: parts[idxT]||'', 
-        POSIZIONE: parts[idxP]||'' 
-      };
+      return { RIPIANO: parts[idxR]||'', TIPO: parts[idxT]||'', POSIZIONE: parts[idxP]||'' };
     };
     ROWS = rest.map(parseLine).filter(r=>r.RIPIANO||r.TIPO||r.POSIZIONE);
     render();
-
   } else {
     const buf = await f.arrayBuffer();
     const wb = XLSX.read(buf, { type:'array' });
     const ws = wb.Sheets[wb.SheetNames[0]];
     const arr = XLSX.utils.sheet_to_json(ws, { defval:'' });
-
     const mapRow = (r) => {
       const keys = Object.keys(r);
-      const get = (pred) => { 
-        const k = keys.find(k => pred(k.toUpperCase())); 
-        return k ? r[k] : ''; 
-      };
-      return { 
-        RIPIANO: get(k=>k.includes('RIPIANO')), 
-        TIPO: get(k=>k.includes('TIPO')), 
-        POSIZIONE: get(k=>k.includes('POSIZIONE')) 
-      };
+      const get = (pred) => { const k = keys.find(k => pred(k.toUpperCase())); return k ? r[k] : ''; };
+      return { RIPIANO: get(k=>k.includes('RIPIANO')), TIPO: get(k=>k.includes('TIPO')), POSIZIONE: get(k=>k.includes('POSIZIONE')) };
     };
     ROWS = arr.map(mapRow).filter(r=>r.RIPIANO||r.TIPO||r.POSIZIONE);
     render();
   }
-  fileInput.value = '';
+  if (fileInput) fileInput.value = '';
 });
-
-loadData();
-
 
 loadData();

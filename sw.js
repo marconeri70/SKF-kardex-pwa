@@ -1,4 +1,4 @@
-const CACHE_NAME = 'kardex-cache-v7';
+const CACHE_NAME = 'kardex-cache-v9';
 
 // Assets statici da cache-first
 const ASSETS = [

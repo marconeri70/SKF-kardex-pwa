@@ -1,4 +1,4 @@
-// Improved app.js with field-specific search
+// v5 – UI migliorata + ricerca per campo + tema chiaro/scuro
 let ROWS = [];
 const $ = (id) => document.getElementById(id);
 const tbody = $('tbody');
@@ -8,7 +8,26 @@ const clearBtn = $('clear');
 const exportBtn = $('export');
 const fileInput = $('file');
 const count = $('count');
+const themeBtn = $('theme');
 
+// ===== Tema chiaro/scuro persistente =====
+(function initTheme(){
+  const saved = localStorage.getItem('kardex-theme');
+  if (saved === 'light' || saved === 'dark') {
+    document.documentElement.setAttribute('data-theme', saved);
+  }
+  themeBtn?.addEventListener('click', () => {
+    const cur = document.documentElement.getAttribute('data-theme') || 'auto';
+    const next = cur === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('kardex-theme', next);
+    themeBtn.textContent = (next === 'dark') ? '🌙 Tema' : '☀️ Tema';
+  });
+  const cur = document.documentElement.getAttribute('data-theme') || 'auto';
+  themeBtn.textContent = (cur === 'dark') ? '🌙 Tema' : '☀️ Tema';
+})();
+
+// ===== Utils ricerca =====
 const norm = (s) => String(s ?? '')
   .toLowerCase()
   .normalize('NFD')
@@ -18,7 +37,7 @@ async function loadData() {
   try {
     const resp = await fetch('./data/kardex.json', { cache: 'no-store' });
     ROWS = await resp.json();
-  } catch (e) {
+  } catch {
     ROWS = [];
   }
   render();
@@ -26,10 +45,11 @@ async function loadData() {
 
 function filtered() {
   const txtRaw = q.value.trim();
-  const campo = selCampo.value;
+  const campo = selCampo.value; // ALL | RIPIANO | TIPO | POSIZIONE
   const txt = norm(txtRaw);
   if (!txt) return ROWS.slice();
   const onlyDigits = /^\d+$/.test(txtRaw);
+
   return ROWS.filter(r => {
     const rip = norm(r.RIPIANO);
     const tip = norm(r.TIPO);
@@ -51,6 +71,12 @@ function filtered() {
   });
 }
 
+function pill(text) {
+  const t = String(text || '');
+  if (!t) return '';
+  return `<span class="chip">${escapeHtml(t)}</span>`;
+}
+
 function render() {
   const rows = filtered();
   count.textContent = rows.length + ' risultati';
@@ -58,13 +84,13 @@ function render() {
     `<tr>
       <td>${escapeHtml(r.RIPIANO ?? '')}</td>
       <td>${escapeHtml(r.TIPO ?? '')}</td>
-      <td>${escapeHtml(r.POSIZIONE ?? '')}</td>
+      <td>${pill(r.POSIZIONE)}</td>
     </tr>`
   ).join('');
 }
 
 function escapeHtml(x) {
-  return String(x).replace(/[&<>\"]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[s]));
+  return String(x).replace(/[&<>"]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[s]));
 }
 
 function toCSV(rows) {
@@ -72,7 +98,7 @@ function toCSV(rows) {
   const lines = [headers.join(',')];
   for (const r of rows) {
     const vals = headers.map(h => String(r[h] ?? '').replaceAll('"','""'));
-    lines.push(vals.map(v => /[,"\n]/.test(v) ? `"${v}"` : v).join(','));
+    lines.push(vals.map(v => /[,\"\n]/.test(v) ? `"${v}"` : v).join(','));
   }
   return lines.join('\n');
 }
@@ -90,6 +116,7 @@ clearBtn.addEventListener('click', () => { q.value=''; selCampo.value='ALL'; ren
 q.addEventListener('input', render);
 selCampo.addEventListener('change', render);
 
+// ===== Import CSV / XLSX =====
 fileInput.addEventListener('change', async (ev) => {
   const f = ev.target.files?.[0];
   if (!f) return;
@@ -123,5 +150,8 @@ fileInput.addEventListener('change', async (ev) => {
   }
   fileInput.value = '';
 });
+
+loadData();
+
 
 loadData();

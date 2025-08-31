@@ -4,16 +4,16 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Kardex Viewer</title>
-  <link rel="manifest" href="manifest.webmanifest?v=9" />
+  <link rel="manifest" href="manifest.webmanifest?v=10" />
   <meta name="theme-color" content="#0e4ead" />
-  <link rel="apple-touch-icon" href="assets/icon-512.png?v=9" />
-  <link rel="icon" href="favicon.ico?v=9" type="image/x-icon">
+  <link rel="apple-touch-icon" href="assets/icon-512.png?v=10" />
+  <link rel="icon" href="favicon.ico?v=10" type="image/x-icon">
   <style>
     :root {
-      --bg: #f6f7fb; --card: #ffffff; --text: #0f172a; --muted: #6b7280;
-      --primary: #0e4ead; --primary-weak: #e5efff; --border: #e5e7eb;
-      --shadow: 0 10px 30px rgba(2,6,23,.08); --pill-bg: #eef2ff; --pill-text: #3730a3;
-      --table-head: #f3f4f6; --row-alt: #fafafa; --row-hover: #f1f5ff;
+      --bg:#f6f7fb; --card:#fff; --text:#0f172a; --muted:#6b7280;
+      --primary:#0e4ead; --primary-weak:#e5efff; --border:#e5e7eb;
+      --shadow:0 10px 30px rgba(2,6,23,.08); --pill-bg:#eef2ff; --pill-text:#3730a3;
+      --table-head:#f3f4f6; --row-alt:#fafafa; --row-hover:#f1f5ff;
     }
     @media (prefers-color-scheme: dark) {
       html[data-theme="auto"] {
@@ -27,9 +27,9 @@
       --primary-weak:#0b1b38; --border:#1f2937; --shadow:0 10px 30px rgba(0,0,0,.35);
       --pill-bg:#0b1b38; --pill-text:#bfdbfe; --table-head:#0b1b38; --row-alt:#0b1426; --row-hover:#142549;
     }
-    * { box-sizing: border-box }
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans"; background: var(--bg); color: var(--text); margin:0; }
-    header { background: linear-gradient(135deg, var(--primary), #2563eb); color:#fff; padding:16px 18px; position:sticky; top:0; z-index:20; box-shadow:0 4px 18px rgba(0,0,0,.12); }
+    * { box-sizing:border-box }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans"; background:var(--bg); color:var(--text); margin:0; }
+    header { background:linear-gradient(135deg, var(--primary), #2563eb); color:#fff; padding:16px 18px; position:sticky; top:0; z-index:20; box-shadow:0 4px 18px rgba(0,0,0,.12); }
     .wrap { max-width:1100px; margin:0 auto; display:flex; gap:10px; align-items:center; justify-content:space-between; }
     .brand { display:flex; align-items:center; gap:10px; }
     .brand .logo { width:42px; height:42px; border-radius:12px; overflow:hidden; border:2px solid #ffffff55; background:#fff; display:flex; align-items:center; justify-content:center; }
@@ -38,18 +38,33 @@
     .card { background:var(--card); border:1px solid var(--border); border-radius:16px; box-shadow:var(--shadow); padding:16px; }
     .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
     .row > * { margin:4px 0; }
+
     input[type="text"], select, button { padding:10px 12px; border:1px solid var(--border); border-radius:12px; background:#fff; color:var(--text); }
     html[data-theme="dark"] input[type="text"], html[data-theme="dark"] select, html[data-theme="dark"] button { background:#0b1426; border-color:var(--border); color:var(--text); }
-    button { background: var(--primary); color:#fff; border:none; cursor:pointer; transition: transform .05s ease; }
-    button:hover { transform: translateY(-1px); }
-    button.secondary { background: var(--primary-weak); color: var(--text); }
+    button { background:var(--primary); color:#fff; border:none; cursor:pointer; transition:transform .05s ease; }
+    button:hover { transform:translateY(-1px); }
+    button.secondary { background:var(--primary-weak); color:var(--text); }
+
     .count { margin-left:auto; color:var(--muted); font-size:14px; }
     .chip { display:inline-flex; align-items:center; gap:6px; background:var(--pill-bg); color:var(--pill-text); border-radius:999px; padding:4px 10px; font-size:12px; font-weight:600; border:1px solid var(--border); }
+
     table { width:100%; border-collapse:collapse; margin-top:12px; overflow:hidden; }
-    thead th { position:sticky; top:0; z-index:5; background:var(--table-head); color:var(--text); text-align:left; padding:12px; border-bottom:1px solid var(--border); }
+    thead th { position:sticky; top:0; z-index:5; background:var(--table-head); color:var(--text); text-align:left; padding:12px; border-bottom:1px solid var(--border); user-select:none; }
+    th.sortable { cursor:pointer; }
+    th.sortable .sort { opacity:.7; font-size:12px; margin-left:6px; }
     td { padding:12px; border-bottom:1px solid var(--border); vertical-align:top; }
-    tbody tr:nth-child(even) { background: var(--row-alt); }
-    tbody tr:hover { background: var(--row-hover); }
+    tbody tr:nth-child(even) { background:var(--row-alt); }
+    tbody tr:hover { background:var(--row-hover); }
+
+    /* Mobile: righe come card */
+    @media (max-width: 640px) {
+      table, thead, tbody, th, td, tr { display:block; }
+      thead { display:none; }
+      tbody tr { border:1px solid var(--border); border-radius:12px; padding:8px; margin-bottom:12px; background:var(--card); }
+      td { display:grid; grid-template-columns: 120px 1fr; gap:8px; border:none; }
+      td::before { content: attr(data-label); font-weight:600; color:var(--muted); }
+    }
+
     .muted { color:var(--muted); font-size:14px; }
     .hint { font-size:12px; color:var(--muted); }
     .toolbar { display:flex; gap:8px; align-items:center; }
@@ -57,14 +72,14 @@
     footer { text-align:center; margin:16px 0; color:var(--muted); font-size:12px; }
   </style>
   <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script defer src="app.js?v=9"></script>
+  <script defer src="app.js?v=10"></script>
 </head>
 <body>
   <header>
     <div class="wrap">
       <div class="brand">
         <div class="logo">
-          <img src="assets/icon-512.png?v=9" alt="Logo SKF">
+          <img src="assets/icon-512.png?v=10" alt="Logo SKF">
         </div>
         <div>
           <div style="font-weight:800; font-size:18px; letter-spacing:.3px">Kardex Viewer</div>
@@ -99,29 +114,30 @@
 
       <table>
         <thead>
-          <tr><th>RIPIANO</th><th>TIPO</th><th>POSIZIONE</th></tr>
+          <tr>
+            <th class="sortable" data-key="RIPIANO">RIPIANO <span class="sort"></span></th>
+            <th class="sortable" data-key="TIPO">TIPO <span class="sort"></span></th>
+            <th class="sortable" data-key="POSIZIONE">POSIZIONE <span class="sort"></span></th>
+          </tr>
         </thead>
         <tbody id="tbody"></tbody>
       </table>
 
-      <p class="hint">Suggerimento: con <b>Ripiano</b> selezionato, se scrivi solo numeri (es. <b>10</b>) il filtro è <b>esatto</b>.</p>
+      <p class="hint">Suggerimento: clicca sull’intestazione per ordinare (▲▼). Su mobile le righe diventano card.</p>
     </div>
 
     <p class="muted" style="margin-top:10px">Dopo il primo caricamento, il sito funziona anche offline (Aggiungi a schermata Home su Android).</p>
   </main>
 
   <footer>
-    Versione UI: <strong>v9</strong>
+    Versione UI: <strong>v10</strong>
   </footer>
 
   <script>
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', ()=> navigator.serviceWorker.register('./sw.js?v=9'));
+      window.addEventListener('load', ()=> navigator.serviceWorker.register('./sw.js?v=10'));
     }
   </script>
 </body>
-</html>
-
-
 </html>
 

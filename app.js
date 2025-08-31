@@ -1,4 +1,4 @@
-// v10 – colonne ordinabili + mobile card + ricerca per campo + tema
+// v11 – colonne ordinabili + mobile card + ricerca rapida + FILTRI COMBINATI
 let ROWS = [];
 const $ = (id) => document.getElementById(id);
 const tbody = $('tbody');
@@ -9,6 +9,11 @@ const exportBtn = $('export');
 const fileInput = $('file');
 const count = $('count');
 const themeBtn = $('theme');
+
+// Filtri avanzati
+const fRip = $('f_rip');
+const fTip = $('f_tip');
+const fPos = $('f_pos');
 
 // ===== Tema =====
 (function initTheme(){
@@ -36,31 +41,62 @@ async function loadData() {
   render();
 }
 
-function filtered() {
-  const txtRaw = q?.value?.trim() ?? '';
-  const campo = selCampo?.value ?? 'ALL';
+// Filtro rapido per campo (come prima)
+function quickMatch(r, campo, txtRaw) {
   const txt = norm(txtRaw);
-  if (!txt) return ROWS.slice();
+  if (!txt) return true;
   const onlyDigits = /^\d+$/.test(txtRaw);
-  return ROWS.filter(r => {
-    const rip = norm(r.RIPIANO), tip = norm(r.TIPO), pos = norm(r.POSIZIONE);
-    if (campo === 'RIPIANO') {
-      if (onlyDigits) {
-        const raw = String(r.RIPIANO ?? '');
-        if (/^\d+/.test(raw)) return (raw.match(/^\d+/)?.[0] || '') === txtRaw;
-        return rip === txt;
-      }
-      return rip.includes(txt);
+  const rip = norm(r.RIPIANO), tip = norm(r.TIPO), pos = norm(r.POSIZIONE);
+
+  if (campo === 'RIPIANO') {
+    if (onlyDigits) {
+      const raw = String(r.RIPIANO ?? '');
+      if (/^\d+/.test(raw)) return (raw.match(/^\d+/)?.[0] || '') === txtRaw;
+      return rip === txt;
     }
-    if (campo === 'TIPO') return tip.includes(txt);
-    if (campo === 'POSIZIONE') return pos.includes(txt);
-    return rip.includes(txt) || tip.includes(txt) || pos.includes(txt);
-  });
+    return rip.includes(txt);
+  }
+  if (campo === 'TIPO') return tip.includes(txt);
+  if (campo === 'POSIZIONE') return pos.includes(txt);
+  return rip.includes(txt) || tip.includes(txt) || pos.includes(txt);
+}
+
+// Filtri avanzati combinati (AND)
+function advancedMatch(r) {
+  const fr = fRip?.value?.trim() ?? '';
+  const ft = fTip?.value?.trim() ?? '';
+  const fp = fPos?.value?.trim() ?? '';
+  if (!fr && !ft && !fp) return true;
+
+  const rip = norm(r.RIPIANO), tip = norm(r.TIPO), pos = norm(r.POSIZIONE);
+
+  // Ripiano: se solo numeri → match esatto sul numero iniziale
+  let okRip = true;
+  if (fr) {
+    const onlyDigits = /^\d+$/.test(fr);
+    if (onlyDigits) {
+      const raw = String(r.RIPIANO ?? '');
+      okRip = (/^\d+/.test(raw) ? (raw.match(/^\d+/)?.[0] || '') === fr : rip === norm(fr));
+    } else {
+      okRip = rip.includes(norm(fr));
+    }
+  }
+
+  const okTip = ft ? tip.includes(norm(ft)) : true;
+  const okPos = fp ? pos.includes(norm(fp)) : true;
+
+  return okRip && okTip && okPos;
+}
+
+function filtered() {
+  const campo = selCampo?.value ?? 'ALL';
+  const txtRaw = q?.value?.trim() ?? '';
+  return ROWS.filter(r => quickMatch(r, campo, txtRaw) && advancedMatch(r));
 }
 
 // ===== Ordinamento =====
-let sortKey = null;  // 'RIPIANO' | 'TIPO' | 'POSIZIONE'
-let sortDir = 'asc'; // 'asc' | 'desc'
+let sortKey = null;
+let sortDir = 'asc';
 const ths = Array.from(document.querySelectorAll('th.sortable'));
 ths.forEach(th => th.addEventListener('click', () => {
   const key = th.dataset.key;
@@ -76,7 +112,6 @@ function updateSortIndicators() {
     s.textContent = (th.dataset.key === sortKey) ? (sortDir === 'asc' ? '▲' : '▼') : '';
   });
 }
-
 function sortRows(rows) {
   if (!sortKey) return rows;
   const dir = sortDir === 'asc' ? 1 : -1;
@@ -128,11 +163,20 @@ exportBtn?.addEventListener('click', () => {
   a.href = url; a.download = 'kardex_export.csv'; a.click(); URL.revokeObjectURL(url);
 });
 
-clearBtn?.addEventListener('click', () => { if (q) q.value=''; if (selCampo) selCampo.value='ALL'; render(); });
+clearBtn?.addEventListener('click', () => {
+  if (q) q.value='';
+  if (selCampo) selCampo.value='ALL';
+  if (fRip) fRip.value='';
+  if (fTip) fTip.value='';
+  if (fPos) fPos.value='';
+  render();
+});
 
+// Eventi
 q?.addEventListener('input', render);
 selCampo?.addEventListener('change', render);
 selCampo?.addEventListener('input', render);
+[fRip, fTip, fPos].forEach(el => el && el.addEventListener('input', render));
 document.addEventListener('change', (e) => { if (e.target && e.target.id === 'campo') render(); });
 
 // ===== Import =====
@@ -167,6 +211,9 @@ fileInput?.addEventListener('change', async (ev) => {
   fileInput.value = '';
   render();
 });
+
+loadData();
+
 
 loadData();
 

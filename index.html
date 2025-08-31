@@ -4,10 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Kardex Viewer</title>
-  <link rel="manifest" href="manifest.webmanifest?v=11" />
+  <link rel="manifest" href="manifest.webmanifest?v=12" />
   <meta name="theme-color" content="#0e4ead" />
-  <link rel="apple-touch-icon" href="assets/icon-512.png?v=11" />
-  <link rel="icon" href="favicon.ico?v=11" type="image/x-icon">
+  <link rel="apple-touch-icon" href="assets/icon-512.png?v=12" />
+  <link rel="icon" href="favicon.ico?v=12" type="image/x-icon">
   <style>
     :root {
       --bg:#f6f7fb; --card:#fff; --text:#0f172a; --muted:#6b7280;
@@ -38,11 +38,13 @@
     .card { background:var(--card); border:1px solid var(--border); border-radius:16px; box-shadow:var(--shadow); padding:16px; }
     .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
     .row > * { margin:4px 0; }
+
     input[type="text"], select, button { padding:10px 12px; border:1px solid var(--border); border-radius:12px; background:#fff; color:var(--text); }
     html[data-theme="dark"] input[type="text"], html[data-theme="dark"] select, html[data-theme="dark"] button { background:#0b1426; border-color:var(--border); color:var(--text); }
     button { background:var(--primary); color:#fff; border:none; cursor:pointer; transition:transform .05s ease; }
     button:hover { transform:translateY(-1px); }
     button.secondary { background:var(--primary-weak); color:var(--text); }
+
     .count { margin-left:auto; color:var(--muted); font-size:14px; }
     .chip { display:inline-flex; align-items:center; gap:6px; background:var(--pill-bg); color:var(--pill-text); border-radius:999px; padding:4px 10px; font-size:12px; font-weight:600; border:1px solid var(--border); }
 
@@ -50,7 +52,7 @@
     table { width:100%; border-collapse:collapse; margin-top:12px; overflow:hidden; }
     thead th { position:sticky; top:0; z-index:5; background:var(--table-head); color:var(--text); text-align:left; padding:12px; border-bottom:1px solid var(--border); user-select:none; }
     th.sortable { cursor:pointer; }
-    th.sortable .sort { opacity:.7; font-size:12px; margin-left:6px; }
+    th.sortable .sort { opacity:.8; font-size:12px; margin-left:6px; }
     td { padding:12px; border-bottom:1px solid var(--border); vertical-align:top; }
     tbody tr:nth-child(even) { background:var(--row-alt); }
     tbody tr:hover { background:var(--row-hover); }
@@ -79,14 +81,14 @@
     .field label { font-size:12px; color:var(--muted); }
   </style>
   <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script defer src="app.js?v=11"></script>
+  <script defer src="app.js?v=12"></script>
 </head>
 <body>
   <header>
     <div class="wrap">
       <div class="brand">
         <div class="logo">
-          <img src="assets/icon-512.png?v=11" alt="Logo SKF">
+          <img src="assets/icon-512.png?v=12" alt="Logo SKF">
         </div>
         <div>
           <div style="font-weight:800; font-size:18px; letter-spacing:.3px">Kardex Viewer</div>
@@ -95,6 +97,7 @@
       </div>
       <div class="toolbar">
         <button id="theme" class="toggle" title="Tema chiaro/scuro">🌙 Tema</button>
+        <button id="reset" class="toggle" title="Resetta filtri e ordinamento">↺ Reset impostazioni</button>
       </div>
     </div>
   </header>
@@ -144,30 +147,31 @@
       <table>
         <thead>
           <tr>
-            <th class="sortable" data-key="RIPIANO">RIPIANO <span class="sort"></span></th>
-            <th class="sortable" data-key="TIPO">TIPO <span class="sort"></span></th>
-            <th class="sortable" data-key="POSIZIONE">POSIZIONE <span class="sort"></span></th>
+            <th class="sortable" data-key="RIPIANO" title="Click per ordinare. SHIFT+Click per ordinamento secondario">RIPIANO <span class="sort"></span></th>
+            <th class="sortable" data-key="TIPO" title="Click per ordinare. SHIFT+Click per ordinamento secondario">TIPO <span class="sort"></span></th>
+            <th class="sortable" data-key="POSIZIONE" title="Click per ordinare. SHIFT+Click per ordinamento secondario">POSIZIONE <span class="sort"></span></th>
           </tr>
         </thead>
         <tbody id="tbody"></tbody>
       </table>
 
-      <p class="hint">Suggerimento: i filtri avanzati si sommano tra loro e con la ricerca veloce.</p>
+      <p class="hint">Suggerimento: Click = ordina per colonna. <b>SHIFT + Click</b> = aggiungi ordinamento secondario (▲1 / ▼2).</p>
     </div>
 
     <p class="muted" style="margin-top:10px">Dopo il primo caricamento, il sito funziona anche offline (Aggiungi a schermata Home su Android).</p>
   </main>
 
   <footer>
-    Versione UI: <strong>v11</strong>
+    Versione UI: <strong>v12</strong>
   </footer>
 
   <script>
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', ()=> navigator.serviceWorker.register('./sw.js?v=11'));
+      window.addEventListener('load', ()=> navigator.serviceWorker.register('./sw.js?v=12'));
     }
   </script>
 </body>
 </html>
+
 
 

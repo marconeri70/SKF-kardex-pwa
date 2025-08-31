@@ -4,10 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Kardex Viewer</title>
-  <link rel="manifest" href="manifest.webmanifest?v=10" />
+  <link rel="manifest" href="manifest.webmanifest?v=11" />
   <meta name="theme-color" content="#0e4ead" />
-  <link rel="apple-touch-icon" href="assets/icon-512.png?v=10" />
-  <link rel="icon" href="favicon.ico?v=10" type="image/x-icon">
+  <link rel="apple-touch-icon" href="assets/icon-512.png?v=11" />
+  <link rel="icon" href="favicon.ico?v=11" type="image/x-icon">
   <style>
     :root {
       --bg:#f6f7fb; --card:#fff; --text:#0f172a; --muted:#6b7280;
@@ -38,16 +38,15 @@
     .card { background:var(--card); border:1px solid var(--border); border-radius:16px; box-shadow:var(--shadow); padding:16px; }
     .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
     .row > * { margin:4px 0; }
-
     input[type="text"], select, button { padding:10px 12px; border:1px solid var(--border); border-radius:12px; background:#fff; color:var(--text); }
     html[data-theme="dark"] input[type="text"], html[data-theme="dark"] select, html[data-theme="dark"] button { background:#0b1426; border-color:var(--border); color:var(--text); }
     button { background:var(--primary); color:#fff; border:none; cursor:pointer; transition:transform .05s ease; }
     button:hover { transform:translateY(-1px); }
     button.secondary { background:var(--primary-weak); color:var(--text); }
-
     .count { margin-left:auto; color:var(--muted); font-size:14px; }
     .chip { display:inline-flex; align-items:center; gap:6px; background:var(--pill-bg); color:var(--pill-text); border-radius:999px; padding:4px 10px; font-size:12px; font-weight:600; border:1px solid var(--border); }
 
+    /* Tabella */
     table { width:100%; border-collapse:collapse; margin-top:12px; overflow:hidden; }
     thead th { position:sticky; top:0; z-index:5; background:var(--table-head); color:var(--text); text-align:left; padding:12px; border-bottom:1px solid var(--border); user-select:none; }
     th.sortable { cursor:pointer; }
@@ -56,7 +55,7 @@
     tbody tr:nth-child(even) { background:var(--row-alt); }
     tbody tr:hover { background:var(--row-hover); }
 
-    /* Mobile: righe come card */
+    /* Mobile: card */
     @media (max-width: 640px) {
       table, thead, tbody, th, td, tr { display:block; }
       thead { display:none; }
@@ -70,16 +69,24 @@
     .toolbar { display:flex; gap:8px; align-items:center; }
     .toggle { background:#ffffff22; color:#fff; border:1px solid #ffffff44; padding:8px 10px; border-radius:12px; cursor:pointer; font-size:14px; }
     footer { text-align:center; margin:16px 0; color:var(--muted); font-size:12px; }
+
+    /* Filtri avanzati */
+    details.filters { margin-top:10px; }
+    details.filters summary { cursor:pointer; padding:8px 10px; background:var(--table-head); border:1px solid var(--border); border-radius:12px; }
+    .filters .grid { margin-top:10px; display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:10px; }
+    @media (max-width: 640px) { .filters .grid { grid-template-columns: 1fr; } }
+    .field { display:flex; flex-direction:column; gap:6px; }
+    .field label { font-size:12px; color:var(--muted); }
   </style>
   <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script defer src="app.js?v=10"></script>
+  <script defer src="app.js?v=11"></script>
 </head>
 <body>
   <header>
     <div class="wrap">
       <div class="brand">
         <div class="logo">
-          <img src="assets/icon-512.png?v=10" alt="Logo SKF">
+          <img src="assets/icon-512.png?v=11" alt="Logo SKF">
         </div>
         <div>
           <div style="font-weight:800; font-size:18px; letter-spacing:.3px">Kardex Viewer</div>
@@ -94,8 +101,9 @@
 
   <main>
     <div class="card">
+      <!-- Barra rapida -->
       <div class="row">
-        <input id="q" type="text" placeholder="Cerca… (es: 10, 361, Destra, Montaggio)" />
+        <input id="q" type="text" placeholder="Cerca veloce…" />
         <select id="campo" title="Campo">
           <option value="ALL">Campo: Tutti</option>
           <option value="RIPIANO">Ripiano</option>
@@ -107,11 +115,32 @@
         <span class="count" id="count">0 risultati</span>
       </div>
 
-      <div class="row">
+      <!-- Filtri combinati -->
+      <details class="filters">
+        <summary>Filtri avanzati (AND)</summary>
+        <div class="grid">
+          <div class="field">
+            <label for="f_rip">Ripiano</label>
+            <input id="f_rip" type="text" placeholder="es. 10" />
+          </div>
+          <div class="field">
+            <label for="f_tip">Tipo</label>
+            <input id="f_tip" type="text" placeholder="es. Montaggio" />
+          </div>
+          <div class="field">
+            <label for="f_pos">Posizione</label>
+            <input id="f_pos" type="text" placeholder="es. Destra" />
+          </div>
+        </div>
+      </details>
+
+      <!-- Import -->
+      <div class="row" style="margin-top:8px">
         <input id="file" type="file" accept=".xlsx,.csv" />
         <span class="muted">Carica un file per aggiornare la tabella (usa la prima sheet)</span>
       </div>
 
+      <!-- Tabella -->
       <table>
         <thead>
           <tr>
@@ -123,21 +152,22 @@
         <tbody id="tbody"></tbody>
       </table>
 
-      <p class="hint">Suggerimento: clicca sull’intestazione per ordinare (▲▼). Su mobile le righe diventano card.</p>
+      <p class="hint">Suggerimento: i filtri avanzati si sommano tra loro e con la ricerca veloce.</p>
     </div>
 
     <p class="muted" style="margin-top:10px">Dopo il primo caricamento, il sito funziona anche offline (Aggiungi a schermata Home su Android).</p>
   </main>
 
   <footer>
-    Versione UI: <strong>v10</strong>
+    Versione UI: <strong>v11</strong>
   </footer>
 
   <script>
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', ()=> navigator.serviceWorker.register('./sw.js?v=10'));
+      window.addEventListener('load', ()=> navigator.serviceWorker.register('./sw.js?v=11'));
     }
   </script>
 </body>
 </html>
+
 

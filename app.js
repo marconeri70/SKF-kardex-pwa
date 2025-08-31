@@ -1,6 +1,8 @@
-// v12 – multi-sort (SHIFT+click), memoria impostazioni, filtri combinati, mobile card
+// v13 – multi-sort (SHIFT+click), preset filtri, memoria impostazioni, filtri combinati, mobile card
 let ROWS = [];
 const $ = (id) => document.getElementById(id);
+
+// UI refs
 const tbody = $('tbody');
 const q = $('q');
 const selCampo = $('campo');
@@ -15,6 +17,11 @@ const resetBtn = $('reset');
 const fRip = $('f_rip');
 const fTip = $('f_tip');
 const fPos = $('f_pos');
+
+// Preset
+const presetNameInput = $('presetName');
+const savePresetBtn = $('savePreset');
+const presetList = $('presetList');
 
 // ===== Tema =====
 (function initTheme(){
@@ -33,7 +40,7 @@ const fPos = $('f_pos');
 })();
 
 // ===== Stato persistente =====
-const STATE_KEY = 'kardex-state-v12';
+const STATE_KEY = 'kardex-state-v13';
 function saveState() {
   const state = {
     q: q?.value ?? '',
@@ -67,7 +74,7 @@ function loadState() {
   } catch {}
 }
 
-// ===== Ricerca =====
+// ===== Ricerca & Filtri =====
 const norm = (s) => String(s ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
 async function loadData() {
@@ -75,11 +82,10 @@ async function loadData() {
     const resp = await fetch('./data/kardex.json', { cache: 'no-store' });
     ROWS = await resp.json();
   } catch { ROWS = []; }
-  loadState(); // applica eventuale stato salvato
+  loadState(); // applica stato salvato (se c'è)
   render();
 }
 
-// Filtro rapido per campo
 function quickMatch(r, campo, txtRaw) {
   const txt = norm(txtRaw);
   if (!txt) return true;
@@ -99,7 +105,6 @@ function quickMatch(r, campo, txtRaw) {
   return rip.includes(txt) || tip.includes(txt) || pos.includes(txt);
 }
 
-// Filtri avanzati combinati (AND)
 function advancedMatch(r) {
   const fr = fRip?.value?.trim() ?? '';
   const ft = fTip?.value?.trim() ?? '';
@@ -118,7 +123,6 @@ function advancedMatch(r) {
       okRip = rip.includes(norm(fr));
     }
   }
-
   const okTip = ft ? tip.includes(norm(ft)) : true;
   const okPos = fp ? pos.includes(norm(fp)) : true;
 
@@ -132,12 +136,11 @@ function filtered() {
 }
 
 // ===== Multi-sort (SHIFT + click) =====
-let sortOrder = []; // es. [{key:'RIPIANO', dir:'asc'}, {key:'TIPO', dir:'desc'}]
+let sortOrder = []; // [{key:'RIPIANO', dir:'asc'}, {key:'TIPO', dir:'desc'}]
 const ths = Array.from(document.querySelectorAll('th.sortable'));
 
 function toggleSort(key, additive) {
   if (!additive) {
-    // click normale: reset alla singola colonna
     const current = sortOrder[0];
     if (current && current.key === key) {
       current.dir = current.dir === 'asc' ? 'desc' : 'asc';
@@ -145,15 +148,9 @@ function toggleSort(key, additive) {
       sortOrder = [{ key, dir: 'asc' }];
     }
   } else {
-    // SHIFT+click: aggiungi/aggiorna come secondario
     const idx = sortOrder.findIndex(s => s.key === key);
-    if (idx === -1) {
-      sortOrder.push({ key, dir: 'asc' });
-    } else {
-      // se è già presente, inverte la direzione
-      sortOrder[idx].dir = sortOrder[idx].dir === 'asc' ? 'desc' : 'asc';
-    }
-    // limita a max 3 chiavi per semplicità
+    if (idx === -1) sortOrder.push({ key, dir: 'asc' });
+    else sortOrder[idx].dir = sortOrder[idx].dir === 'asc' ? 'desc' : 'asc';
     sortOrder = sortOrder.slice(0, 3);
   }
   updateSortIndicators();
@@ -173,7 +170,7 @@ function updateSortIndicators() {
     const idx = sortOrder.findIndex(x => x.key === th.dataset.key);
     if (idx === -1) { s.textContent = ''; return; }
     const item = sortOrder[idx];
-    const rank = (idx + 1); // 1,2,3…
+    const rank = (idx + 1);
     s.textContent = (item.dir === 'asc' ? '▲' : '▼') + rank;
   });
 }
@@ -224,6 +221,7 @@ function toCSV(rows) {
   return lines.join('\n');
 }
 
+// ===== Export, Clear, Reset =====
 exportBtn?.addEventListener('click', () => {
   const csv = toCSV(sortRows(filtered()));
   const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
@@ -238,9 +236,7 @@ clearBtn?.addEventListener('click', () => {
   if (fRip) fRip.value='';
   if (fTip) fTip.value='';
   if (fPos) fPos.value='';
-  sortOrder = [];
-  updateSortIndicators();
-  render();
+  render(); 
   saveState();
 });
 
@@ -257,7 +253,7 @@ resetBtn?.addEventListener('click', () => {
   saveState();
 });
 
-// Eventi che salvano lo stato
+// Re-render & save on input
 [q, selCampo, fRip, fTip, fPos].forEach(el => {
   el && el.addEventListener('input', () => { render(); saveState(); });
 });
@@ -298,7 +294,87 @@ fileInput?.addEventListener('change', async (ev) => {
   saveState();
 });
 
+// ===== Preset Filtri =====
+const PRESETS_KEY = 'kardex-presets-v13';
+
+function getCurrentConfig() {
+  return {
+    q: q?.value ?? '',
+    campo: selCampo?.value ?? 'ALL',
+    fRip: fRip?.value ?? '',
+    fTip: fTip?.value ?? '',
+    fPos: fPos?.value ?? '',
+    sort: sortOrder
+  };
+}
+
+function applyConfig(cfg) {
+  if (!cfg) return;
+  if (q) q.value = cfg.q ?? '';
+  if (selCampo) selCampo.value = cfg.campo ?? 'ALL';
+  if (fRip) fRip.value = cfg.fRip ?? '';
+  if (fTip) fTip.value = cfg.fTip ?? '';
+  if (fPos) fPos.value = cfg.fPos ?? '';
+  if (Array.isArray(cfg.sort)) {
+    sortOrder = cfg.sort;
+    updateSortIndicators();
+  }
+  render();
+  saveState();
+}
+
+function loadPresets() {
+  try { return JSON.parse(localStorage.getItem(PRESETS_KEY)) || []; }
+  catch { return []; }
+}
+
+function savePresets(list) {
+  localStorage.setItem(PRESETS_KEY, JSON.stringify(list));
+}
+
+function renderPresets() {
+  if (!presetList) return;
+  const presets = loadPresets();
+  presetList.innerHTML = '';
+  presets.forEach((p, idx) => {
+    const btn = document.createElement('button');
+    btn.textContent = p.name;
+    btn.className = 'secondary';
+    btn.addEventListener('click', ()=> applyConfig(p.cfg));
+
+    const del = document.createElement('button');
+    del.textContent = '❌';
+    del.className = 'secondary';
+    del.style.padding='0 6px';
+    del.addEventListener('click', ()=>{
+      const newList = presets.filter((_,i)=>i!==idx);
+      savePresets(newList);
+      renderPresets();
+    });
+
+    const wrap = document.createElement('div');
+    wrap.style.display='flex'; wrap.style.alignItems='center'; wrap.style.gap='4px';
+    wrap.appendChild(btn);
+    wrap.appendChild(del);
+    presetList.appendChild(wrap);
+  });
+}
+
+savePresetBtn?.addEventListener('click', () => {
+  const name = presetNameInput?.value?.trim();
+  if (!name) { alert('Inserisci un nome per il preset'); return; }
+  const presets = loadPresets();
+  presets.push({ name, cfg: getCurrentConfig() });
+  savePresets(presets);
+  if (presetNameInput) presetNameInput.value = '';
+  renderPresets();
+});
+
+renderPresets();
+
+// ===== Avvio =====
 loadData();
+
 
 
 

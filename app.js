@@ -1,4 +1,4 @@
-// v7 – fix eventi selezione + indicator campo attivo
+// v10 – colonne ordinabili + mobile card + ricerca per campo + tema
 let ROWS = [];
 const $ = (id) => document.getElementById(id);
 const tbody = $('tbody');
@@ -8,19 +8,12 @@ const clearBtn = $('clear');
 const exportBtn = $('export');
 const fileInput = $('file');
 const count = $('count');
+const themeBtn = $('theme');
 
-// piccolo badge del campo attivo
-const campoBadge = document.createElement('span');
-campoBadge.className = 'muted';
-campoBadge.style.marginLeft = '8px';
-count?.insertAdjacentElement('afterend', campoBadge);
-
+// ===== Tema =====
 (function initTheme(){
-  const themeBtn = $('theme');
   const saved = localStorage.getItem('kardex-theme');
-  if (saved === 'light' || saved === 'dark') {
-    document.documentElement.setAttribute('data-theme', saved);
-  }
+  if (saved === 'light' || saved === 'dark') document.documentElement.setAttribute('data-theme', saved);
   themeBtn?.addEventListener('click', () => {
     const cur = document.documentElement.getAttribute('data-theme') || 'auto';
     const next = cur === 'dark' ? 'light' : 'dark';
@@ -29,21 +22,17 @@ count?.insertAdjacentElement('afterend', campoBadge);
     themeBtn.textContent = (next === 'dark') ? '🌙 Tema' : '☀️ Tema';
   });
   const cur = document.documentElement.getAttribute('data-theme') || 'auto';
-  if (themeBtn) themeBtn.textContent = (cur === 'dark') ? '🌙 Tema' : '☀️ Tema';
+  themeBtn && (themeBtn.textContent = (cur === 'dark') ? '🌙 Tema' : '☀️ Tema');
 })();
 
-const norm = (s) => String(s ?? '')
-  .toLowerCase()
-  .normalize('NFD')
-  .replace(/[\u0300-\u036f]/g, '');
+// ===== Ricerca =====
+const norm = (s) => String(s ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
 async function loadData() {
   try {
     const resp = await fetch('./data/kardex.json', { cache: 'no-store' });
     ROWS = await resp.json();
-  } catch {
-    ROWS = [];
-  }
+  } catch { ROWS = []; }
   render();
 }
 
@@ -53,19 +42,12 @@ function filtered() {
   const txt = norm(txtRaw);
   if (!txt) return ROWS.slice();
   const onlyDigits = /^\d+$/.test(txtRaw);
-
   return ROWS.filter(r => {
-    const rip = norm(r.RIPIANO);
-    const tip = norm(r.TIPO);
-    const pos = norm(r.POSIZIONE);
-
+    const rip = norm(r.RIPIANO), tip = norm(r.TIPO), pos = norm(r.POSIZIONE);
     if (campo === 'RIPIANO') {
       if (onlyDigits) {
-        const ripRaw = String(r.RIPIANO ?? '');
-        if (/^\d+/.test(ripRaw)) {
-          const head = ripRaw.match(/^\d+/)?.[0] || '';
-          return head === txtRaw;
-        }
+        const raw = String(r.RIPIANO ?? '');
+        if (/^\d+/.test(raw)) return (raw.match(/^\d+/)?.[0] || '') === txtRaw;
         return rip === txt;
       }
       return rip.includes(txt);
@@ -76,26 +58,52 @@ function filtered() {
   });
 }
 
-function labelCampo(v) {
-  return v === 'RIPIANO' ? 'Ripiano'
-       : v === 'TIPO' ? 'Tipo'
-       : v === 'POSIZIONE' ? 'Posizione'
-       : 'Tutti';
+// ===== Ordinamento =====
+let sortKey = null;  // 'RIPIANO' | 'TIPO' | 'POSIZIONE'
+let sortDir = 'asc'; // 'asc' | 'desc'
+const ths = Array.from(document.querySelectorAll('th.sortable'));
+ths.forEach(th => th.addEventListener('click', () => {
+  const key = th.dataset.key;
+  if (sortKey === key) sortDir = (sortDir === 'asc' ? 'desc' : 'asc');
+  else { sortKey = key; sortDir = 'asc'; }
+  updateSortIndicators();
+  render();
+}));
+function updateSortIndicators() {
+  ths.forEach(th => {
+    const s = th.querySelector('.sort');
+    if (!s) return;
+    s.textContent = (th.dataset.key === sortKey) ? (sortDir === 'asc' ? '▲' : '▼') : '';
+  });
 }
 
+function sortRows(rows) {
+  if (!sortKey) return rows;
+  const dir = sortDir === 'asc' ? 1 : -1;
+  return rows.slice().sort((a, b) => {
+    const av = String(a[sortKey] ?? '').toLowerCase();
+    const bv = String(b[sortKey] ?? '').toLowerCase();
+    const an = av.match(/^\d+/), bn = bv.match(/^\d+/);
+    let cmp;
+    if (an && bn) cmp = parseInt(an[0],10) - parseInt(bn[0],10);
+    else cmp = av.localeCompare(bv, 'it', { numeric:true, sensitivity:'base' });
+    return dir * cmp;
+  });
+}
+
+// ===== Render =====
 function render() {
-  const rows = filtered();
-  if (count) count.textContent = rows.length + ' risultati';
-  if (campoBadge && selCampo) campoBadge.textContent = ' • Campo: ' + labelCampo(selCampo.value);
-  if (tbody) {
-    tbody.innerHTML = rows.map(r =>
-      `<tr>
-        <td>${escapeHtml(r.RIPIANO ?? '')}</td>
-        <td>${escapeHtml(r.TIPO ?? '')}</td>
-        <td><span class="chip">${escapeHtml(r.POSIZIONE ?? '')}</span></td>
-      </tr>`
-    ).join('');
-  }
+  let rows = filtered();
+  rows = sortRows(rows);
+  count && (count.textContent = rows.length + ' risultati');
+  if (!tbody) return;
+  tbody.innerHTML = rows.map(r =>
+    `<tr>
+      <td data-label="RIPIANO">${escapeHtml(r.RIPIANO ?? '')}</td>
+      <td data-label="TIPO">${escapeHtml(r.TIPO ?? '')}</td>
+      <td data-label="POSIZIONE"><span class="chip">${escapeHtml(r.POSIZIONE ?? '')}</span></td>
+    </tr>`
+  ).join('');
 }
 
 function escapeHtml(x) {
@@ -113,7 +121,7 @@ function toCSV(rows) {
 }
 
 exportBtn?.addEventListener('click', () => {
-  const csv = toCSV(filtered());
+  const csv = toCSV(sortRows(filtered()));
   const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -122,23 +130,15 @@ exportBtn?.addEventListener('click', () => {
 
 clearBtn?.addEventListener('click', () => { if (q) q.value=''; if (selCampo) selCampo.value='ALL'; render(); });
 
-// Eventi robusti per la selezione
 q?.addEventListener('input', render);
 selCampo?.addEventListener('change', render);
 selCampo?.addEventListener('input', render);
+document.addEventListener('change', (e) => { if (e.target && e.target.id === 'campo') render(); });
 
-// Fallback globale (alcuni webview vecchi)
-document.addEventListener('change', (e) => {
-  const t = e.target;
-  if (t && t.id === 'campo') render();
-});
-
-// Import CSV / XLSX
+// ===== Import =====
 fileInput?.addEventListener('change', async (ev) => {
-  const f = ev.target.files?.[0];
-  if (!f) return;
+  const f = ev.target.files?.[0]; if (!f) return;
   const ext = (f.name.split('.').pop()||'').toLowerCase();
-
   if (ext === 'csv') {
     const text = await f.text();
     const lines = text.split(/\r?\n/).filter(x=>x.length);
@@ -152,7 +152,6 @@ fileInput?.addEventListener('change', async (ev) => {
       return { RIPIANO: parts[idxR]||'', TIPO: parts[idxT]||'', POSIZIONE: parts[idxP]||'' };
     };
     ROWS = rest.map(parseLine).filter(r=>r.RIPIANO||r.TIPO||r.POSIZIONE);
-    render();
   } else {
     const buf = await f.arrayBuffer();
     const wb = XLSX.read(buf, { type:'array' });
@@ -164,9 +163,10 @@ fileInput?.addEventListener('change', async (ev) => {
       return { RIPIANO: get(k=>k.includes('RIPIANO')), TIPO: get(k=>k.includes('TIPO')), POSIZIONE: get(k=>k.includes('POSIZIONE')) };
     };
     ROWS = arr.map(mapRow).filter(r=>r.RIPIANO||r.TIPO||r.POSIZIONE);
-    render();
   }
-  if (fileInput) fileInput.value = '';
+  fileInput.value = '';
+  render();
 });
 
 loadData();
+

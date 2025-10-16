@@ -1,5 +1,5 @@
 
-const CACHE = 'kardex-clean-v1';
+const CACHE = 'kardex-clean-v2';
 const ASSETS = ['/', '/index.html', '/app.js', '/manifest.webmanifest', '/assets/icon-192.png', '/assets/icon-512.png', '/data/kardex.json'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));

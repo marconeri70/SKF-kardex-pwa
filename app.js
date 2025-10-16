@@ -380,3 +380,27 @@ loadData();
 
 loadData();
 
+
+
+
+// Patch exportBtn per includere preset e filtri attivi
+exportBtn?.addEventListener('click', () => {
+  const activePreset = presetNameInput.value || 'senza_nome';
+  const filters = {
+    ripiano: fRip.value,
+    tipologia: fTip.value,
+    posizione: fPos.value,
+    campo: selCampo.value,
+    ricerca: q.value,
+  };
+  const exportData = {
+    preset: activePreset,
+    filters: filters,
+    data: ROWS.map(r => ({ ...r }))
+  };
+  const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `kardex_export_${Date.now()}.json`;
+  a.click();
+});

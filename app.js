@@ -234,5 +234,185 @@
     applyPendingPresetPositionsIfAny();
   }
 
+  // ===== Preset Manager FIX (drop-in) =====
+(function(){
+  'use strict';
+
+  const PRESETS_KEY = 'kardex-presets';
+  const ACTIVE_PRESET_KEY = 'kardex-active-preset-name';
+
+  const $  = (s) => document.querySelector(s);
+  const $$ = (s) => Array.from(document.querySelectorAll(s));
+
+  function loadPresets(){ try{return JSON.parse(localStorage.getItem(PRESETS_KEY))||[]}catch{return[]} }
+  function savePresets(p){ localStorage.setItem(PRESETS_KEY, JSON.stringify(p??[])); }
+  function getActivePresetName(){ return localStorage.getItem(ACTIVE_PRESET_KEY) || ''; }
+  function setActivePresetName(n){ localStorage.setItem(ACTIVE_PRESET_KEY, n||''); }
+
+  function getFiltersFromUI(){
+    const q   = $('#q')?.value.trim() || '';
+    const cam = $('#selCampo')?.value || '';
+    const rip = $('#fRip')?.value.trim() || '';
+    const tip = $('#fTip')?.value.trim() || '';
+    const pos = $('#fPos')?.value.trim() || '';
+    return {quick:q, campo:cam, ripiano:rip, tipologia:tip, posizione:pos};
+  }
+  function setFiltersToUI(f){
+    if (!f) return;
+    if ($('#q'))       $('#q').value = f.quick || '';
+    if ($('#selCampo'))$('#selCampo').value = f.campo || ($('#selCampo').options?.[0]?.value ?? '');
+    if ($('#fRip'))    $('#fRip').value = f.ripiano || '';
+    if ($('#fTip'))    $('#fTip').value = f.tipologia || '';
+    if ($('#fPos'))    $('#fPos').value = f.posizione || '';
+    if (typeof window.render === 'function') window.render();
+  }
+
+  const saveBtn = $('#btnSavePreset') || $$('button').find(b => /salva/i.test(b.textContent||''));
+  const nameInput = $('#presetNameInput') || $$('input').find(i => /nome preset/i.test(i.placeholder||''));
+
+  function saveCurrentPreset(){
+    const name = (nameInput?.value || '').trim();
+    if (!name) { alert('Inserisci un nome preset'); return; }
+    const presets = loadPresets();
+    const payload = { name, filters: getFiltersFromUI(), savedAt: new Date().toISOString() };
+    const idx = presets.findIndex(p => (p.name||'').toLowerCase() === name.toLowerCase());
+    if (idx>=0) presets[idx] = payload; else presets.push(payload);
+    savePresets(presets);
+    setActivePresetName(name);
+    alert('✅ Preset salvato');
+  }
+  if (saveBtn) saveBtn.addEventListener('click', e => { e.preventDefault?.(); saveCurrentPreset(); });
+
+  let manageBtn = $$('button').find(b => /gestisci\s*preset/i.test(b.textContent||''));
+  if (!manageBtn) {
+    const exportCsv = $('#exportCsvBtn') || $$('button').find(b => /export\s*csv/i.test(b.textContent||''));
+    if (exportCsv) {
+      manageBtn = document.createElement('button');
+      manageBtn.type = 'button';
+      manageBtn.textContent = 'Gestisci Preset';
+      manageBtn.className = exportCsv.className || 'btn';
+      manageBtn.style.marginLeft = '8px';
+      exportCsv.after(manageBtn);
+    }
+  }
+
+  function ensureModal(){
+    let modal = $('#presetModal');
+    if (modal) return modal;
+    modal = document.createElement('div');
+    modal.id = 'presetModal';
+    Object.assign(modal.style, {
+      position:'fixed', inset:'0', background:'rgba(0,0,0,.35)', display:'flex',
+      alignItems:'center', justifyContent:'center', zIndex:'9999'
+    });
+    modal.innerHTML = `
+      <div style="background:#fff;color:#111;max-width:520px;width:92%;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.25)">
+        <div style="padding:14px 16px;border-bottom:1px solid #eee;display:flex;align-items:center;justify-content:space-between">
+          <strong>Preset salvati</strong>
+          <button id="pmClose" style="border:0;background:transparent;font-size:18px;cursor:pointer">✖</button>
+        </div>
+        <div id="pmBody" style="padding:12px 16px;max-height:60vh;overflow:auto"></div>
+        <div style="padding:12px 16px;border-top:1px solid #eee;display:flex;gap:8px;justify-content:flex-end">
+          <button id="pmExport" class="btn">Esporta preset</button>
+          <label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer">
+            <input id="pmImport" type="file" style="display:none"/>
+            <span class="btn" style="padding:.6rem .9rem;background:#eee;border-radius:8px;">Importa preset</span>
+          </label>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', (e)=>{ if (e.target===modal) modal.remove(); });
+    modal.querySelector('#pmClose').addEventListener('click', ()=> modal.remove());
+    modal.querySelector('#pmExport').addEventListener('click', exportPresetsOnly);
+    modal.querySelector('#pmImport').addEventListener('change', importPresetsOnly);
+    return modal;
+  }
+
+  function renderModalList(){
+    const modal = ensureModal();
+    const body = modal.querySelector('#pmBody');
+    const presets = loadPresets();
+    if (!presets.length) {
+      body.innerHTML = `<div style="color:#666">Nessun preset salvato.</div>`;
+      return;
+    }
+    const active = getActivePresetName();
+    body.innerHTML = presets.map(p => `
+      <div style="border:1px solid #eee;border-radius:10px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div>
+          <div><strong>${p.name}</strong> ${p.name===active?'<span style="color:#0a7cff">• attivo</span>':''}</div>
+          <div style="font-size:.9rem;color:#666">ripiano: <code>${p.filters?.ripiano||''}</code> · tipologia: <code>${p.filters?.tipologia||''}</code> · posizione: <code>${p.filters?.posizione||''}</code> · campo: <code>${p.filters?.campo||''}</code> · cerca: <code>${p.filters?.quick||''}</code></div>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button data-act="apply" data-name="${p.name}">Applica</button>
+          <button data-act="rename" data-name="${p.name}">Rinomina</button>
+          <button data-act="delete" data-name="${p.name}" style="color:#b91c1c">Elimina</button>
+        </div>
+      </div>
+    `).join('');
+
+    body.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const name = e.currentTarget.getAttribute('data-name');
+        const act  = e.currentTarget.getAttribute('data-act');
+        if (act === 'apply') applyPreset(name);
+        if (act === 'rename') renamePreset(name);
+        if (act === 'delete') deletePreset(name);
+      });
+    });
+  }
+
+  function applyPreset(name){
+    const presets = loadPresets();
+    const p = presets.find(x => (x.name||'') === name);
+    if (!p) { alert('Preset non trovato'); return; }
+    setActivePresetName(name);
+    setFiltersToUI(p.filters);
+    $('#presetModal')?.remove();
+  }
+
+  function renamePreset(name){
+    const presets = loadPresets();
+    const idx = presets.findIndex(x => (x.name||'') === name);
+    if (idx<0) return;
+    const nuovo = prompt('Nuovo nome preset:', name);
+    if (!nuovo) return;
+    presets[idx].name = nuovo;
+    savePresets(presets);
+    if (getActivePresetName() === name) setActivePresetName(nuovo);
+    renderModalList();
+  }
+
+  function deletePreset(name){
+    if (!confirm(`Eliminare il preset "${name}"?`)) return;
+    let presets = loadPresets().filter(p => (p.name||'') !== name);
+    savePresets(presets);
+    if (getActivePresetName() === name) setActivePresetName('');
+    renderModalList();
+  }
+
+  function exportPresetsOnly(){
+    const payload = { version:1, exportedAt:new Date().toISOString(), activePreset:getActivePresetName(), presets:loadPresets() };
+    const blob = new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob); a.download='kardex_presets.json'; a.click();
+  }
+  async function importPresetsOnly(e){
+    const file = e.target.files[0]; if (!file) return;
+    try{
+      const text = await file.text();
+      const obj = JSON.parse(text);
+      if (!Array.isArray(obj?.presets)) { alert('File preset non valido'); return; }
+      savePresets(obj.presets);
+      if (obj.activePreset) setActivePresetName(obj.activePreset);
+      renderModalList();
+      alert('✅ Preset importati');
+    }catch{ alert('❌ Errore import preset'); }
+  }
+
+  if (manageBtn) manageBtn.addEventListener('click', () => { renderModalList(); });
+
+})();
+
   document.addEventListener('DOMContentLoaded', boot);
 })();

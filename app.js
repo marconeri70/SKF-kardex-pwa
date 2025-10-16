@@ -1,124 +1,77 @@
 
-// ===============================================================
-// Kardex Viewer - app.js (FIX V3) specifico per la tua pagina
-// - Riconosce esattamente i placeholder visti nello screenshot:
-//   "Cerca veloce...", "es. 10", "es. Montaggio", "es. Destra"
-// - Bottone "Export CSV", campo "Nome preset", bottone "Salva"
-// - Filtri funzionanti (tipologia esclusiva), preset su localStorage
-// - Export JSON/CSV e Import auto JSON/CSV
-// ===============================================================
-
 (() => {
   'use strict';
 
   const PRESETS_KEY = 'kardex-presets';
   const ACTIVE_PRESET_KEY = 'kardex-active-preset-name';
-  const STATE_KEY = 'kardex-state-v3';
+  const STATE_KEY = 'kardex-state-v4';
 
   let ROWS = [];
-  let FILTERED_ROWS = [];
+  let FILTERED = [];
   let HEADERS = [];
 
-  const $  = (s) => document.querySelector(s);
-  const $$ = (s) => Array.from(document.querySelectorAll(s));
-  const lower = (x) => (x ?? '').toString().toLowerCase();
+  const $  = s => document.querySelector(s);
+  const $$ = s => Array.from(document.querySelectorAll(s));
+  const lower = x => (x ?? '').toString().toLowerCase();
 
-  // ---- hook elementi (versione mirata) ----
+  // UI refs
   const UI = {
-    q: null, campo: null, ripiano: null, tipologia: null, posizione: null,
-    presetName: null, btnSave: null, exportCsv: null, exportJson: null,
-    fileInput: null, resultsBadge: null, tableHead: null, tableBody: null
+    q: $('#q'), campo: $('#selCampo'),
+    ripiano: $('#fRip'), tipologia: $('#fTip'), posizione: $('#fPos'),
+    presetName: $('#presetNameInput'), btnSave: $('#btnSavePreset'),
+    fileInput: $('#fileInput'),
+    exportCsv: $('#exportCsvBtn'), exportJson: $('#exportJsonBtn'),
+    tableHead: document.querySelector('table thead'),
+    tableBody: document.querySelector('table tbody'),
+    resultsBadge: $('#resultsBadge'),
+    btnClear: $('#btnClear'),
+    btnReset: $('#btnReset'),
+    presetList: $('#presetList')
   };
 
-  function detectUI() {
-    // Dalla tua UI: "Cerca veloce..."
-    UI.q = $('input[placeholder^="Cerca veloce"]') || $('input[placeholder*="Cerca"]');
+  // storage helpers
+  const loadPresets  = () => { try{return JSON.parse(localStorage.getItem(PRESETS_KEY))||[]}catch{return[]} };
+  const savePresets  = p  => localStorage.setItem(PRESETS_KEY, JSON.stringify(p??[]));
+  const getActivePresetName = () => (UI.presetName?.value.trim()) || localStorage.getItem(ACTIVE_PRESET_KEY) || '';
+  const setActivePresetName = n => { localStorage.setItem(ACTIVE_PRESET_KEY, n||''); if(UI.presetName) UI.presetName.value=n||''; };
 
-    // Select "Campo: Tutti" (prendo il primo select vicino al campo cerca)
-    const selects = $$('select');
-    UI.campo = selects.find(s => Array.from(s.options||[]).some(o => /tutti/i.test(o.text))) || selects[0] || null;
+  const saveState = () => localStorage.setItem(STATE_KEY, JSON.stringify({filters:getFilters(), active:getActivePresetName()}));
+  const loadState = () => { try{ const s=JSON.parse(localStorage.getItem(STATE_KEY)||'{}'); if(s.filters) setFilters(s.filters); if(s.active) setActivePresetName(s.active); }catch{} };
 
-    // Filtri "es. 10", "es. Montaggio", "es. Destra"
-    UI.ripiano   = $('input[placeholder^="es. 10"]')        || $('input[placeholder*="Ripiano"]');
-    UI.tipologia = $('input[placeholder^="es. Montaggio"]') || $('input[placeholder*="Tipo"],input[placeholder*="tipologia"]');
-    UI.posizione = $('input[placeholder^="es. Destra"]')    || $('input[placeholder*="Posizion"]');
-
-    // Preset
-    UI.presetName = $('input[placeholder*="Nome preset"]');
-    UI.btnSave    = $$('button').find(b => /salva/i.test(b.textContent||''));
-
-    // Export/Import
-    UI.exportCsv  = $$('button').find(b => /export\s*csv/i.test(b.textContent||''));
-    UI.exportJson = $$('button').find(b => /export\s*json/i.test(b.textContent||'')) || null;
-    UI.fileInput  = $('#fileInput') || $('input[type="file"]');
-
-    // Tabella + badge risultati
-    UI.tableHead  = $('table thead');
-    UI.tableBody  = $('table tbody');
-    UI.resultsBadge = $$('span,div').find(n => /risultat/i.test(n.textContent||'')) || null;
-  }
-
-  // ---- preset/state ----
-  function loadPresets(){ try{return JSON.parse(localStorage.getItem(PRESETS_KEY))||[]}catch{return[]} }
-  function savePresets(p){ localStorage.setItem(PRESETS_KEY, JSON.stringify(p??[])); }
-  function getActivePresetName(){
-    const fromInput = UI.presetName && UI.presetName.value.trim();
-    return fromInput || localStorage.getItem(ACTIVE_PRESET_KEY) || '';
-  }
-  function setActivePresetName(name){
-    localStorage.setItem(ACTIVE_PRESET_KEY, name||'');
-    if (UI.presetName) UI.presetName.value = name||'';
-  }
-  function saveState(){
-    localStorage.setItem(STATE_KEY, JSON.stringify({filters:getFiltersFromUI(), activePreset:getActivePresetName()}));
-  }
-  function loadState(){
-    try{
-      const s = JSON.parse(localStorage.getItem(STATE_KEY)||'{}');
-      if (s.filters) setFiltersToUI(s.filters);
-      if (s.activePreset) setActivePresetName(s.activePreset);
-    }catch{}
-  }
-
-  // ---- dati/render ----
-  function normalizeRow(row){
-    if (Array.isArray(row)){
-      const keys = HEADERS.length ? HEADERS : ['RIPIANO','TIPO','POSIZIONE'];
-      const obj = {}; keys.forEach((k,i)=>obj[k]=row[i]??''); return obj;
-    }
-    return row;
-  }
-
-  function getFiltersFromUI(){
+  function getFilters(){
     return {
-      quick:     UI.q ? UI.q.value.trim() : '',
-      campo:     UI.campo ? (UI.campo.value||'') : '',
-      ripiano:   UI.ripiano ? UI.ripiano.value.trim() : '',
-      tipologia: UI.tipologia ? UI.tipologia.value.trim() : '',
-      posizione: UI.posizione ? UI.posizione.value.trim() : ''
+      quick: UI.q?.value.trim() || '',
+      campo: UI.campo?.value || 'Tutti',
+      ripiano: UI.ripiano?.value.trim() || '',
+      tipologia: UI.tipologia?.value.trim() || '',
+      posizione: UI.posizione?.value.trim() || ''
     };
   }
-  function setFiltersToUI(f){
-    if (!f) return;
-    if (UI.q)        UI.q.value        = f.quick||'';
-    if (UI.campo)    UI.campo.value    = f.campo || (UI.campo.options?.[0]?.value ?? '');
-    if (UI.ripiano)  UI.ripiano.value  = f.ripiano||'';
-    if (UI.tipologia)UI.tipologia.value= f.tipologia||'';
-    if (UI.posizione)UI.posizione.value= f.posizione||'';
+  function setFilters(f){
+    if (UI.q) UI.q.value = f.quick||'';
+    if (UI.campo) UI.campo.value = f.campo||'Tutti';
+    if (UI.ripiano) UI.ripiano.value = f.ripiano||'';
+    if (UI.tipologia) UI.tipologia.value = f.tipologia||'';
+    if (UI.posizione) UI.posizione.value = f.posizione||'';
   }
 
-  function filterRows(){
-    const f = getFiltersFromUI();
+  function normalize(r){
+    if (Array.isArray(r)){
+      const keys = HEADERS.length?HEADERS:['RIPIANO','TIPO','POSIZIONE'];
+      const o={}; keys.forEach((k,i)=>o[k]=r[i]??''); return o;
+    } return r;
+  }
+
+  function applyFilters(){
+    const f = getFilters();
     const q = lower(f.quick);
     const campo = f.campo;
 
-    FILTERED_ROWS = ROWS.filter(r0 => {
-      const r = normalizeRow(r0);
-
-      // ESCLUSIVA per TIPO
-      if (f.tipologia && lower(r.TIPO || r.tipologia) !== lower(f.tipologia)) return false;
-      if (f.ripiano && lower(String(r.RIPIANO ?? r.ripiano)) !== lower(f.ripiano)) return false;
-      if (f.posizione && lower(r.POSIZIONE || r.posizione) !== lower(f.posizione)) return false;
+    FILTERED = ROWS.filter(r0=>{
+      const r = normalize(r0);
+      if (f.tipologia && lower(r.TIPO||r.tipologia)!==lower(f.tipologia)) return false;
+      if (f.ripiano   && lower(String(r.RIPIANO??r.ripiano))!==lower(f.ripiano)) return false;
+      if (f.posizione && lower(r.POSIZIONE||r.posizione)!==lower(f.posizione)) return false;
 
       if (q){
         if (campo && !/tutti/i.test(campo)){
@@ -132,157 +85,163 @@
   }
 
   function renderTable(){
-    if (!UI.tableBody) return;
-    UI.tableBody.innerHTML = '';
-    const rows = FILTERED_ROWS.length ? FILTERED_ROWS : ROWS;
-
-    rows.forEach(r0 => {
-      const r = normalizeRow(r0);
+    UI.tableBody.innerHTML='';
+    const rows = FILTERED.length?FILTERED:ROWS;
+    rows.forEach(r0=>{
+      const r = normalize(r0);
       const tr = document.createElement('tr');
-      const keys = ['RIPIANO','TIPO','POSIZIONE', ...Object.keys(r).filter(k => !['RIPIANO','TIPO','POSIZIONE'].includes(k))];
-      keys.forEach(k => { const td=document.createElement('td'); td.textContent = r[k] ?? ''; tr.appendChild(td); });
+      ['RIPIANO','TIPO','POSIZIONE'].forEach(k=>{
+        const td=document.createElement('td'); td.textContent=r[k]??''; tr.appendChild(td);
+      });
       UI.tableBody.appendChild(tr);
     });
-
     if (UI.resultsBadge){
-      const n = (FILTERED_ROWS.length ? FILTERED_ROWS : ROWS).length;
-      UI.resultsBadge.textContent = `${n} risultati`;
+      UI.resultsBadge.textContent = (FILTERED.length?FILTERED:ROWS).length + " risultati";
     }
   }
+  function render(){ applyFilters(); renderTable(); saveState(); }
 
-  function render(){ filterRows(); renderTable(); saveState(); }
+  // ---- presets UI ----
+  function renderPresetList(){
+    if (!UI.presetList) return;
+    const presets = loadPresets();
+    UI.presetList.innerHTML = '';
+    if (!presets.length){
+      const ghost = document.createElement('div');
+      ghost.className='preset-row';
+      ghost.innerHTML = '<div class="preset-name ghost">Nessun preset salvato</div>';
+      UI.presetList.appendChild(ghost);
+      return;
+    }
+    presets.sort((a,b)=> (a.name||'').localeCompare(b.name||''));
+    presets.forEach(p=>{
+      const row = document.createElement('div');
+      row.className='preset-row';
+      const name = document.createElement('div');
+      name.className='preset-name';
+      name.textContent = p.name;
+      const loadBtn = document.createElement('button');
+      loadBtn.textContent = 'Carica';
+      const delBtn = document.createElement('button');
+      delBtn.textContent = 'Elimina';
+      row.appendChild(name); row.appendChild(loadBtn); row.appendChild(delBtn);
+      UI.presetList.appendChild(row);
 
-  // ---- export/import ----
+      loadBtn.addEventListener('click',()=>{
+        setActivePresetName(p.name);
+        setFilters(p.filters||{});
+        render();
+      });
+      delBtn.addEventListener('click',()=>{
+        const all = loadPresets().filter(x => (x.name||'') !== p.name);
+        savePresets(all);
+        if (getActivePresetName()===p.name) setActivePresetName('');
+        renderPresetList();
+      });
+    });
+  }
+
+  // ---- import/export ----
   function toCSV(rows){
     if (!rows||!rows.length) return '';
-    const isObj = typeof rows[0] === 'object' && !Array.isArray(rows[0]);
-    if (isObj){
-      const headers = Object.keys(normalizeRow(rows[0]));
-      const head = headers.join(',');
-      const body = rows.map(r0 => {
-        const r = normalizeRow(r0);
-        return headers.map(h => String(r[h]??'').replaceAll('"','""')).map(v => `"${v}"`).join(',');
-      }).join('\n');
-      return head+'\n'+body;
-    } else {
-      return rows.map(r => r.map(v => `"${String(v??'').replaceAll('"','""')}"`).join(',')).join('\n');
-    }
+    const headers = ['RIPIANO','TIPO','POSIZIONE'];
+    const head = headers.join(',');
+    const body = rows.map(r0=>{
+      const r = normalize(r0);
+      return headers.map(h=>String(r[h]??'').replaceAll('"','""')).map(v=>`"${v}"`).join(',');
+    }).join('\\n');
+    return head + '\\n' + body;
   }
-  function getVisibleData(){ return FILTERED_ROWS.length ? FILTERED_ROWS : ROWS; }
-  function exportAsJSON(){
+  function exportJSON(){
     const payload = {
-      version:3, exportedAt:new Date().toISOString(),
+      version:4, exportedAt:new Date().toISOString(),
       activePreset:getActivePresetName(),
-      filters:getFiltersFromUI(),
+      filters:getFilters(),
       presets:loadPresets(),
-      rows:getVisibleData()
+      rows: FILTERED.length?FILTERED:ROWS
     };
     const name = `kardex_${payload.activePreset||'no-preset'}_${Date.now()}.json`;
     const blob = new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
     const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click();
   }
-  function exportAsCSV(){
-    const csv = toCSV(getVisibleData());
+  function exportCSV(){
+    const csv = toCSV(FILTERED.length?FILTERED:ROWS);
     const name = `kardex_${getActivePresetName()||'no-preset'}_${Date.now()}.csv`;
     const blob = new Blob([csv],{type:'text/csv'});
     const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click();
   }
-  async function importFileAuto(file,{append=false}={}){
+  async function importAuto(file){
     if (!file) return;
     const text = await file.text();
-    // JSON
     try{
       const obj = JSON.parse(text);
-      if (obj && (Array.isArray(obj.rows) || Array.isArray(obj.dati_visibili))){
-        const rows = obj.rows || obj.dati_visibili || [];
-        if (Array.isArray(obj.presets)) savePresets(obj.presets);
-        if (obj.activePreset || obj.preset_attivo) setActivePresetName(obj.activePreset || obj.preset_attivo);
-        ROWS = append && Array.isArray(ROWS) ? ROWS.concat(rows) : rows;
-        render(); alert('✅ Import JSON completato'); return;
-      }
+      const rows = obj.rows || obj.dati_visibili;
+      if (Array.isArray(obj.presets)) savePresets(obj.presets);
+      if (obj.activePreset || obj.preset_attivo) setActivePresetName(obj.activePreset || obj.preset_attivo);
+      if (Array.isArray(rows)){ ROWS = rows; render(); renderPresetList(); alert('✅ Import JSON'); return; }
     }catch{}
-    // CSV
-    const lines = text.replace(/\r/g,'').split('\n').filter(x=>x.trim()!=='');
+    // CSV naive
+    const lines = text.replace(/\\r/g,'').split('\\n').filter(x=>x.trim()!=='');
     if (lines.length){
-      const first = lines[0];
-      const looksHeader = /[A-Za-z]/.test(first);
-      let headers = []; const rows = [];
-      const splitCsvLine = (line)=>{
-        const out=[]; let cur=''; let inQ=false;
-        for (let i=0;i<line.length;i++){
-          const ch=line[i];
-          if (ch === '"'){ if (inQ && line[i+1] === '"'){ cur+='"'; i++; } else inQ=!inQ; }
-          else if (ch===',' && !inQ){ out.push(cur); cur=''; }
-          else cur+=ch;
-        } out.push(cur); return out.map(s=>s.trim());
-      };
-      lines.forEach((ln,idx)=>{
-        const cols = splitCsvLine(ln);
-        if (idx===0 && looksHeader){ headers=cols; }
-        else if (looksHeader){ const obj={}; headers.forEach((h,i)=>obj[h]=cols[i]??''); rows.push(obj); }
-        else { rows.push(cols); }
-      });
-      ROWS = rows; render(); alert('✅ Import CSV completato'); return;
+      const headers = lines[0].split(',').map(s=>s.replace(/^"|"$/g,'').trim());
+      const out = [];
+      for (let i=1;i<lines.length;i++){
+        const cols = lines[i].split(',').map(s=>s.replace(/^"|"$/g,'').trim());
+        const o={};
+        headers.forEach((h,idx)=>o[h]=cols[idx]||'');
+        out.push(o);
+      }
+      ROWS = out; render(); alert('✅ Import CSV'); return;
     }
-    alert('❌ File non riconosciuto. Usa JSON esportato dall’app o un CSV valido.');
-  }
-
-  // ---- preset ----
-  function saveCurrentAsPreset(){
-    const name = (UI.presetName && UI.presetName.value.trim()) || '';
-    if (!name){ alert('Inserisci un nome preset.'); return; }
-    const presets = loadPresets();
-    const payload = { name, filters:getFiltersFromUI(), savedAt:new Date().toISOString() };
-    const idx = presets.findIndex(p => (p.name||'').toLowerCase() === name.toLowerCase());
-    if (idx>=0) presets[idx]=payload; else presets.push(payload);
-    savePresets(presets); setActivePresetName(name); alert('✅ Preset salvato');
+    alert('❌ File non riconosciuto');
   }
 
   // ---- events ----
-  function wireEvents(){
-    const onChange = () => render();
+  function wire(){
+    const on = (el,ev,fn)=> el&&el.addEventListener(ev,fn);
     ['input','change'].forEach(ev=>{
-      UI.q?.addEventListener(ev,onChange);
-      UI.campo?.addEventListener(ev,onChange);
-      UI.ripiano?.addEventListener(ev,onChange);
-      UI.tipologia?.addEventListener(ev,onChange);
-      UI.posizione?.addEventListener(ev,onChange);
+      on(UI.q,ev,render); on(UI.campo,ev,render); on(UI.ripiano,ev,render);
+      on(UI.tipologia,ev,render); on(UI.posizione,ev,render);
     });
-    UI.btnSave?.addEventListener('click', (e)=>{ e.preventDefault?.(); saveCurrentAsPreset(); });
-    // export
-    if (UI.exportCsv){
-      UI.exportCsv.addEventListener('click', (e)=>{ e.preventDefault?.(); exportAsCSV(); });
-      if (!UI.exportJson){
-        const btn = document.createElement('button');
-        btn.type='button'; btn.className=UI.exportCsv.className||'btn'; btn.style.marginLeft='8px'; btn.textContent='Export JSON';
-        UI.exportCsv.after(btn); UI.exportJson = btn;
-      }
-    }
-    UI.exportJson?.addEventListener('click',(e)=>{ e.preventDefault?.(); exportAsJSON(); });
-    // import
-    UI.fileInput?.addEventListener('change',(e)=> importFileAuto(e.target.files[0],{append:false}));
+    on(UI.btnClear,'click',e=>{e.preventDefault(); setFilters({quick:'',campo:'Tutti',ripiano:'',tipologia:'',posizione:''}); render();});
+    on(UI.btnReset,'click',e=>{e.preventDefault(); localStorage.removeItem(STATE_KEY); setFilters({quick:'',campo:'Tutti',ripiano:'',tipologia:'',posizione:''}); render();});
+
+    on(UI.btnSave,'click',e=>{
+      e.preventDefault();
+      const name = UI.presetName?.value.trim();
+      if (!name) return alert('Inserisci un nome preset');
+      const presets = loadPresets();
+      const payload = { name, filters:getFilters(), savedAt:new Date().toISOString() };
+      const idx = presets.findIndex(p => (p.name||'').toLowerCase()===name.toLowerCase());
+      if (idx>=0) presets[idx]=payload; else presets.push(payload);
+      savePresets(presets);
+      setActivePresetName(name);
+      renderPresetList();
+      alert('✅ Preset salvato');
+    });
+
+    on(UI.exportCsv,'click',e=>{e.preventDefault(); exportCSV();});
+    on(UI.exportJson,'click',e=>{e.preventDefault(); exportJSON();});
+    on(UI.fileInput,'change',e=> importAuto(e.target.files[0]));
   }
 
-  // ---- bootstrap ----
-  async function bootstrap(){
-    detectUI();
+  async function boot(){
+    // headers
     if (UI.tableHead){
       HEADERS = Array.from(UI.tableHead.querySelectorAll('th')).map(th=>th.textContent.trim()).filter(Boolean);
     }
     loadState();
-
-    if (!ROWS.length){
-      try{
-        const res = await fetch('data/kardex.json',{cache:'no-store'});
-        if (res.ok){
-          const json = await res.json();
-          ROWS = Array.isArray(json) ? json : (json.rows || json.data || []);
-        }
-      }catch{}
-    }
+    // data
+    try{
+      const res = await fetch('data/kardex.json',{cache:'no-store'});
+      if (res.ok){
+        const j = await res.json();
+        ROWS = Array.isArray(j) ? j : (j.rows || j.data || []);
+      }
+    }catch{}
     render();
-    wireEvents();
+    renderPresetList();
+    wire();
   }
-
-  document.addEventListener('DOMContentLoaded', bootstrap);
+  document.addEventListener('DOMContentLoaded', boot);
 })();

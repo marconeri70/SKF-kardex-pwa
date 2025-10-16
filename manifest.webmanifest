@@ -3,7 +3,7 @@
   "short_name": "Kardex",
   "start_url": "/index.html",
   "display": "standalone",
-  "background_color": "#0b1220",
+  "background_color": "#ffffff",
   "theme_color": "#0e4aa5",
   "icons": [
     {

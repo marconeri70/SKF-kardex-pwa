@@ -1,146 +1,27 @@
 [
   {
-    "RIPIANO": 1,
+    "RIPIANO": "1",
     "TIPO": "BB1-16101",
-    "POSIZIONE": "Montaggio / Rettifica / Strumenti",
-    "nan": ""
+    "POSIZIONE": "Montaggio / Rettifica / Strumenti"
   },
   {
-    "RIPIANO": 2,
+    "RIPIANO": "2",
     "TIPO": "BB1-0026 / BB1-63000",
-    "POSIZIONE": "Montaggio / Rettifica / Strumenti",
-    "nan": ""
+    "POSIZIONE": "Montaggio / Rettifica / Strumenti"
   },
   {
-    "RIPIANO": 3,
-    "TIPO": "BB1-0654",
-    "POSIZIONE": "Montaggio / Rettifica / Strumenti",
-    "nan": ""
+    "RIPIANO": "7",
+    "TIPO": "RL55",
+    "POSIZIONE": "Sinistra"
   },
   {
-    "RIPIANO": 4,
-    "TIPO": "BB1-2557",
-    "POSIZIONE": "Montaggio / Rettifica / Strumenti",
-    "nan": ""
-  },
-  {
-    "RIPIANO": 5,
-    "TIPO": "BB1-3023",
-    "POSIZIONE": "Montaggio / Rettifica / Strumenti",
-    "nan": ""
-  },
-  {
-    "RIPIANO": 6,
-    "TIPO": "BB1-2783",
-    "POSIZIONE": "Montaggio / Rettifica / Strumenti",
-    "nan": ""
-  },
-  {
-    "RIPIANO": 7,
-    "TIPO": "RLS5",
-    "POSIZIONE": "Sinistra",
-    "nan": ""
-  },
-  {
-    "RIPIANO": 7,
+    "RIPIANO": "7",
     "TIPO": "R8",
-    "POSIZIONE": "Centrale",
-    "nan": ""
+    "POSIZIONE": "Centrale"
   },
   {
-    "RIPIANO": 7,
-    "TIPO": 62201,
-    "POSIZIONE": "Destra",
-    "nan": ""
-  },
-  {
-    "RIPIANO": 8,
-    "TIPO": 61802,
-    "POSIZIONE": "Montaggio / Rettifica / Strumenti",
-    "nan": ""
-  },
-  {
-    "RIPIANO": 9,
-    "TIPO": 62302,
-    "POSIZIONE": "Sinistra",
-    "nan": ""
-  },
-  {
-    "RIPIANO": 9,
-    "TIPO": 62300,
-    "POSIZIONE": "Centrale",
-    "nan": ""
-  },
-  {
-    "RIPIANO": 9,
-    "TIPO": 361200,
-    "POSIZIONE": "",
-    "nan": ""
-  },
-  {
-    "RIPIANO": 10,
-    "TIPO": 361203,
-    "POSIZIONE": "",
-    "nan": ""
-  },
-  {
-    "RIPIANO": 10,
-    "TIPO": 361202,
-    "POSIZIONE": "",
-    "nan": ""
-  },
-  {
-    "RIPIANO": 10,
-    "TIPO": 62301,
-    "POSIZIONE": "",
-    "nan": ""
-  },
-  {
-    "RIPIANO": 11,
-    "TIPO": "6303 / Ricambi vari rettifica",
-    "POSIZIONE": "",
-    "nan": ""
-  },
-  {
-    "RIPIANO": 12,
-    "TIPO": 61903,
-    "POSIZIONE": "",
-    "nan": ""
-  },
-  {
-    "RIPIANO": 12,
-    "TIPO": 61801,
-    "POSIZIONE": "",
-    "nan": ""
-  },
-  {
-    "RIPIANO": 12,
-    "TIPO": 61803,
-    "POSIZIONE": "",
-    "nan": ""
-  },
-  {
-    "RIPIANO": 13,
-    "TIPO": "Mole Toyo-T234",
-    "POSIZIONE": "",
-    "nan": ""
-  },
-  {
-    "RIPIANO": "14  (CH 21)",
-    "TIPO": "63000-0026",
-    "POSIZIONE": "",
-    "nan": ""
-  },
-  {
-    "RIPIANO": "14  (CH 21)",
-    "TIPO": "BB1-2575",
-    "POSIZIONE": "",
-    "nan": ""
-  },
-  {
-    "RIPIANO": "14  (CH 21)",
-    "TIPO": 16101,
-    "POSIZIONE": "",
-    "nan": ""
+    "RIPIANO": "7",
+    "TIPO": "62201",
+    "POSIZIONE": "Destra"
   }
 ]

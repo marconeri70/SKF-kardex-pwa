@@ -1,12 +1,10 @@
 
 // ===============================================================
-// Kardex Viewer - app.js (COMPLETO e AGGIORNATO)
-// - Filtri + ricerca
-// - Preset: salvataggio / ripristino
-// - Export JSON/CSV (JSON include preset, filtri e righe visibili)
-// - Import auto (JSON/CSV) con controlli di sicurezza
-// - Filtro tipologia ESCLUSIVO (mostra solo la tipologia selezionata)
-// - Selettori DOM difensivi per compatibilità con HTML esistente
+// Kardex Viewer - app.js (FIX V2 robusto per filtri & preset)
+// - Rilevamento campi via placeholder/testo (no dipendenza da ID)
+// - Filtri funzionanti (tipologia esclusiva)
+// - Preset salva/carica con localStorage
+// - Export JSON/CSV + Import auto (come versione precedente)
 // ===============================================================
 
 (() => {
@@ -15,34 +13,76 @@
   // -------------------- Stato --------------------
   const PRESETS_KEY = 'kardex-presets';
   const ACTIVE_PRESET_KEY = 'kardex-active-preset-name';
-  const STATE_KEY = 'kardex-state-v1';
+  const STATE_KEY = 'kardex-state-v2';
 
   let ROWS = [];          // Dati originali
   let FILTERED_ROWS = []; // Dati filtrati correnti
-  let HEADERS = [];       // Intestazioni tabella, se presenti
+  let HEADERS = [];       // Intestazioni tabella
 
-  // -------------------- Utilità DOM sicure --------------------
+  // -------------------- Utilità --------------------
   const $ = (sel) => document.querySelector(sel);
   const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 
-  // Prova più selettori per compatibilità con markup esistente
-  const el = {
-    quickSearch: $('#q') || $('input[placeholder*="Cerca"]') || $('input[type="search"]'),
-    selCampo:   $('#selCampo') || $('#campo') || $('#field') || $('select'),
-    btnClear:   $('#btnClear') || $$('button').find(b => /pulisci/i.test(b.textContent || '')),
-    btnReset:   $('#btnReset') || $$('button').find(b => /reset/i.test(b.textContent || '')),
-    exportCsv:  $('#exportCsvBtn') || $$('button').find(b => /export\s*csv/i.test(b.textContent || '')),
-    exportJson: $('#exportJsonBtn') || null, // lo creeremo se non c'è
-    fRip:       $('#fRip') || $('input[placeholder*="Ripiano"]'),
-    fTip:       $('#fTip') || $('input[placeholder*="Tipo"]') || $('input[placeholder*="tipologia"]'),
-    fPos:       $('#fPos') || $('input[placeholder*="Posizione"]'),
-    presetName: $('#presetNameInput') || $('input[placeholder*="Nome preset"]'),
-    btnSavePreset: $('#btnSavePreset') || $$('button').find(b => /salva/i.test(b.textContent || '')),
-    fileInput:  $('#fileInput') || $('input[type="file"]'),
-    resultsBadge: $('#resultsBadge') || $$('span').find(s => /risultat/i.test(s.textContent || '')),
-    tableHead:  $('table thead'),
-    tableBody:  $('table tbody')
+  const lower = (s) => (s ?? '').toString().toLowerCase();
+
+  function includesAny(hay, needles) {
+    hay = lower(hay);
+    return needles.some(n => hay.includes(lower(n)));
+  }
+
+  function getInputByPlaceholder(needles) {
+    const els = $$('input');
+    return els.find(el => includesAny(el.placeholder || '', needles)) || null;
+  }
+
+  function getButtonByText(needles) {
+    const els = $$('button');
+    return els.find(el => includesAny(el.textContent || '', needles)) || null;
+  }
+
+  function getSelectNearText(needles) {
+    // prova: select con label che contiene "Campo", altrimenti il primo select
+    const labels = $$('label');
+    for (const lab of labels) {
+      if (includesAny(lab.textContent || '', needles)) {
+        const forId = lab.getAttribute('for');
+        if (forId) {
+          const el = document.getElementById(forId);
+          if (el && el.tagName === 'SELECT') return el;
+        }
+        const siblingSelect = lab.parentElement?.querySelector('select');
+        if (siblingSelect) return siblingSelect;
+      }
+    }
+    return $('select') || null;
+  }
+
+  // Mappa campi UI (rilevati dinamicamente)
+  const UI = {
+    q: null, campo: null, ripiano: null, tipologia: null, posizione: null,
+    presetName: null, btnSave: null, exportCsv: null, exportJson: null,
+    fileInput: null, resultsBadge: null, tableHead: null, tableBody: null
   };
+
+  function detectUI() {
+    UI.q         = getInputByPlaceholder(['cerca', 'search']);
+    UI.campo     = getSelectNearText(['campo']);
+    UI.ripiano   = getInputByPlaceholder(['ripiano', 'es. 10']);
+    UI.tipologia = getInputByPlaceholder(['tipo', 'tipologia', 'montaggio']);
+    UI.posizione = getInputByPlaceholder(['posizion', 'destra', 'sinistra', 'centrale']);
+
+    UI.presetName = getInputByPlaceholder(['nome preset']);
+    UI.btnSave    = getButtonByText(['salva']);
+
+    // export: prova a trovare pulsanti per CSV/JSON o quello con testo "Export CSV"
+    UI.exportCsv  = getButtonByText(['export csv', 'csv']);
+    UI.exportJson = getButtonByText(['export json', 'json']) || null;
+
+    UI.fileInput  = $('#fileInput') || $('input[type="file"]');
+    UI.resultsBadge = $$('span,div').find(n => includesAny(n.textContent || '', ['risultati'])) || null;
+    UI.tableHead  = $('table thead');
+    UI.tableBody  = $('table tbody');
+  }
 
   // -------------------- Persistenza --------------------
   function loadPresets() {
@@ -53,19 +93,16 @@
     localStorage.setItem(PRESETS_KEY, JSON.stringify(presets ?? []));
   }
   function getActivePresetName() {
-    const fromInput = el.presetName && el.presetName.value.trim();
+    const fromInput = UI.presetName && UI.presetName.value.trim();
     return fromInput || localStorage.getItem(ACTIVE_PRESET_KEY) || '';
   }
   function setActivePresetName(name) {
     localStorage.setItem(ACTIVE_PRESET_KEY, name || '');
-    if (el.presetName) el.presetName.value = name || '';
+    if (UI.presetName) UI.presetName.value = name || '';
   }
 
   function saveState() {
-    const state = {
-      filters: getFiltersFromUI(),
-      activePreset: getActivePresetName()
-    };
+    const state = { filters: getFiltersFromUI(), activePreset: getActivePresetName() };
     localStorage.setItem(STATE_KEY, JSON.stringify(state));
   }
   function loadState() {
@@ -78,7 +115,6 @@
 
   // -------------------- Dati / Rendering --------------------
   function normalizeRow(row) {
-    // Accetta sia oggetti con chiavi note sia array di colonne
     if (Array.isArray(row)) {
       const keys = HEADERS.length ? HEADERS : ['RIPIANO','TIPO','POSIZIONE'];
       const obj = {};
@@ -88,47 +124,43 @@
     return row;
   }
 
-  function text(val) { return (val ?? '').toString().toLowerCase(); }
-
   function getFiltersFromUI() {
     return {
-      quick:     el.quickSearch ? el.quickSearch.value.trim() : '',
-      campo:     el.selCampo ? el.selCampo.value : '',
-      ripiano:   el.fRip ? el.fRip.value.trim() : '',
-      tipologia: el.fTip ? el.fTip.value.trim() : '',
-      posizione: el.fPos ? el.fPos.value.trim() : ''
+      quick:     UI.q ? UI.q.value.trim() : '',
+      campo:     UI.campo ? (UI.campo.value || '') : '',
+      ripiano:   UI.ripiano ? UI.ripiano.value.trim() : '',
+      tipologia: UI.tipologia ? UI.tipologia.value.trim() : '',
+      posizione: UI.posizione ? UI.posizione.value.trim() : ''
     };
   }
-
   function setFiltersToUI(f) {
     if (!f) return;
-    if (el.quickSearch) el.quickSearch.value = f.quick || '';
-    if (el.selCampo)    el.selCampo.value    = f.campo || (el.selCampo.options?.[0]?.value ?? '');
-    if (el.fRip)        el.fRip.value        = f.ripiano || '';
-    if (el.fTip)        el.fTip.value        = f.tipologia || '';
-    if (el.fPos)        el.fPos.value        = f.posizione || '';
+    if (UI.q)        UI.q.value        = f.quick || '';
+    if (UI.campo)    UI.campo.value    = f.campo || (UI.campo.options?.[0]?.value ?? '');
+    if (UI.ripiano)  UI.ripiano.value  = f.ripiano || '';
+    if (UI.tipologia)UI.tipologia.value= f.tipologia || '';
+    if (UI.posizione)UI.posizione.value= f.posizione || '';
   }
 
   function filterRows() {
     const f = getFiltersFromUI();
-    const q = text(f.quick);
-    const campo = (f.campo || '').toString();
+    const q = lower(f.quick);
+    const campo = f.campo;
 
     FILTERED_ROWS = ROWS.filter(r0 => {
       const r = normalizeRow(r0);
-      // Filtro tipologia ESCLUSIVO
-      if (f.tipologia && text(r.TIPO || r.tipologia) !== text(f.tipologia)) return false;
-      if (f.ripiano && text(r.RIPIANO || r.ripiano) !== text(f.ripiano)) return false;
-      if (f.posizione && text(r.POSIZIONE || r.posizione) !== text(f.posizione)) return false;
+
+      // FILTRO ESCLUSIVO TIPOLGIA
+      if (f.tipologia && lower(r.TIPO || r.tipologia) !== lower(f.tipologia)) return false;
+      if (f.ripiano && lower(String(r.RIPIANO ?? r.ripiano)) !== lower(f.ripiano)) return false;
+      if (f.posizione && lower(r.POSIZIONE || r.posizione) !== lower(f.posizione)) return false;
 
       if (q) {
-        if (campo && campo !== 'Tutti') {
-          const v = r[campo] ?? r[campo.toUpperCase()] ?? '';
-          return text(v).includes(q);
+        if (campo && !/tutti/i.test(campo)) {
+          const v = r[campo] ?? r[campo?.toUpperCase?.()] ?? '';
+          return lower(v).includes(q);
         } else {
-          // cerca su tutte le proprietà principali
-          const fields = Object.keys(r);
-          return fields.some(k => text(r[k]).includes(q));
+          return Object.keys(r).some(k => lower(r[k]).includes(q));
         }
       }
       return true;
@@ -136,28 +168,25 @@
   }
 
   function renderTable() {
-    if (!el.tableBody) return;
-    el.tableBody.innerHTML = '';
+    if (!UI.tableBody) return;
+    UI.tableBody.innerHTML = '';
     const rows = FILTERED_ROWS.length ? FILTERED_ROWS : ROWS;
 
     rows.forEach(r0 => {
       const r = normalizeRow(r0);
       const tr = document.createElement('tr');
-
-      // Ordine colonne: RIPIANO | TIPO | POSIZIONE | (altre)
       const keys = ['RIPIANO','TIPO','POSIZIONE', ...Object.keys(r).filter(k => !['RIPIANO','TIPO','POSIZIONE'].includes(k))];
       keys.forEach(k => {
         const td = document.createElement('td');
         td.textContent = r[k] ?? '';
         tr.appendChild(td);
       });
-
-      el.tableBody.appendChild(tr);
+      UI.tableBody.appendChild(tr);
     });
 
-    if (el.resultsBadge) {
+    if (UI.resultsBadge) {
       const n = (FILTERED_ROWS.length ? FILTERED_ROWS : ROWS).length;
-      el.resultsBadge.textContent = `${n} risultati`;
+      UI.resultsBadge.textContent = `${n} risultati`;
     }
   }
 
@@ -176,10 +205,7 @@
       const head = headers.join(',');
       const body = rows.map(r0 => {
         const r = normalizeRow(r0);
-        return headers
-          .map(h => String(r[h] ?? '').replaceAll('"','""'))
-          .map(v => `"${v}"`)
-          .join(',');
+        return headers.map(h => String(r[h] ?? '').replaceAll('"','""')).map(v => `"${v}"`).join(',');
       }).join('\n');
       return head + '\n' + body;
     } else {
@@ -187,13 +213,11 @@
     }
   }
 
-  function getVisibleData() {
-    return FILTERED_ROWS.length ? FILTERED_ROWS : ROWS;
-  }
+  function getVisibleData() { return FILTERED_ROWS.length ? FILTERED_ROWS : ROWS; }
 
   function exportAsJSON() {
     const payload = {
-      version: 1,
+      version: 2,
       exportedAt: new Date().toISOString(),
       activePreset: getActivePresetName(),
       filters: getFiltersFromUI(),
@@ -222,7 +246,7 @@
     if (!file) return;
     const text = await file.text();
 
-    // prova JSON
+    // JSON
     try {
       const obj = JSON.parse(text);
       if (obj && (Array.isArray(obj.rows) || Array.isArray(obj.dati_visibili))) {
@@ -238,9 +262,9 @@
           return;
         }
       }
-    } catch { /* non è JSON valido */ }
+    } catch {}
 
-    // fallback CSV semplice
+    // CSV
     const lines = text.replace(/\r/g,'').split('\n').filter(x => x.trim() !== '');
     if (lines.length) {
       const first = lines[0];
@@ -286,98 +310,73 @@
 
   // -------------------- Preset --------------------
   function saveCurrentAsPreset() {
-    const name = (el.presetName && el.presetName.value.trim()) || '';
-    if (!name) {
-      alert('Inserisci un nome preset.');
-      return;
-    }
+    const name = (UI.presetName && UI.presetName.value.trim()) || '';
+    if (!name) { alert('Inserisci un nome preset.'); return; }
     const presets = loadPresets();
-    const payload = {
-      name,
-      filters: getFiltersFromUI(),
-      savedAt: new Date().toISOString()
-    };
+    const payload = { name, filters: getFiltersFromUI(), savedAt: new Date().toISOString() };
     const idx = presets.findIndex(p => (p.name || '').toLowerCase() === name.toLowerCase());
-    if (idx >= 0) presets[idx] = payload;
-    else presets.push(payload);
+    if (idx >= 0) presets[idx] = payload; else presets.push(payload);
     savePresets(presets);
     setActivePresetName(name);
     alert('✅ Preset salvato');
   }
 
-  // -------------------- Event wiring sicuro --------------------
-  function ensureExportJsonButton() {
-    if (el.exportJson) return el.exportJson;
-    if (!el.exportCsv) return null;
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = el.exportCsv.className || 'btn';
-    btn.style.marginLeft = '8px';
-    btn.textContent = 'Export JSON';
-    el.exportCsv.after(btn);
-    el.exportJson = btn;
-    return btn;
-  }
-
+  // -------------------- Eventi --------------------
   function wireEvents() {
-    if (el.quickSearch) el.quickSearch.addEventListener('input', () => render());
-    if (el.selCampo)    el.selCampo.addEventListener('change', () => render());
-    if (el.fRip)        el.fRip.addEventListener('input', () => render());
-    if (el.fTip)        el.fTip.addEventListener('input', () => render());
-    if (el.fPos)        el.fPos.addEventListener('input', () => render());
-
-    if (el.btnClear) el.btnClear.addEventListener('click', (e) => {
-      e.preventDefault?.();
-      setFiltersToUI({quick:'', campo: el.selCampo?.options?.[0]?.value ?? 'Tutti', ripiano:'', tipologia:'', posizione:''});
-      render();
+    const onChange = () => render();
+    ['input','change'].forEach(ev => {
+      if (UI.q)        UI.q.addEventListener(ev, onChange);
+      if (UI.campo)    UI.campo.addEventListener(ev, onChange);
+      if (UI.ripiano)  UI.ripiano.addEventListener(ev, onChange);
+      if (UI.tipologia)UI.tipologia.addEventListener(ev, onChange);
+      if (UI.posizione)UI.posizione.addEventListener(ev, onChange);
     });
 
-    if (el.btnReset) el.btnReset.addEventListener('click', (e) => {
-      e.preventDefault?.();
-      localStorage.removeItem(STATE_KEY);
-      setFiltersToUI({quick:'', campo: el.selCampo?.options?.[0]?.value ?? 'Tutti', ripiano:'', tipologia:'', posizione:''});
-      render();
-    });
+    if (UI.btnSave) UI.btnSave.addEventListener('click', (e) => { e.preventDefault?.(); saveCurrentAsPreset(); });
 
-    const jsonBtn = ensureExportJsonButton();
-    if (jsonBtn) jsonBtn.addEventListener('click', (e) => { e.preventDefault?.(); exportAsJSON(); });
-    if (el.exportCsv) el.exportCsv.addEventListener('click', (e) => { e.preventDefault?.(); exportAsCSV(); });
+    // Export
+    if (UI.exportCsv) {
+      UI.exportCsv.addEventListener('click', (e) => { e.preventDefault?.(); exportAsCSV(); });
+      // crea un pulsante accanto per JSON se non c'è
+      if (!UI.exportJson) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = UI.exportCsv.className || 'btn';
+        btn.style.marginLeft = '8px';
+        btn.textContent = 'Export JSON';
+        UI.exportCsv.after(btn);
+        UI.exportJson = btn;
+      }
+    }
+    if (UI.exportJson) UI.exportJson.addEventListener('click', (e) => { e.preventDefault?.(); exportAsJSON(); });
 
-    if (el.btnSavePreset) el.btnSavePreset.addEventListener('click', (e) => { e.preventDefault?.(); saveCurrentAsPreset(); });
-    if (el.presetName) el.presetName.addEventListener('change', () => setActivePresetName(el.presetName.value.trim()));
-
-    if (el.fileInput) el.fileInput.addEventListener('change', (e) => importFileAuto(e.target.files[0], {append:false}));
+    if (UI.fileInput) UI.fileInput.addEventListener('change', (e) => importFileAuto(e.target.files[0], {append:false}));
   }
 
   // -------------------- Bootstrap --------------------
   async function bootstrap() {
-    try {
-      // prova a leggere le intestazioni dal thead (se presenti)
-      if (el.tableHead) {
-        HEADERS = Array.from(el.tableHead.querySelectorAll('th')).map(th => th.textContent.trim()).filter(Boolean);
-      }
+    detectUI();
 
-      // Carica stato UI
-      loadState();
-
-      // Carica dati base (se definiti lato HTML: data/kardex.json)
-      if (!ROWS.length) {
-        const url = 'data/kardex.json';
-        try {
-          const res = await fetch(url, {cache:'no-store'});
-          if (res.ok) {
-            const json = await res.json();
-            // accetta sia {rows:[...]} che un array semplice
-            ROWS = Array.isArray(json) ? json : (json.rows || json.data || []);
-          }
-        } catch {}
-      }
-
-      render();
-      wireEvents();
-    } catch (err) {
-      console.error('Errore inizializzazione app:', err);
+    // Headers (se presenti)
+    if (UI.tableHead) {
+      HEADERS = Array.from(UI.tableHead.querySelectorAll('th')).map(th => th.textContent.trim()).filter(Boolean);
     }
+
+    loadState();
+
+    // Carica dati iniziali (kardex.json) se la tabella è vuota
+    if (!ROWS.length) {
+      try {
+        const res = await fetch('data/kardex.json', {cache:'no-store'});
+        if (res.ok) {
+          const json = await res.json();
+          ROWS = Array.isArray(json) ? json : (json.rows || json.data || []);
+        }
+      } catch {}
+    }
+
+    render();
+    wireEvents();
   }
 
   document.addEventListener('DOMContentLoaded', bootstrap);

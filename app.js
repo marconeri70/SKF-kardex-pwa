@@ -381,9 +381,7 @@ loadData();
 loadData();
 
 
-
-
-// Patch exportBtn per includere preset e filtri attivi
+// Nuova funzione di esportazione completa
 exportBtn?.addEventListener('click', () => {
   const activePreset = presetNameInput.value || 'senza_nome';
   const filters = {
@@ -393,14 +391,31 @@ exportBtn?.addEventListener('click', () => {
     campo: selCampo.value,
     ricerca: q.value,
   };
+
+  // Recupera i preset salvati dal localStorage
+  let savedPresets = [];
+  try {
+    savedPresets = JSON.parse(localStorage.getItem('kardex-presets')) || [];
+  } catch (e) {}
+
+  // Recupera solo i dati visibili nella tabella
+  const visibleRows = Array.from(document.querySelectorAll('tbody tr')).map(row => {
+    const cells = row.querySelectorAll('td');
+    return Array.from(cells).map(cell => cell.innerText.trim());
+  });
+
+  // Crea l'oggetto completo da esportare
   const exportData = {
-    preset: activePreset,
-    filters: filters,
-    data: ROWS.map(r => ({ ...r }))
+    data_esportazione: new Date().toLocaleString(),
+    preset_attivo: activePreset,
+    filtri_attivi: filters,
+    preset_memorizzati: savedPresets,
+    righe_visibili: visibleRows,
   };
+
   const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `kardex_export_${Date.now()}.json`;
+  a.download = `kardex_export_${activePreset.replace(/\s+/g, '_')}.json`;
   a.click();
 });

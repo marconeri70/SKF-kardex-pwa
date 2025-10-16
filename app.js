@@ -1,382 +1,288 @@
-// v13 – multi-sort (SHIFT+click), preset filtri, memoria impostazioni, filtri combinati, mobile card
-let ROWS = [];
-const $ = (id) => document.getElementById(id);
 
-// UI refs
-const tbody = $('tbody');
-const q = $('q');
-const selCampo = $('campo');
-const clearBtn = $('clear');
-const exportBtn = $('export');
-const fileInput = $('file');
-const count = $('count');
-const themeBtn = $('theme');
-const resetBtn = $('reset');
+// ===============================================================
+// Kardex Viewer - app.js (FIX V3) specifico per la tua pagina
+// - Riconosce esattamente i placeholder visti nello screenshot:
+//   "Cerca veloce...", "es. 10", "es. Montaggio", "es. Destra"
+// - Bottone "Export CSV", campo "Nome preset", bottone "Salva"
+// - Filtri funzionanti (tipologia esclusiva), preset su localStorage
+// - Export JSON/CSV e Import auto JSON/CSV
+// ===============================================================
 
-// Filtri avanzati
-const fRip = $('f_rip');
-const fTip = $('f_tip');
-const fPos = $('f_pos');
+(() => {
+  'use strict';
 
-// Preset
-const presetNameInput = $('presetName');
-const savePresetBtn = $('savePreset');
-const presetList = $('presetList');
+  const PRESETS_KEY = 'kardex-presets';
+  const ACTIVE_PRESET_KEY = 'kardex-active-preset-name';
+  const STATE_KEY = 'kardex-state-v3';
 
-// ===== Tema =====
-(function initTheme(){
-  const saved = localStorage.getItem('kardex-theme');
-  if (saved === 'light' || saved === 'dark') document.documentElement.setAttribute('data-theme', saved);
-  themeBtn?.addEventListener('click', () => {
-    const cur = document.documentElement.getAttribute('data-theme') || 'auto';
-    const next = cur === 'dark' ? 'light' : 'dark';
-    document.documentElement.setAttribute('data-theme', next);
-    localStorage.setItem('kardex-theme', next);
-    themeBtn.textContent = (next === 'dark') ? '🌙 Tema' : '☀️ Tema';
-    saveState();
-  });
-  const cur = document.documentElement.getAttribute('data-theme') || 'auto';
-  themeBtn && (themeBtn.textContent = (cur === 'dark') ? '🌙 Tema' : '☀️ Tema');
-})();
+  let ROWS = [];
+  let FILTERED_ROWS = [];
+  let HEADERS = [];
 
-// ===== Stato persistente =====
-const STATE_KEY = 'kardex-state-v13';
-function saveState() {
-  const state = {
-    q: q?.value ?? '',
-    campo: selCampo?.value ?? 'ALL',
-    fRip: fRip?.value ?? '',
-    fTip: fTip?.value ?? '',
-    fPos: fPos?.value ?? '',
-    sort: sortOrder,
-    theme: document.documentElement.getAttribute('data-theme') || 'auto'
+  const $  = (s) => document.querySelector(s);
+  const $$ = (s) => Array.from(document.querySelectorAll(s));
+  const lower = (x) => (x ?? '').toString().toLowerCase();
+
+  // ---- hook elementi (versione mirata) ----
+  const UI = {
+    q: null, campo: null, ripiano: null, tipologia: null, posizione: null,
+    presetName: null, btnSave: null, exportCsv: null, exportJson: null,
+    fileInput: null, resultsBadge: null, tableHead: null, tableBody: null
   };
-  try { localStorage.setItem(STATE_KEY, JSON.stringify(state)); } catch {}
-}
-function loadState() {
-  try {
-    const raw = localStorage.getItem(STATE_KEY);
-    if (!raw) return;
-    const s = JSON.parse(raw);
-    if (q) q.value = s.q ?? '';
-    if (selCampo) selCampo.value = s.campo ?? 'ALL';
-    if (fRip) fRip.value = s.fRip ?? '';
-    if (fTip) fTip.value = s.fTip ?? '';
-    if (fPos) fPos.value = s.fPos ?? '';
-    if (Array.isArray(s.sort)) {
-      sortOrder = s.sort.filter(x => x && x.key);
-      updateSortIndicators();
-    }
-    if (s.theme === 'light' || s.theme === 'dark') {
-      document.documentElement.setAttribute('data-theme', s.theme);
-      themeBtn && (themeBtn.textContent = (s.theme === 'dark') ? '🌙 Tema' : '☀️ Tema');
-    }
-  } catch {}
-}
 
-// ===== Ricerca & Filtri =====
-const norm = (s) => String(s ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  function detectUI() {
+    // Dalla tua UI: "Cerca veloce..."
+    UI.q = $('input[placeholder^="Cerca veloce"]') || $('input[placeholder*="Cerca"]');
 
-async function loadData() {
-  try {
-    const resp = await fetch('./data/kardex.json', { cache: 'no-store' });
-    ROWS = await resp.json();
-  } catch { ROWS = []; }
-  loadState(); // applica stato salvato (se c'è)
-  render();
-}
+    // Select "Campo: Tutti" (prendo il primo select vicino al campo cerca)
+    const selects = $$('select');
+    UI.campo = selects.find(s => Array.from(s.options||[]).some(o => /tutti/i.test(o.text))) || selects[0] || null;
 
-function quickMatch(r, campo, txtRaw) {
-  const txt = norm(txtRaw);
-  if (!txt) return true;
-  const onlyDigits = /^\d+$/.test(txtRaw);
-  const rip = norm(r.RIPIANO), tip = norm(r.TIPO), pos = norm(r.POSIZIONE);
+    // Filtri "es. 10", "es. Montaggio", "es. Destra"
+    UI.ripiano   = $('input[placeholder^="es. 10"]')        || $('input[placeholder*="Ripiano"]');
+    UI.tipologia = $('input[placeholder^="es. Montaggio"]') || $('input[placeholder*="Tipo"],input[placeholder*="tipologia"]');
+    UI.posizione = $('input[placeholder^="es. Destra"]')    || $('input[placeholder*="Posizion"]');
 
-  if (campo === 'RIPIANO') {
-    if (onlyDigits) {
-      const raw = String(r.RIPIANO ?? '');
-      if (/^\d+/.test(raw)) return (raw.match(/^\d+/)?.[0] || '') === txtRaw;
-      return rip === txt;
-    }
-    return rip.includes(txt);
+    // Preset
+    UI.presetName = $('input[placeholder*="Nome preset"]');
+    UI.btnSave    = $$('button').find(b => /salva/i.test(b.textContent||''));
+
+    // Export/Import
+    UI.exportCsv  = $$('button').find(b => /export\s*csv/i.test(b.textContent||''));
+    UI.exportJson = $$('button').find(b => /export\s*json/i.test(b.textContent||'')) || null;
+    UI.fileInput  = $('#fileInput') || $('input[type="file"]');
+
+    // Tabella + badge risultati
+    UI.tableHead  = $('table thead');
+    UI.tableBody  = $('table tbody');
+    UI.resultsBadge = $$('span,div').find(n => /risultat/i.test(n.textContent||'')) || null;
   }
-  if (campo === 'TIPO') return tip.includes(txt);
-  if (campo === 'POSIZIONE') return pos.includes(txt);
-  return rip.includes(txt) || tip.includes(txt) || pos.includes(txt);
-}
 
-function advancedMatch(r) {
-  const fr = fRip?.value?.trim() ?? '';
-  const ft = fTip?.value?.trim() ?? '';
-  const fp = fPos?.value?.trim() ?? '';
-  if (!fr && !ft && !fp) return true;
-
-  const rip = norm(r.RIPIANO), tip = norm(r.TIPO), pos = norm(r.POSIZIONE);
-
-  let okRip = true;
-  if (fr) {
-    const onlyDigits = /^\d+$/.test(fr);
-    if (onlyDigits) {
-      const raw = String(r.RIPIANO ?? '');
-      okRip = (/^\d+/.test(raw) ? (raw.match(/^\d+/)?.[0] || '') === fr : rip === norm(fr));
-    } else {
-      okRip = rip.includes(norm(fr));
-    }
+  // ---- preset/state ----
+  function loadPresets(){ try{return JSON.parse(localStorage.getItem(PRESETS_KEY))||[]}catch{return[]} }
+  function savePresets(p){ localStorage.setItem(PRESETS_KEY, JSON.stringify(p??[])); }
+  function getActivePresetName(){
+    const fromInput = UI.presetName && UI.presetName.value.trim();
+    return fromInput || localStorage.getItem(ACTIVE_PRESET_KEY) || '';
   }
-  const okTip = ft ? tip.includes(norm(ft)) : true;
-  const okPos = fp ? pos.includes(norm(fp)) : true;
-
-  return okRip && okTip && okPos;
-}
-
-function filtered() {
-  const campo = selCampo?.value ?? 'ALL';
-  const txtRaw = q?.value?.trim() ?? '';
-  return ROWS.filter(r => quickMatch(r, campo, txtRaw) && advancedMatch(r));
-}
-
-// ===== Multi-sort (SHIFT + click) =====
-let sortOrder = []; // [{key:'RIPIANO', dir:'asc'}, {key:'TIPO', dir:'desc'}]
-const ths = Array.from(document.querySelectorAll('th.sortable'));
-
-function toggleSort(key, additive) {
-  if (!additive) {
-    const current = sortOrder[0];
-    if (current && current.key === key) {
-      current.dir = current.dir === 'asc' ? 'desc' : 'asc';
-    } else {
-      sortOrder = [{ key, dir: 'asc' }];
-    }
-  } else {
-    const idx = sortOrder.findIndex(s => s.key === key);
-    if (idx === -1) sortOrder.push({ key, dir: 'asc' });
-    else sortOrder[idx].dir = sortOrder[idx].dir === 'asc' ? 'desc' : 'asc';
-    sortOrder = sortOrder.slice(0, 3);
+  function setActivePresetName(name){
+    localStorage.setItem(ACTIVE_PRESET_KEY, name||'');
+    if (UI.presetName) UI.presetName.value = name||'';
   }
-  updateSortIndicators();
-  render();
-  saveState();
-}
-
-ths.forEach(th => th.addEventListener('click', (ev) => {
-  const key = th.dataset.key;
-  toggleSort(key, ev.shiftKey === true);
-}));
-
-function updateSortIndicators() {
-  ths.forEach(th => {
-    const s = th.querySelector('.sort');
-    if (!s) return;
-    const idx = sortOrder.findIndex(x => x.key === th.dataset.key);
-    if (idx === -1) { s.textContent = ''; return; }
-    const item = sortOrder[idx];
-    const rank = (idx + 1);
-    s.textContent = (item.dir === 'asc' ? '▲' : '▼') + rank;
-  });
-}
-
-function sortRows(rows) {
-  if (!sortOrder.length) return rows;
-  return rows.slice().sort((a, b) => {
-    for (const { key, dir } of sortOrder) {
-      const mul = dir === 'asc' ? 1 : -1;
-      const av = String(a[key] ?? '').toLowerCase();
-      const bv = String(b[key] ?? '').toLowerCase();
-      const an = av.match(/^\d+/), bn = bv.match(/^\d+/);
-      let cmp;
-      if (an && bn) cmp = parseInt(an[0],10) - parseInt(bn[0],10);
-      else cmp = av.localeCompare(bv, 'it', { numeric:true, sensitivity:'base' });
-      if (cmp !== 0) return mul * cmp;
-    }
-    return 0;
-  });
-}
-
-// ===== Render =====
-function render() {
-  let rows = filtered();
-  rows = sortRows(rows);
-  count && (count.textContent = rows.length + ' risultati');
-  if (!tbody) return;
-  tbody.innerHTML = rows.map(r =>
-    `<tr>
-      <td data-label="RIPIANO">${escapeHtml(r.RIPIANO ?? '')}</td>
-      <td data-label="TIPO">${escapeHtml(r.TIPO ?? '')}</td>
-      <td data-label="POSIZIONE"><span class="chip">${escapeHtml(r.POSIZIONE ?? '')}</span></td>
-    </tr>`
-  ).join('');
-}
-
-function escapeHtml(x) {
-  return String(x).replace(/[&<>"]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[s]));
-}
-
-function toCSV(rows) {
-  const headers = ['RIPIANO','TIPO','POSIZIONE'];
-  const lines = [headers.join(',')];
-  for (const r of rows) {
-    const vals = headers.map(h => String(r[h] ?? '').replaceAll('"','""'));
-    lines.push(vals.map(v => /[,\"\n]/.test(v) ? `"${v}"` : v).join(','));
+  function saveState(){
+    localStorage.setItem(STATE_KEY, JSON.stringify({filters:getFiltersFromUI(), activePreset:getActivePresetName()}));
   }
-  return lines.join('\n');
-}
+  function loadState(){
+    try{
+      const s = JSON.parse(localStorage.getItem(STATE_KEY)||'{}');
+      if (s.filters) setFiltersToUI(s.filters);
+      if (s.activePreset) setActivePresetName(s.activePreset);
+    }catch{}
+  }
 
-// ===== Export, Clear, Reset =====
-exportBtn?.addEventListener('click', () => {
-  const csv = toCSV(sortRows(filtered()));
-  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = 'kardex_export.csv'; a.click(); URL.revokeObjectURL(url);
-});
+  // ---- dati/render ----
+  function normalizeRow(row){
+    if (Array.isArray(row)){
+      const keys = HEADERS.length ? HEADERS : ['RIPIANO','TIPO','POSIZIONE'];
+      const obj = {}; keys.forEach((k,i)=>obj[k]=row[i]??''); return obj;
+    }
+    return row;
+  }
 
-clearBtn?.addEventListener('click', () => {
-  if (q) q.value='';
-  if (selCampo) selCampo.value='ALL';
-  if (fRip) fRip.value='';
-  if (fTip) fTip.value='';
-  if (fPos) fPos.value='';
-  render(); 
-  saveState();
-});
-
-resetBtn?.addEventListener('click', () => {
-  localStorage.removeItem(STATE_KEY);
-  if (q) q.value='';
-  if (selCampo) selCampo.value='ALL';
-  if (fRip) fRip.value='';
-  if (fTip) fTip.value='';
-  if (fPos) fPos.value='';
-  sortOrder = [];
-  updateSortIndicators();
-  render();
-  saveState();
-});
-
-// Re-render & save on input
-[q, selCampo, fRip, fTip, fPos].forEach(el => {
-  el && el.addEventListener('input', () => { render(); saveState(); });
-});
-selCampo?.addEventListener('change', () => { render(); saveState(); });
-document.addEventListener('change', (e) => { if (e.target && e.target.id === 'campo') { render(); saveState(); }});
-
-// ===== Import =====
-fileInput?.addEventListener('change', async (ev) => {
-  const f = ev.target.files?.[0]; if (!f) return;
-  const ext = (f.name.split('.').pop()||'').toLowerCase();
-  if (ext === 'csv') {
-    const text = await f.text();
-    const lines = text.split(/\r?\n/).filter(x=>x.length);
-    const [head, ...rest] = lines;
-    const headers = head.split(',').map(h => h.trim().toUpperCase());
-    const idxR = headers.findIndex(h => h.includes('RIPIANO'));
-    const idxT = headers.findIndex(h => h.includes('TIPO'));
-    const idxP = headers.findIndex(h => h.includes('POSIZIONE'));
-    const parseLine = (line) => {
-      const parts = (line.match(/("[^"]*"|[^,]+)/g) || []).map(s=>s.replace(/^"|"$/g,''));
-      return { RIPIANO: parts[idxR]||'', TIPO: parts[idxT]||'', POSIZIONE: parts[idxP]||'' };
+  function getFiltersFromUI(){
+    return {
+      quick:     UI.q ? UI.q.value.trim() : '',
+      campo:     UI.campo ? (UI.campo.value||'') : '',
+      ripiano:   UI.ripiano ? UI.ripiano.value.trim() : '',
+      tipologia: UI.tipologia ? UI.tipologia.value.trim() : '',
+      posizione: UI.posizione ? UI.posizione.value.trim() : ''
     };
-    ROWS = rest.map(parseLine).filter(r=>r.RIPIANO||r.TIPO||r.POSIZIONE);
-  } else {
-    const buf = await f.arrayBuffer();
-    const wb = XLSX.read(buf, { type:'array' });
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    const arr = XLSX.utils.sheet_to_json(ws, { defval:'' });
-    const mapRow = (r) => {
-      const keys = Object.keys(r);
-      const get = (pred) => { const k = keys.find(k => pred(k.toUpperCase())); return k ? r[k] : ''; };
-      return { RIPIANO: get(k=>k.includes('RIPIANO')), TIPO: get(k=>k.includes('TIPO')), POSIZIONE: get(k=>k.includes('POSIZIONE')) };
-    };
-    ROWS = arr.map(mapRow).filter(r=>r.RIPIANO||r.TIPO||r.POSIZIONE);
   }
-  fileInput.value = '';
-  render();
-  saveState();
-});
-
-// ===== Preset Filtri =====
-const PRESETS_KEY = 'kardex-presets-v13';
-
-function getCurrentConfig() {
-  return {
-    q: q?.value ?? '',
-    campo: selCampo?.value ?? 'ALL',
-    fRip: fRip?.value ?? '',
-    fTip: fTip?.value ?? '',
-    fPos: fPos?.value ?? '',
-    sort: sortOrder
-  };
-}
-
-function applyConfig(cfg) {
-  if (!cfg) return;
-  if (q) q.value = cfg.q ?? '';
-  if (selCampo) selCampo.value = cfg.campo ?? 'ALL';
-  if (fRip) fRip.value = cfg.fRip ?? '';
-  if (fTip) fTip.value = cfg.fTip ?? '';
-  if (fPos) fPos.value = cfg.fPos ?? '';
-  if (Array.isArray(cfg.sort)) {
-    sortOrder = cfg.sort;
-    updateSortIndicators();
+  function setFiltersToUI(f){
+    if (!f) return;
+    if (UI.q)        UI.q.value        = f.quick||'';
+    if (UI.campo)    UI.campo.value    = f.campo || (UI.campo.options?.[0]?.value ?? '');
+    if (UI.ripiano)  UI.ripiano.value  = f.ripiano||'';
+    if (UI.tipologia)UI.tipologia.value= f.tipologia||'';
+    if (UI.posizione)UI.posizione.value= f.posizione||'';
   }
-  render();
-  saveState();
-}
 
-function loadPresets() {
-  try { return JSON.parse(localStorage.getItem(PRESETS_KEY)) || []; }
-  catch { return []; }
-}
+  function filterRows(){
+    const f = getFiltersFromUI();
+    const q = lower(f.quick);
+    const campo = f.campo;
 
-function savePresets(list) {
-  localStorage.setItem(PRESETS_KEY, JSON.stringify(list));
-}
+    FILTERED_ROWS = ROWS.filter(r0 => {
+      const r = normalizeRow(r0);
 
-function renderPresets() {
-  if (!presetList) return;
-  const presets = loadPresets();
-  presetList.innerHTML = '';
-  presets.forEach((p, idx) => {
-    const btn = document.createElement('button');
-    btn.textContent = p.name;
-    btn.className = 'secondary';
-    btn.addEventListener('click', ()=> applyConfig(p.cfg));
+      // ESCLUSIVA per TIPO
+      if (f.tipologia && lower(r.TIPO || r.tipologia) !== lower(f.tipologia)) return false;
+      if (f.ripiano && lower(String(r.RIPIANO ?? r.ripiano)) !== lower(f.ripiano)) return false;
+      if (f.posizione && lower(r.POSIZIONE || r.posizione) !== lower(f.posizione)) return false;
 
-    const del = document.createElement('button');
-    del.textContent = '❌';
-    del.className = 'secondary';
-    del.style.padding='0 6px';
-    del.addEventListener('click', ()=>{
-      const newList = presets.filter((_,i)=>i!==idx);
-      savePresets(newList);
-      renderPresets();
+      if (q){
+        if (campo && !/tutti/i.test(campo)){
+          const v = r[campo] ?? r[campo?.toUpperCase?.()] ?? '';
+          return lower(v).includes(q);
+        }
+        return Object.keys(r).some(k => lower(r[k]).includes(q));
+      }
+      return true;
+    });
+  }
+
+  function renderTable(){
+    if (!UI.tableBody) return;
+    UI.tableBody.innerHTML = '';
+    const rows = FILTERED_ROWS.length ? FILTERED_ROWS : ROWS;
+
+    rows.forEach(r0 => {
+      const r = normalizeRow(r0);
+      const tr = document.createElement('tr');
+      const keys = ['RIPIANO','TIPO','POSIZIONE', ...Object.keys(r).filter(k => !['RIPIANO','TIPO','POSIZIONE'].includes(k))];
+      keys.forEach(k => { const td=document.createElement('td'); td.textContent = r[k] ?? ''; tr.appendChild(td); });
+      UI.tableBody.appendChild(tr);
     });
 
-    const wrap = document.createElement('div');
-    wrap.style.display='flex'; wrap.style.alignItems='center'; wrap.style.gap='4px';
-    wrap.appendChild(btn);
-    wrap.appendChild(del);
-    presetList.appendChild(wrap);
-  });
-}
+    if (UI.resultsBadge){
+      const n = (FILTERED_ROWS.length ? FILTERED_ROWS : ROWS).length;
+      UI.resultsBadge.textContent = `${n} risultati`;
+    }
+  }
 
-savePresetBtn?.addEventListener('click', () => {
-  const name = presetNameInput?.value?.trim();
-  if (!name) { alert('Inserisci un nome per il preset'); return; }
-  const presets = loadPresets();
-  presets.push({ name, cfg: getCurrentConfig() });
-  savePresets(presets);
-  if (presetNameInput) presetNameInput.value = '';
-  renderPresets();
-});
+  function render(){ filterRows(); renderTable(); saveState(); }
 
-renderPresets();
+  // ---- export/import ----
+  function toCSV(rows){
+    if (!rows||!rows.length) return '';
+    const isObj = typeof rows[0] === 'object' && !Array.isArray(rows[0]);
+    if (isObj){
+      const headers = Object.keys(normalizeRow(rows[0]));
+      const head = headers.join(',');
+      const body = rows.map(r0 => {
+        const r = normalizeRow(r0);
+        return headers.map(h => String(r[h]??'').replaceAll('"','""')).map(v => `"${v}"`).join(',');
+      }).join('\n');
+      return head+'\n'+body;
+    } else {
+      return rows.map(r => r.map(v => `"${String(v??'').replaceAll('"','""')}"`).join(',')).join('\n');
+    }
+  }
+  function getVisibleData(){ return FILTERED_ROWS.length ? FILTERED_ROWS : ROWS; }
+  function exportAsJSON(){
+    const payload = {
+      version:3, exportedAt:new Date().toISOString(),
+      activePreset:getActivePresetName(),
+      filters:getFiltersFromUI(),
+      presets:loadPresets(),
+      rows:getVisibleData()
+    };
+    const name = `kardex_${payload.activePreset||'no-preset'}_${Date.now()}.json`;
+    const blob = new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click();
+  }
+  function exportAsCSV(){
+    const csv = toCSV(getVisibleData());
+    const name = `kardex_${getActivePresetName()||'no-preset'}_${Date.now()}.csv`;
+    const blob = new Blob([csv],{type:'text/csv'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click();
+  }
+  async function importFileAuto(file,{append=false}={}){
+    if (!file) return;
+    const text = await file.text();
+    // JSON
+    try{
+      const obj = JSON.parse(text);
+      if (obj && (Array.isArray(obj.rows) || Array.isArray(obj.dati_visibili))){
+        const rows = obj.rows || obj.dati_visibili || [];
+        if (Array.isArray(obj.presets)) savePresets(obj.presets);
+        if (obj.activePreset || obj.preset_attivo) setActivePresetName(obj.activePreset || obj.preset_attivo);
+        ROWS = append && Array.isArray(ROWS) ? ROWS.concat(rows) : rows;
+        render(); alert('✅ Import JSON completato'); return;
+      }
+    }catch{}
+    // CSV
+    const lines = text.replace(/\r/g,'').split('\n').filter(x=>x.trim()!=='');
+    if (lines.length){
+      const first = lines[0];
+      const looksHeader = /[A-Za-z]/.test(first);
+      let headers = []; const rows = [];
+      const splitCsvLine = (line)=>{
+        const out=[]; let cur=''; let inQ=false;
+        for (let i=0;i<line.length;i++){
+          const ch=line[i];
+          if (ch === '"'){ if (inQ && line[i+1] === '"'){ cur+='"'; i++; } else inQ=!inQ; }
+          else if (ch===',' && !inQ){ out.push(cur); cur=''; }
+          else cur+=ch;
+        } out.push(cur); return out.map(s=>s.trim());
+      };
+      lines.forEach((ln,idx)=>{
+        const cols = splitCsvLine(ln);
+        if (idx===0 && looksHeader){ headers=cols; }
+        else if (looksHeader){ const obj={}; headers.forEach((h,i)=>obj[h]=cols[i]??''); rows.push(obj); }
+        else { rows.push(cols); }
+      });
+      ROWS = rows; render(); alert('✅ Import CSV completato'); return;
+    }
+    alert('❌ File non riconosciuto. Usa JSON esportato dall’app o un CSV valido.');
+  }
 
-// ===== Avvio =====
-loadData();
+  // ---- preset ----
+  function saveCurrentAsPreset(){
+    const name = (UI.presetName && UI.presetName.value.trim()) || '';
+    if (!name){ alert('Inserisci un nome preset.'); return; }
+    const presets = loadPresets();
+    const payload = { name, filters:getFiltersFromUI(), savedAt:new Date().toISOString() };
+    const idx = presets.findIndex(p => (p.name||'').toLowerCase() === name.toLowerCase());
+    if (idx>=0) presets[idx]=payload; else presets.push(payload);
+    savePresets(presets); setActivePresetName(name); alert('✅ Preset salvato');
+  }
 
+  // ---- events ----
+  function wireEvents(){
+    const onChange = () => render();
+    ['input','change'].forEach(ev=>{
+      UI.q?.addEventListener(ev,onChange);
+      UI.campo?.addEventListener(ev,onChange);
+      UI.ripiano?.addEventListener(ev,onChange);
+      UI.tipologia?.addEventListener(ev,onChange);
+      UI.posizione?.addEventListener(ev,onChange);
+    });
+    UI.btnSave?.addEventListener('click', (e)=>{ e.preventDefault?.(); saveCurrentAsPreset(); });
+    // export
+    if (UI.exportCsv){
+      UI.exportCsv.addEventListener('click', (e)=>{ e.preventDefault?.(); exportAsCSV(); });
+      if (!UI.exportJson){
+        const btn = document.createElement('button');
+        btn.type='button'; btn.className=UI.exportCsv.className||'btn'; btn.style.marginLeft='8px'; btn.textContent='Export JSON';
+        UI.exportCsv.after(btn); UI.exportJson = btn;
+      }
+    }
+    UI.exportJson?.addEventListener('click',(e)=>{ e.preventDefault?.(); exportAsJSON(); });
+    // import
+    UI.fileInput?.addEventListener('change',(e)=> importFileAuto(e.target.files[0],{append:false}));
+  }
 
+  // ---- bootstrap ----
+  async function bootstrap(){
+    detectUI();
+    if (UI.tableHead){
+      HEADERS = Array.from(UI.tableHead.querySelectorAll('th')).map(th=>th.textContent.trim()).filter(Boolean);
+    }
+    loadState();
 
+    if (!ROWS.length){
+      try{
+        const res = await fetch('data/kardex.json',{cache:'no-store'});
+        if (res.ok){
+          const json = await res.json();
+          ROWS = Array.isArray(json) ? json : (json.rows || json.data || []);
+        }
+      }catch{}
+    }
+    render();
+    wireEvents();
+  }
 
-loadData();
-
+  document.addEventListener('DOMContentLoaded', bootstrap);
+})();

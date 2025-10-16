@@ -381,36 +381,34 @@ loadData();
 loadData();
 
 
-// Nuova funzione di esportazione completa
+// === PATCH: esportazione JSON con preset e filtri ===
 exportBtn?.addEventListener('click', () => {
-  const activePreset = presetNameInput.value || 'senza_nome';
+  const activePreset = presetNameInput?.value || 'senza_nome';
   const filters = {
-    ripiano: fRip.value,
-    tipologia: fTip.value,
-    posizione: fPos.value,
-    campo: selCampo.value,
-    ricerca: q.value,
+    ripiano: fRip?.value || '',
+    tipologia: fTip?.value || '',
+    posizione: fPos?.value || '',
+    campo: selCampo?.value || '',
+    ricerca: q?.value || ''
   };
 
-  // Recupera i preset salvati dal localStorage
+  // Dati visibili dalla variabile globale (filtrati)
+  const visibleRows = ROWS || [];
+
+  // Preset salvati
   let savedPresets = [];
   try {
     savedPresets = JSON.parse(localStorage.getItem('kardex-presets')) || [];
-  } catch (e) {}
+  } catch (e) {
+    console.warn("Errore nel parsing dei preset salvati");
+  }
 
-  // Recupera solo i dati visibili nella tabella
-  const visibleRows = Array.from(document.querySelectorAll('tbody tr')).map(row => {
-    const cells = row.querySelectorAll('td');
-    return Array.from(cells).map(cell => cell.innerText.trim());
-  });
-
-  // Crea l'oggetto completo da esportare
   const exportData = {
     data_esportazione: new Date().toLocaleString(),
     preset_attivo: activePreset,
     filtri_attivi: filters,
     preset_memorizzati: savedPresets,
-    righe_visibili: visibleRows,
+    dati_visibili: visibleRows
   };
 
   const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
@@ -418,4 +416,31 @@ exportBtn?.addEventListener('click', () => {
   a.href = URL.createObjectURL(blob);
   a.download = `kardex_export_${activePreset.replace(/\s+/g, '_')}.json`;
   a.click();
+});
+
+// === PATCH: importazione sicura del file ===
+fileInput?.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(event) {
+    try {
+      const imported = JSON.parse(event.target.result);
+
+      if (!imported || !imported.dati_visibili || !Array.isArray(imported.dati_visibili)) {
+        alert("⚠️ Il file importato non contiene dati validi.");
+        return;
+      }
+
+      // Importa solo i dati visibili
+      ROWS = imported.dati_visibili;
+      render();
+      alert("✅ Dati importati correttamente!");
+    } catch (err) {
+      alert("❌ Errore durante l'importazione del file.");
+      console.error(err);
+    }
+  };
+  reader.readAsText(file);
 });

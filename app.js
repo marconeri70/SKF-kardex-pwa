@@ -1,40 +1,35 @@
 // ===============================================================
-// Kardex Viewer - app.js (COMPLETO)
+// Kardex Viewer - app.js (COMPLETO, con persistenza locale)
+// - Filtri (TIPO esclusivo) + ricerca
+// - Preset: salva/applica/gestisci (export/import preset)
+// - Export JSON (preset+filtri+righe visibili) e CSV
+// - Import auto JSON/CSV
+// - Persistenza dati importati (LocalStorage): rimangono dopo refresh/back/offline
 // ===============================================================
 (() => {
   'use strict';
 
   // -------------------- Costanti / Stato --------------------
-  const PRESETS_KEY = 'kardex-presets';
-  const ACTIVE_PRESET_KEY = 'kardex-active-preset-name';
-  const STATE_KEY = 'kardex-state-v3';
+  const PRESETS_KEY      = 'kardex-presets';
+  const ACTIVE_PRESET_KEY= 'kardex-active-preset-name';
+  const STATE_KEY        = 'kardex-state-v4';
+  const DATA_KEY         = 'kardex-imported-data-v1';   // <— persistenza dataset
 
-  let ROWS = [];          // Dati originali
-  let FILTERED_ROWS = []; // Dati filtrati correnti
-  let HEADERS = [];       // Intestazioni tabella
+  let ROWS = [];          // dataset corrente (persistito)
+  let FILTERED_ROWS = []; // dati filtrati
+  let HEADERS = [];       // intestazioni tabella (se presenti)
 
   // -------------------- Helpers DOM --------------------
   const $  = (s) => document.querySelector(s);
   const $$ = (s) => Array.from(document.querySelectorAll(s));
   const lower = (x) => (x ?? '').toString().toLowerCase();
 
-  // Elementi attesi dalla tua UI
+  // Elementi attesi dalla UI
   const UI = {
-    q:        null,        // #q
-    campo:    null,        // #selCampo
-    ripiano:  null,        // #fRip
-    tipologia:null,        // #fTip
-    posizione:null,        // #fPos
-    presetName: null,      // #presetNameInput
-    btnSave:    null,      // #btnSavePreset
-    exportCsv:  null,      // #exportCsvBtn
-    exportJson: null,      // (creato se non presente)
-    fileInput:  null,      // #fileInput
-    resultsBadge: null,    // #resultsBadge (opzionale)
-    tableHead:  null,      // thead
-    tableBody:  null,      // tbody
-    btnReset:   null,      // #btnReset (se presente)
-    btnClear:   null       // #btnClear (se presente)
+    q: null, campo: null, ripiano: null, tipologia: null, posizione: null,
+    presetName: null, btnSave: null, exportCsv: null, exportJson: null,
+    fileInput: null, resultsBadge: null, tableHead: null, tableBody: null,
+    btnReset: null, btnClear: null
   };
 
   function hookUI() {
@@ -71,14 +66,10 @@
     }
   }
 
-  // -------------------- Persistenza --------------------
-  function loadPresets() {
-    try { return JSON.parse(localStorage.getItem(PRESETS_KEY)) || []; }
-    catch { return []; }
-  }
-  function savePresets(presets) {
-    localStorage.setItem(PRESETS_KEY, JSON.stringify(presets ?? []));
-  }
+  // -------------------- Persistenza preset/state/dataset --------------------
+  function loadPresets() { try { return JSON.parse(localStorage.getItem(PRESETS_KEY)) || []; } catch { return []; } }
+  function savePresets(p) { localStorage.setItem(PRESETS_KEY, JSON.stringify(p ?? [])); }
+
   function getActivePresetName() {
     const fromInput = UI.presetName && UI.presetName.value.trim();
     return fromInput || localStorage.getItem(ACTIVE_PRESET_KEY) || '';
@@ -100,6 +91,15 @@
     } catch {}
   }
 
+  // ——— persistenza dataset importato
+  function saveDataLocally(rows) {
+    try { localStorage.setItem(DATA_KEY, JSON.stringify(rows || [])); } catch {}
+  }
+  function loadDataLocally() {
+    try { return JSON.parse(localStorage.getItem(DATA_KEY) || '[]'); } catch { return []; }
+  }
+  function clearLocalData() { localStorage.removeItem(DATA_KEY); }
+
   // -------------------- Filtri / Render --------------------
   function normalizeRow(row) {
     if (Array.isArray(row)) {
@@ -119,7 +119,6 @@
       posizione: UI.posizione ? UI.posizione.value.trim() : ''
     };
   }
-
   function setFiltersToUI(f) {
     if (!f) return;
     if (UI.q)         UI.q.value = f.quick || '';
@@ -136,6 +135,7 @@
 
     FILTERED_ROWS = ROWS.filter(r0 => {
       const r = normalizeRow(r0);
+
       // TIPO esclusivo
       if (f.tipologia && lower(r.TIPO || r.tipologia) !== lower(f.tipologia)) return false;
       if (f.ripiano && lower(String(r.RIPIANO ?? r.ripiano)) !== lower(f.ripiano)) return false;
@@ -171,15 +171,10 @@
     }
   }
 
-  function render() {
-    filterRows();
-    renderTable();
-    saveState();
-  }
-  // Rendo accessibile a Gestione Preset
-  window.render = render;
+  function render() { filterRows(); renderTable(); saveState(); }
+  window.render = render; // usato anche dal gestore preset
 
-  // -------------------- Import/Export dati --------------------
+  // -------------------- Export / Import dati --------------------
   function toCSV(rows) {
     if (!rows || !rows.length) return '';
     const isObj = typeof rows[0] === 'object' && !Array.isArray(rows[0]);
@@ -200,12 +195,12 @@
 
   function exportAsJSON() {
     const payload = {
-      version: 3,
+      version: 4,
       exportedAt: new Date().toISOString(),
       activePreset: getActivePresetName(),
       filters: getFiltersFromUI(),
       presets: loadPresets(),
-      rows: getVisibleData()
+      rows: getVisibleData() // se vuoi tutto il dataset: usa ROWS
     };
     const name = `kardex_${payload.activePreset || 'no-preset'}_${Date.now()}.json`;
     const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
@@ -230,8 +225,12 @@
         const rows = obj.rows || obj.dati_visibili || [];
         if (Array.isArray(obj.presets)) savePresets(obj.presets);
         if (obj.activePreset || obj.preset_attivo) setActivePresetName(obj.activePreset || obj.preset_attivo);
+
         ROWS = append && Array.isArray(ROWS) ? ROWS.concat(rows) : rows;
-        render(); alert('✅ Import JSON completato'); return;
+        saveDataLocally(ROWS); // <— salva dataset importato
+        render();
+        alert('✅ Import JSON completato');
+        return;
       }
     } catch {}
 
@@ -262,6 +261,7 @@
       });
 
       ROWS = rows;
+      saveDataLocally(ROWS); // <— salva dataset importato
       render();
       alert('✅ Import CSV completato');
       return;
@@ -320,10 +320,7 @@
     const modal = ensurePresetModal();
     const body = modal.querySelector('#pmBody');
     const presets = loadPresets();
-    if (!presets.length) {
-      body.innerHTML = `<div style="color:#666">Nessun preset salvato.</div>`;
-      return;
-    }
+    if (!presets.length) { body.innerHTML = `<div style="color:#666">Nessun preset salvato.</div>`; return; }
     const active = getActivePresetName();
     body.innerHTML = presets.map(p => `
       <div style="border:1px solid #eee;border-radius:10px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
@@ -408,8 +405,20 @@
       UI.posizione?.addEventListener(ev, onChange);
     });
 
-    UI.btnClear?.addEventListener('click', (e)=>{ e.preventDefault?.(); setFiltersToUI({quick:'',campo:UI.campo?.options?.[0]?.value||'Tutti',ripiano:'',tipologia:'',posizione:''}); render(); });
-    UI.btnReset?.addEventListener('click', (e)=>{ e.preventDefault?.(); localStorage.removeItem(STATE_KEY); setFiltersToUI({quick:'',campo:UI.campo?.options?.[0]?.value||'Tutti',ripiano:'',tipologia:'',posizione:''}); render(); });
+    UI.btnClear?.addEventListener('click', (e)=>{ 
+      e.preventDefault?.();
+      setFiltersToUI({quick:'',campo:UI.campo?.options?.[0]?.value||'Tutti',ripiano:'',tipologia:'',posizione:''});
+      render();
+    });
+
+    UI.btnReset?.addEventListener('click', (e)=>{ 
+      e.preventDefault?.();
+      localStorage.removeItem(STATE_KEY);
+      clearLocalData();           // <— svuota dataset persistito
+      setFiltersToUI({quick:'',campo:UI.campo?.options?.[0]?.value||'Tutti',ripiano:'',tipologia:'',posizione:''});
+      // dopo reset, ricarico i dati di default dal file statico
+      fetchInitialData(true).then(()=>render());
+    });
 
     UI.btnSave?.addEventListener('click', (e)=>{ e.preventDefault?.(); saveCurrentAsPreset(); });
 
@@ -418,7 +427,7 @@
 
     UI.fileInput?.addEventListener('change', (e)=> importFileAuto(e.target.files[0], {append:false}));
 
-    // Bottone Gestisci Preset (se esiste già in HTML, aggancialo; altrimenti crealo)
+    // Bottone Gestisci Preset (se presente in HTML, aggancialo; altrimenti crealo)
     let manageBtn = $$('button').find(b => /gestisci\s*preset/i.test(b.textContent||''));
     if (!manageBtn && UI.exportJson) {
       manageBtn = document.createElement('button');
@@ -431,26 +440,34 @@
     manageBtn?.addEventListener('click', () => renderPresetList());
   }
 
-  // -------------------- Bootstrap --------------------
+  // -------------------- Caricamento iniziale --------------------
+  async function fetchInitialData(forceFile=false) {
+    // 1) prova dati salvati localmente (persistenza)
+    if (!forceFile) {
+      const saved = loadDataLocally();
+      if (Array.isArray(saved) && saved.length) {
+        ROWS = saved;
+        return;
+      }
+    }
+    // 2) fallback: file statico del progetto
+    try {
+      const res = await fetch('data/kardex.json', {cache:'no-store'});
+      if (res.ok) {
+        const json = await res.json();
+        ROWS = Array.isArray(json) ? json : (json.rows || json.data || []);
+      }
+    } catch {}
+  }
+
   async function bootstrap() {
     hookUI();
-
-    if (UI.tableHead) {
-      HEADERS = Array.from(UI.tableHead.querySelectorAll('th')).map(th => th.textContent.trim()).filter(Boolean);
+    if (document.querySelector('table thead')) {
+      HEADERS = Array.from(document.querySelectorAll('table thead th')).map(th => th.textContent.trim()).filter(Boolean);
     }
-
     loadState();
 
-    if (!ROWS.length) {
-      try {
-        const res = await fetch('data/kardex.json', {cache:'no-store'});
-        if (res.ok) {
-          const json = await res.json();
-          ROWS = Array.isArray(json) ? json : (json.rows || json.data || []);
-        }
-      } catch {}
-    }
-
+    await fetchInitialData(false);
     render();
     wireEvents();
   }

@@ -1,1 +1,46 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Gestione Preset - Kardex Viewer</title>
+  <link rel="manifest" href="manifest.webmanifest"/>
+  <style>
+    :root{--bg:#fff;--fg:#111;--muted:#6b7280;--pri:#0e4aa5}
+    body{font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;margin:0;background:var(--bg);color:var(--fg)}
+    header{display:flex;align-items:center;justify-content:space-between;background:var(--pri);color:#fff;padding:1rem}
+    h1{margin:0;font-size:1.2rem}
+    main{padding:1rem}
+    .preset-card{border:1px solid #ddd;border-radius:.5rem;padding:1rem;margin-bottom:.75rem;background:#f9fafb}
+    .preset-title{font-weight:600}
+    .preset-actions{margin-top:.5rem;display:flex;gap:.5rem}
+    button{padding:.5rem .8rem;border:0;border-radius:.4rem;cursor:pointer}
+    .btn-blue{background:var(--pri);color:#fff}
+    .btn-red{background:#dc2626;color:#fff}
+    .btn-gray{background:#6b7280;color:#fff}
+    .btn-green{background:#15803d;color:#fff}
+    #empty{text-align:center;color:var(--muted);margin-top:2rem}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Gestione Preset</h1>
+    <button class="btn-gray" onclick="window.location.href='index.html'">⬅️ Torna alla Home</button>
+  </header>
+
+  <main>
+    <div id="presetContainer"></div>
+    <div id="empty">Nessun preset salvato</div>
+
+    <hr/>
+    <div style="margin-top:1rem">
+      <h3>Importa / Esporta preset</h3>
+      <button class="btn-blue" id="btnExport">💾 Esporta tutti</button>
+      <input type="file" id="fileInput" />
+    </div>
+  </main>
+
+  <script src="preset.js"></script>
+</body>
+</html>
 

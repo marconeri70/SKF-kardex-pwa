@@ -1,4 +1,4 @@
-const CACHE_NAME = 'kardex-cache-v13';
+const CACHE_NAME = 'kardex-cache-v14';
 
 const ASSETS = [
   './manifest.webmanifest?v=13',

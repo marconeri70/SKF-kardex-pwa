@@ -1,4 +1,4 @@
-// app.js – versione completa con TIPO esclusivo e Gestione Preset (Import/Export)
+// app.js – completo con Tipologia esclusiva e Gestione Preset (Import/Export)
 (() => {
   'use strict';
 
@@ -37,21 +37,10 @@
   };
 
   // ---------- Storage preset + stato ----------
-  function loadPresets() {
-    try { return JSON.parse(localStorage.getItem(PRESETS_KEY)) || []; }
-    catch { return []; }
-  }
-  function savePresets(presets) {
-    localStorage.setItem(PRESETS_KEY, JSON.stringify(presets ?? []));
-  }
-  function getActivePresetName() {
-    const fromInput = UI.presetName && UI.presetName.value.trim();
-    return fromInput || localStorage.getItem(ACTIVE_PRESET_KEY) || '';
-  }
-  function setActivePresetName(name) {
-    localStorage.setItem(ACTIVE_PRESET_KEY, name || '');
-    if (UI.presetName) UI.presetName.value = name || '';
-  }
+  function loadPresets() { try { return JSON.parse(localStorage.getItem(PRESETS_KEY)) || []; } catch { return []; } }
+  function savePresets(p) { localStorage.setItem(PRESETS_KEY, JSON.stringify(p ?? [])); }
+  function getActivePresetName() { const fromInput = UI.presetName && UI.presetName.value.trim(); return fromInput || localStorage.getItem(ACTIVE_PRESET_KEY) || ''; }
+  function setActivePresetName(n) { localStorage.setItem(ACTIVE_PRESET_KEY, n || ''); if (UI.presetName) UI.presetName.value = n || ''; }
 
   function getFiltersFromUI() {
     return {
@@ -63,19 +52,16 @@
     };
   }
   function setFiltersToUI(f) {
-    if (UI.q)        UI.q.value        = f.quick || '';
-    if (UI.campo)    UI.campo.value    = f.campo || (UI.campo.options?.[0]?.value ?? 'Tutti');
-    if (UI.ripiano)  UI.ripiano.value  = f.ripiano || '';
-    if (UI.tipologia)UI.tipologia.value= f.tipologia || '';
-    if (UI.posizione)UI.posizione.value= f.posizione || '';
+    if (UI.q)         UI.q.value         = f.quick || '';
+    if (UI.campo)     UI.campo.value     = f.campo || (UI.campo.options?.[0]?.value ?? 'Tutti');
+    if (UI.ripiano)   UI.ripiano.value   = f.ripiano || '';
+    if (UI.tipologia) UI.tipologia.value = f.tipologia || '';
+    if (UI.posizione) UI.posizione.value = f.posizione || '';
     window.render?.();
   }
 
   function saveState() {
-    localStorage.setItem(
-      STATE_KEY,
-      JSON.stringify({ filters: getFiltersFromUI(), activePreset: getActivePresetName() })
-    );
+    localStorage.setItem(STATE_KEY, JSON.stringify({ filters: getFiltersFromUI(), activePreset: getActivePresetName() }));
   }
   function loadState() {
     try {
@@ -91,9 +77,7 @@
   function normalizeRow(row) {
     if (Array.isArray(row)) {
       const keys = HEADERS.length ? HEADERS : ['RIPIANO', 'TIPO', 'POSIZIONE'];
-      const o = {};
-      keys.forEach((k, i) => (o[k] = row[i] ?? ''));
-      return o;
+      const o = {}; keys.forEach((k, i) => (o[k] = row[i] ?? '')); return o;
     }
     return row;
   }
@@ -104,7 +88,7 @@
     const q = norm(f.quick);
     const campo = f.campo;
 
-    FILTERED_ROWS = ROWS.filter((raw) => {
+    FILTERED_ROWS = ROWS.filter(raw => {
       const r = normalizeRow(raw);
 
       if (f.tipologia && norm(r.TIPO || r.tipologia) !== norm(f.tipologia)) return false;
@@ -116,7 +100,7 @@
           const v = r[campo] ?? r[campo?.toUpperCase?.()] ?? '';
           return norm(v).includes(q);
         }
-        return Object.keys(r).some((k) => norm(r[k]).includes(q));
+        return Object.keys(r).some(k => norm(r[k]).includes(q));
       }
       return true;
     });
@@ -127,15 +111,11 @@
     UI.tableBody.innerHTML = '';
     const rows = FILTERED_ROWS.length ? FILTERED_ROWS : ROWS;
 
-    rows.forEach((r0) => {
+    rows.forEach(r0 => {
       const r = normalizeRow(r0);
       const tr = document.createElement('tr');
-      const keys = ['RIPIANO', 'TIPO', 'POSIZIONE', ...Object.keys(r).filter(k => !['RIPIANO','TIPO','POSIZIONE'].includes(k))];
-      keys.forEach((k) => {
-        const td = document.createElement('td');
-        td.textContent = r[k] ?? '';
-        tr.appendChild(td);
-      });
+      const keys = ['RIPIANO','TIPO','POSIZIONE', ...Object.keys(r).filter(k => !['RIPIANO','TIPO','POSIZIONE'].includes(k))];
+      keys.forEach(k => { const td = document.createElement('td'); td.textContent = r[k] ?? ''; tr.appendChild(td); });
       UI.tableBody.appendChild(tr);
     });
 
@@ -145,11 +125,7 @@
     }
   }
 
-  function render() {
-    filterRows();
-    renderTable();
-    saveState();
-  }
+  function render() { filterRows(); renderTable(); saveState(); }
   window.render = render;
 
   // ---------- Export / Import ----------
@@ -168,8 +144,7 @@
       return rows.map(r => r.map(v => `"${String(v ?? '').replaceAll('"','""')}"`).join(',')).join('\n');
     }
   }
-
-  function getVisibleData() { return FILTERED_ROWS.length ? FILTERED_ROWS : ROWS; }
+  const getVisibleData = () => (FILTERED_ROWS.length ? FILTERED_ROWS : ROWS);
 
   function exportAsJSON() {
     const payload = {
@@ -181,25 +156,21 @@
       rows: getVisibleData()
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `kardex_${payload.activePreset || 'no-preset'}.json`;
-    a.click();
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = `kardex_${payload.activePreset || 'no-preset'}.json`; a.click();
   }
-
   function exportAsCSV() {
     const csv = toCSV(getVisibleData());
     const blob = new Blob([csv], { type: 'text/csv' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `kardex_${getActivePresetName() || 'no-preset'}.csv`;
-    a.click();
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = `kardex_${getActivePresetName() || 'no-preset'}.csv`; a.click();
   }
 
   async function importFileAuto(file, { append = false } = {}) {
     if (!file) return;
     const text = await file.text();
 
+    // JSON
     try {
       const obj = JSON.parse(text);
       if (obj && (Array.isArray(obj.rows) || Array.isArray(obj.dati_visibili))) {
@@ -207,71 +178,62 @@
         if (Array.isArray(obj.presets)) savePresets(obj.presets);
         if (obj.activePreset || obj.preset_attivo) setActivePresetName(obj.activePreset || obj.preset_attivo);
         ROWS = append && Array.isArray(ROWS) ? ROWS.concat(rows) : rows;
-        render();
-        alert('✅ Import JSON completato');
-        return;
+        render(); alert('✅ Import JSON completato'); return;
       }
     } catch {}
 
-    const lines = text.replace(/\r/g, '').split('\n').filter(x => x.trim() !== '');
+    // CSV
+    const lines = text.replace(/\r/g,'').split('\n').filter(x => x.trim() !== '');
     if (lines.length) {
       const first = lines[0];
       const looksHeader = /[A-Za-z]/.test(first);
-      let headers = [];
-      const rows = [];
+      let headers = []; const rows = [];
 
       const split = (ln) => {
         const out = []; let cur=''; let inQ=false;
         for (let i=0;i<ln.length;i++){
           const ch=ln[i];
-          if (ch === '"'){
-            if (inQ && ln[i+1] === '"'){ cur+='"'; i++; }
-            else inQ = !inQ;
-          } else if (ch===',' && !inQ){ out.push(cur); cur=''; }
+          if (ch === '"'){ if (inQ && ln[i+1] === '"'){ cur+='"'; i++; } else inQ = !inQ; }
+          else if (ch===',' && !inQ){ out.push(cur); cur=''; }
           else cur += ch;
         }
-        out.push(cur);
-        return out.map(s=>s.trim());
+        out.push(cur); return out.map(s=>s.trim());
       };
 
       lines.forEach((ln, idx) => {
         const cols = split(ln);
         if (idx===0 && looksHeader) headers = cols;
-        else if (looksHeader) {
-          const obj = {}; headers.forEach((h,i)=>obj[h]=cols[i]??'');
-          rows.push(obj);
-        } else rows.push(cols);
+        else if (looksHeader) { const obj = {}; headers.forEach((h,i)=>obj[h]=cols[i]??''); rows.push(obj); }
+        else rows.push(cols);
       });
 
-      ROWS = rows;
-      render();
-      alert('✅ Import CSV completato');
-      return;
+      ROWS = rows; render(); alert('✅ Import CSV completato'); return;
     }
 
     alert('❌ File non riconosciuto.');
   }
 
   // ---------- Preset ----------
+  // ⬇️ Versione che forzatamente legge Tipologia/Posizione e le salva
   function saveCurrentAsPreset() {
     const name = (UI.presetName?.value || '').trim();
     if (!name) { alert('Inserisci un nome preset'); return; }
 
     const f = getFiltersFromUI();
-    const clean = { ...f };
-    if (clean.tipologia && !clean.quick) {
-      clean.campo = 'Tutti';
-      clean.quick = '';
-    }
+    const presetFilters = {
+      quick:     f.quick || '',
+      campo:     f.campo || (UI.campo?.options?.[0]?.value || 'Tutti'),
+      ripiano:   f.ripiano || '',
+      tipologia: f.tipologia || (UI.tipologia?.value?.trim() || ''),
+      posizione: f.posizione || (UI.posizione?.value?.trim() || '')
+    };
 
     const presets = loadPresets();
-    const payload = { name, filters: clean, savedAt: new Date().toISOString() };
+    const payload = { name, filters: presetFilters, savedAt: new Date().toISOString() };
     const idx = presets.findIndex(p => (p.name || '').toLowerCase() === name.toLowerCase());
-    if (idx >= 0) presets[idx] = payload;
-    else presets.push(payload);
-    savePresets(presets);
-    setActivePresetName(name);
-    alert('✅ Preset salvato');
+    if (idx >= 0) presets[idx] = payload; else presets.push(payload);
+    savePresets(presets); setActivePresetName(name);
+    alert('✅ Preset salvato con successo!');
   }
 
   // --- Gestisci Preset con Import/Export ---
@@ -280,8 +242,8 @@
     if (modal) modal.remove();
     modal = document.createElement('div');
     Object.assign(modal.style, {
-      position: 'fixed', inset: '0', background: 'rgba(0,0,0,.35)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: '9999'
+      position:'fixed', inset:'0', background:'rgba(0,0,0,.35)',
+      display:'flex', alignItems:'center', justifyContent:'center', zIndex:'9999'
     });
     modal.innerHTML = `
       <div style="background:#fff;color:#111;max-width:560px;width:92%;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.25)">
@@ -291,10 +253,10 @@
         </div>
         <div id="pmBody" style="padding:12px 16px;max-height:60vh;overflow:auto"></div>
         <div style="padding:12px 16px;border-top:1px solid #eee;display:flex;gap:8px;justify-content:flex-end">
-          <button id="pmExport" class="btn">Esporta preset</button>
+          <button id="pmExport">Esporta preset</button>
           <label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer">
             <input id="pmImport" type="file" accept=".json,application/json" style="display:none"/>
-            <span class="btn" style="padding:.6rem .9rem;background:#eee;border-radius:8px;">Importa preset</span>
+            <span style="padding:.6rem .9rem;background:#eee;border-radius:8px;">Importa preset</span>
           </label>
         </div>
       </div>`;
@@ -334,9 +296,9 @@
             const p = loadPresets().find(x => (x.name || '') === name);
             if (p) {
               setFiltersToUI({
-                quick: p.filters?.quick || '',
-                campo: p.filters?.campo || (UI.campo?.options?.[0]?.value || 'Tutti'),
-                ripiano: p.filters?.ripiano || '',
+                quick:     p.filters?.quick     || '',
+                campo:     p.filters?.campo     || (UI.campo?.options?.[0]?.value || 'Tutti'),
+                ripiano:   p.filters?.ripiano   || '',
                 tipologia: p.filters?.tipologia || '',
                 posizione: p.filters?.posizione || ''
               });
@@ -349,8 +311,7 @@
             if (idx < 0) return;
             const nuovo = prompt('Nuovo nome preset:', name);
             if (!nuovo) return;
-            arr[idx].name = nuovo;
-            savePresets(arr);
+            arr[idx].name = nuovo; savePresets(arr);
             if (getActivePresetName() === name) setActivePresetName(nuovo);
             renderPresetList();
           }
@@ -366,35 +327,20 @@
     }
     renderPresetList();
 
-    // Esporta preset
+    // Esporta/Importa preset
     document.getElementById('pmExport').addEventListener('click', () => {
-      const payload = {
-        version: 1,
-        exportedAt: new Date().toISOString(),
-        activePreset: getActivePresetName(),
-        presets: loadPresets()
-      };
+      const payload = { version: 1, exportedAt: new Date().toISOString(), activePreset: getActivePresetName(), presets: loadPresets() };
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'kardex_presets.json';
-      a.click();
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'kardex_presets.json'; a.click();
     });
-
-    // Importa preset
     document.getElementById('pmImport').addEventListener('change', async (e) => {
       const file = e.target.files[0]; if (!file) return;
       try {
-        const text = await file.text();
-        const obj = JSON.parse(text);
+        const text = await file.text(); const obj = JSON.parse(text);
         if (!Array.isArray(obj?.presets)) { alert('File preset non valido'); return; }
-        savePresets(obj.presets);
-        if (obj.activePreset) setActivePresetName(obj.activePreset);
-        renderPresetList();
-        alert('✅ Preset importati');
-      } catch {
-        alert('❌ Errore import preset');
-      }
+        savePresets(obj.presets); if (obj.activePreset) setActivePresetName(obj.activePreset);
+        renderPresetList(); alert('✅ Preset importati');
+      } catch { alert('❌ Errore import preset'); }
     });
   }
 
@@ -402,11 +348,8 @@
   function wireEvents() {
     const on = (el, ev, fn) => el && el.addEventListener(ev, fn);
     ['input','change'].forEach(ev=>{
-      on(UI.q,ev,render);
-      on(UI.campo,ev,render);
-      on(UI.ripiano,ev,render);
-      on(UI.tipologia,ev,render);
-      on(UI.posizione,ev,render);
+      on(UI.q,ev,render); on(UI.campo,ev,render); on(UI.ripiano,ev,render);
+      on(UI.tipologia,ev,render); on(UI.posizione,ev,render);
     });
     on(UI.btnClear,'click',()=>setFiltersToUI({quick:'',campo:UI.campo?.options?.[0]?.value||'Tutti',ripiano:'',tipologia:'',posizione:''}));
     on(UI.btnReset,'click',()=>{localStorage.clear();setFiltersToUI({quick:'',campo:UI.campo?.options?.[0]?.value||'Tutti',ripiano:'',tipologia:'',posizione:''});});
@@ -419,9 +362,7 @@
 
   // ---------- Bootstrap ----------
   async function bootstrap() {
-    if (UI.tableHead) {
-      HEADERS = Array.from(UI.tableHead.querySelectorAll('th')).map(th => th.textContent.trim()).filter(Boolean);
-    }
+    if (UI.tableHead) HEADERS = Array.from(UI.tableHead.querySelectorAll('th')).map(th => th.textContent.trim()).filter(Boolean);
     loadState();
     if (!ROWS.length) {
       try {
@@ -432,8 +373,7 @@
         }
       } catch {}
     }
-    render();
-    wireEvents();
+    render(); wireEvents();
   }
   document.addEventListener('DOMContentLoaded', bootstrap);
 })();

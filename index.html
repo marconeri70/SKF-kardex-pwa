@@ -1,30 +1,11 @@
 
 <!DOCTYPE html>
-<html lang="it">
+<html lang="it" data-theme="auto">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Kardex Viewer</title>
-  <link rel="manifest" href="manifest.webmanifest"/>
-  <style>
-    :root{--bg:#fff;--fg:#111;--muted:#6b7280;--pri:#1e3a8a}
-    *{box-sizing:border-box}body{font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;margin:0;background:var(--bg);color:var(--fg)}
-    .header{display:flex;align-items:center;gap:.75rem;padding:.75rem 1rem;background:#0e4aa5;color:#fff}
-    .header h1{font-size:1.1rem;margin:0}
-    .toolbar{display:flex;flex-wrap:wrap;gap:.5rem;padding:1rem}
-    .toolbar input,.toolbar select{padding:.6rem .7rem;border:1px solid #e5e7eb;border-radius:.5rem;background:transparent;color:inherit}
-    .toolbar button{padding:.6rem .9rem;border:0;border-radius:.6rem;background:var(--pri);color:#fff;cursor:pointer}
-    .card{background:#f7f8fb;border:1px solid #e9edf5;margin:0 1rem 1rem;border-radius:.8rem;padding:1rem}
-    table{width:100%;border-collapse:collapse}
-    th,td{padding:.6rem;border-bottom:1px solid #e9edf5;text-align:left}
-    th{position:sticky;top:0;background:var(--bg)}
-    .badge{font-size:.9rem;color:var(--muted);padding:0 1rem 1rem}
-    .small{font-size:.85rem;color:var(--muted)}
-    .presets{display:flex;flex-direction:column;gap:.5rem}
-    .preset-row{display:flex;align-items:center;gap:.5rem}
-    .preset-name{flex:1;padding:.45rem .6rem;border:1px solid #e5e7eb;border-radius:.5rem;background:#fff}
-    .ghost{background:#fff;border:1px dashed #93c5fd;color:#1e3a8a}
-  </style>
+  <link rel="manifest" href="./manifest.webmanifest" />
 </head>
 <body>
   <div class="header">
@@ -38,7 +19,7 @@
 
   <div class="toolbar">
     <input id="q" placeholder="Cerca veloce..." />
-    <label>Campo:
+    <label>Campo: 
       <select id="selCampo">
         <option>Tutti</option>
         <option>RIPIANO</option>
@@ -49,13 +30,13 @@
     <button id="btnClear">Pulisci</button>
     <button id="exportCsvBtn">Export CSV</button>
     <button id="exportJsonBtn" type="button">Export JSON</button>
-    <button onclick="window.location.href='preset.html'">⚙️ Gestisci Preset</button>
+    <button id="btnManage">Gestisci Preset</button>
   </div>
 
-  <div class="card">
+  <div>
     <details open>
       <summary><strong>Filtri avanzati (AND)</strong></summary>
-      <div class="toolbar" style="padding-left:0">
+      <div>
         <input id="fRip" placeholder="es. 10" />
         <input id="fTip" placeholder="es. Montaggio" />
         <input id="fPos" placeholder="es. Destra" />
@@ -63,19 +44,16 @@
     </details>
   </div>
 
-  <div class="card">
+  <div>
     <strong>Preset filtri</strong>
-    <div class="toolbar" style="padding-left:0">
+    <div>
       <input id="presetNameInput" placeholder="Nome preset" />
       <button id="btnSavePreset">Salva</button>
       <input id="fileInput" type="file" />
     </div>
-    <div class="presets" id="presetList">
-      <!-- Preset salvati qui -->
-    </div>
   </div>
 
-  <div class="card">
+  <div>
     <table>
       <thead>
         <tr><th>RIPIANO</th><th>TIPO</th><th>POSIZIONE</th></tr>
@@ -84,8 +62,11 @@
     </table>
   </div>
 
-  <div class="small" style="padding:0 1rem 2rem">Versione UI: preset list.</div>
-
-  <script src="app.js"></script>
+  <script src="./app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js', { scope: './' });
+    }
+  </script>
 </body>
 </html>

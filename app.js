@@ -293,13 +293,23 @@ function filterRows() {
 
   function openPresetManager() {
     let modal = document.getElementById('presetModal');
-    if (modal) modal.remove();
-    modal = document.createElement('div');
-    modal.id = 'presetModal';
-    Object.assign(modal.style, {
-      position: 'fixed', inset: '0', background: 'rgba(0,0,0,.35)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: '9999'
+  if (act === 'apply') {
+  setActivePresetName(name);
+  const p = loadPresets().find(x => (x.name || '') === name);
+  if (p) {
+    // Applica esattamente gli stessi campi dei filtri
+    setFiltersToUI({
+      quick:     p.filters?.quick     || '',
+      campo:     p.filters?.campo     || (UI.campo?.options?.[0]?.value || 'Tutti'),
+      ripiano:   p.filters?.ripiano   || '',
+      tipologia: p.filters?.tipologia || '',
+      posizione: p.filters?.posizione || ''
     });
+  }
+  modal.remove();
+  // render già richiamato dentro setFiltersToUI() -> window.render()
+}
+
     modal.innerHTML = `
       <div style="background:#fff;color:#111;max-width:520px;width:92%;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.25)">
         <div style="padding:14px 16px;border-bottom:1px solid #eee;display:flex;align-items:center;justify-content:space-between">

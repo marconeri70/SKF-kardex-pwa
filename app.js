@@ -304,7 +304,7 @@ function saveCurrentAsPreset() {
 }
 
   function openPresetManager() {
-    let modal = document.getElementById('presetModal');
+  let modal = document.getElementById('presetModal');
   if (act === 'apply') {
   setActivePresetName(name);
   const p = loadPresets().find(x => (x.name || '') === name);

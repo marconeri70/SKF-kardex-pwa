@@ -278,18 +278,30 @@ function filterRows() {
   }
 
   // ---------- Preset ----------
-  function saveCurrentAsPreset() {
-    const name = (UI.presetName?.value || '').trim();
-    if (!name) { alert('Inserisci un nome preset'); return; }
-    const presets = loadPresets();
-    const payload = { name, filters: getFiltersFromUI(), savedAt: new Date().toISOString() };
-    const idx = presets.findIndex((p) => (p.name || '').toLowerCase() === name.toLowerCase());
-    if (idx >= 0) presets[idx] = payload;
-    else presets.push(payload);
-    savePresets(presets);
-    setActivePresetName(name);
-    alert('✅ Preset salvato');
+function saveCurrentAsPreset() {
+  const name = (UI.presetName?.value || '').trim();
+  if (!name) { alert('Inserisci un nome preset'); return; }
+
+  const f = getFiltersFromUI();
+
+  // Se sto salvando un preset per TIPO, rendo il comportamento più prevedibile:
+  // - campo su "Tutti"
+  // - quick vuota
+  // Così il preset mostrerà SOLO quel tipo (grazie al filtro esclusivo sopra).
+  const clean = { ...f };
+  if (clean.tipologia && !clean.quick) {
+    clean.campo = 'Tutti';
+    clean.quick = '';
   }
+
+  const presets = loadPresets();
+  const payload = { name, filters: clean, savedAt: new Date().toISOString() };
+  const idx = presets.findIndex(p => (p.name || '').toLowerCase() === name.toLowerCase());
+  if (idx >= 0) presets[idx] = payload; else presets.push(payload);
+  savePresets(presets);
+  setActivePresetName(name);
+  alert('✅ Preset salvato');
+}
 
   function openPresetManager() {
     let modal = document.getElementById('presetModal');

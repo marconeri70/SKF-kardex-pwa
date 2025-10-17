@@ -1,4 +1,4 @@
-// app.js – versione completa (GitHub Pages) con TIPO esclusivo e preset allineati ai filtri
+// app.js – versione completa con TIPO esclusivo e Gestione Preset (Import/Export)
 (() => {
   'use strict';
 
@@ -98,7 +98,7 @@
     return row;
   }
 
-  // >>> FILTRO con TIPO ESCLUSIVO e stesso comportamento dei filtri/preset
+  // --- Filtro con Tipologia esclusiva ---
   function filterRows() {
     const f = getFiltersFromUI();
     const q = norm(f.quick);
@@ -107,12 +107,10 @@
     FILTERED_ROWS = ROWS.filter((raw) => {
       const r = normalizeRow(raw);
 
-      // --- ESCLUSIVI --- (AND)
       if (f.tipologia && norm(r.TIPO || r.tipologia) !== norm(f.tipologia)) return false;
       if (f.ripiano   && norm(String(r.RIPIANO ?? r.ripiano)) !== norm(f.ripiano))   return false;
       if (f.posizione && norm(r.POSIZIONE || r.posizione)     !== norm(f.posizione)) return false;
 
-      // --- Ricerca veloce ---
       if (q) {
         if (campo && !/tutti/i.test(campo)) {
           const v = r[campo] ?? r[campo?.toUpperCase?.()] ?? '';
@@ -120,7 +118,6 @@
         }
         return Object.keys(r).some((k) => norm(r[k]).includes(q));
       }
-
       return true;
     });
   }
@@ -128,20 +125,17 @@
   function renderTable() {
     if (!UI.tableBody) return;
     UI.tableBody.innerHTML = '';
-
     const rows = FILTERED_ROWS.length ? FILTERED_ROWS : ROWS;
 
     rows.forEach((r0) => {
       const r = normalizeRow(r0);
       const tr = document.createElement('tr');
-
       const keys = ['RIPIANO', 'TIPO', 'POSIZIONE', ...Object.keys(r).filter(k => !['RIPIANO','TIPO','POSIZIONE'].includes(k))];
       keys.forEach((k) => {
         const td = document.createElement('td');
         td.textContent = r[k] ?? '';
         tr.appendChild(td);
       });
-
       UI.tableBody.appendChild(tr);
     });
 
@@ -156,7 +150,7 @@
     renderTable();
     saveState();
   }
-  window.render = render; // esposto per preset manager
+  window.render = render;
 
   // ---------- Export / Import ----------
   function toCSV(rows) {
@@ -165,35 +159,31 @@
     if (isObj) {
       const headers = Object.keys(normalizeRow(rows[0]));
       const head = headers.join(',');
-      const body = rows
-        .map((r0) => {
-          const r = normalizeRow(r0);
-          return headers
-            .map((h) => String(r[h] ?? '').replaceAll('"', '""'))
-            .map((v) => `"${v}"`)
-            .join(',');
-        })
-        .join('\n');
+      const body = rows.map(r0 => {
+        const r = normalizeRow(r0);
+        return headers.map(h => String(r[h] ?? '').replaceAll('"','""')).map(v => `"${v}"`).join(',');
+      }).join('\n');
       return head + '\n' + body;
     } else {
-      return rows.map((r) => r.map((v) => `"${String(v ?? '').replaceAll('"', '""')}"`).join(',')).join('\n');
+      return rows.map(r => r.map(v => `"${String(v ?? '').replaceAll('"','""')}"`).join(',')).join('\n');
     }
   }
+
   function getVisibleData() { return FILTERED_ROWS.length ? FILTERED_ROWS : ROWS; }
 
   function exportAsJSON() {
     const payload = {
-      version: 5,
+      version: 6,
       exportedAt: new Date().toISOString(),
       activePreset: getActivePresetName(),
       filters: getFiltersFromUI(),
       presets: loadPresets(),
-      rows: getVisibleData(),
+      rows: getVisibleData()
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `kardex_${payload.activePreset || 'no-preset'}.json`
+    a.download = `kardex_${payload.activePreset || 'no-preset'}.json`;
     a.click();
   }
 
@@ -210,7 +200,6 @@
     if (!file) return;
     const text = await file.text();
 
-    // Prova JSON
     try {
       const obj = JSON.parse(text);
       if (obj && (Array.isArray(obj.rows) || Array.isArray(obj.dati_visibili))) {
@@ -224,8 +213,7 @@
       }
     } catch {}
 
-    // Fallback CSV
-    const lines = text.replace(/\r/g, '').split('\n').filter((x) => x.trim() !== '');
+    const lines = text.replace(/\r/g, '').split('\n').filter(x => x.trim() !== '');
     if (lines.length) {
       const first = lines[0];
       const looksHeader = /[A-Za-z]/.test(first);
@@ -233,31 +221,26 @@
       const rows = [];
 
       const split = (ln) => {
-        const out = [];
-        let cur = '';
-        let inQ = false;
-        for (let i = 0; i < ln.length; i++) {
-          const ch = ln[i];
-          if (ch === '"') {
-            if (inQ && ln[i + 1] === '"') { cur += '"'; i++; }
+        const out = []; let cur=''; let inQ=false;
+        for (let i=0;i<ln.length;i++){
+          const ch=ln[i];
+          if (ch === '"'){
+            if (inQ && ln[i+1] === '"'){ cur+='"'; i++; }
             else inQ = !inQ;
-          } else if (ch === ',' && !inQ) { out.push(cur); cur = ''; }
+          } else if (ch===',' && !inQ){ out.push(cur); cur=''; }
           else cur += ch;
         }
         out.push(cur);
-        return out.map((s) => s.trim());
+        return out.map(s=>s.trim());
       };
 
       lines.forEach((ln, idx) => {
         const cols = split(ln);
-        if (idx === 0 && looksHeader) headers = cols;
+        if (idx===0 && looksHeader) headers = cols;
         else if (looksHeader) {
-          const o = {};
-          headers.forEach((h, i) => (o[h] = cols[i] ?? ''));
-          rows.push(o);
-        } else {
-          rows.push(cols);
-        }
+          const obj = {}; headers.forEach((h,i)=>obj[h]=cols[i]??'');
+          rows.push(obj);
+        } else rows.push(cols);
       });
 
       ROWS = rows;
@@ -266,7 +249,7 @@
       return;
     }
 
-    alert('❌ File non riconosciuto. Usa JSON esportato o un CSV valido.');
+    alert('❌ File non riconosciuto.');
   }
 
   // ---------- Preset ----------
@@ -283,7 +266,7 @@
 
     const presets = loadPresets();
     const payload = { name, filters: clean, savedAt: new Date().toISOString() };
-    const idx = presets.findIndex((p) => (p.name || '').toLowerCase() === name.toLowerCase());
+    const idx = presets.findIndex(p => (p.name || '').toLowerCase() === name.toLowerCase());
     if (idx >= 0) presets[idx] = payload;
     else presets.push(payload);
     savePresets(presets);
@@ -291,66 +274,139 @@
     alert('✅ Preset salvato');
   }
 
+  // --- Gestisci Preset con Import/Export ---
   function openPresetManager() {
     let modal = document.getElementById('presetModal');
     if (modal) modal.remove();
     modal = document.createElement('div');
-    Object.assign(modal.style, {position:'fixed',inset:'0',background:'rgba(0,0,0,.35)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:'9999'});
-    modal.innerHTML = `<div style="background:#fff;color:#111;max-width:520px;width:92%;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.25)">
-      <div style="padding:14px 16px;border-bottom:1px solid #eee;display:flex;align-items:center;justify-content:space-between">
-        <strong>Preset salvati</strong>
-        <button id="pmClose" style="border:0;background:transparent;font-size:18px;cursor:pointer">✖</button>
-      </div>
-      <div id="pmBody" style="padding:12px 16px;max-height:60vh;overflow:auto"></div>
-    </div>`;
+    Object.assign(modal.style, {
+      position: 'fixed', inset: '0', background: 'rgba(0,0,0,.35)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: '9999'
+    });
+    modal.innerHTML = `
+      <div style="background:#fff;color:#111;max-width:560px;width:92%;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.25)">
+        <div style="padding:14px 16px;border-bottom:1px solid #eee;display:flex;align-items:center;justify-content:space-between">
+          <strong>Preset salvati</strong>
+          <button id="pmClose" style="border:0;background:transparent;font-size:18px;cursor:pointer">✖</button>
+        </div>
+        <div id="pmBody" style="padding:12px 16px;max-height:60vh;overflow:auto"></div>
+        <div style="padding:12px 16px;border-top:1px solid #eee;display:flex;gap:8px;justify-content:flex-end">
+          <button id="pmExport" class="btn">Esporta preset</button>
+          <label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer">
+            <input id="pmImport" type="file" accept=".json,application/json" style="display:none"/>
+            <span class="btn" style="padding:.6rem .9rem;background:#eee;border-radius:8px;">Importa preset</span>
+          </label>
+        </div>
+      </div>`;
     document.body.appendChild(modal);
     document.getElementById('pmClose').addEventListener('click',()=>modal.remove());
 
-    const list=loadPresets(),active=getActivePresetName(),body=document.getElementById('pmBody');
-    if(!list.length){body.innerHTML='<div style="color:#666">Nessun preset salvato.</div>';return;}
-    body.innerHTML=list.map(p=>`
-      <div style="border:1px solid #eee;border-radius:10px;padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between">
-        <div><strong>${p.name}</strong>${p.name===active?'<span style="color:#0a7cff"> • attivo</span>':''}</div>
-        <div style="display:flex;gap:6px">
-          <button data-act="apply" data-name="${p.name}">Applica</button>
-          <button data-act="rename" data-name="${p.name}">Rinomina</button>
-          <button data-act="delete" data-name="${p.name}" style="color:#b91c1c">Elimina</button>
-        </div>
-      </div>`).join('');
-    body.querySelectorAll('button').forEach(b=>{
-      b.addEventListener('click',e=>{
-        const name=e.currentTarget.dataset.name,act=e.currentTarget.dataset.act;
-        if(act==='apply'){
-          setActivePresetName(name);
-          const p=loadPresets().find(x=>(x.name||'')===name);
-          if(p){
-            setFiltersToUI({
-              quick:p.filters?.quick||'',
-              campo:p.filters?.campo|| (UI.campo?.options?.[0]?.value||'Tutti'),
-              ripiano:p.filters?.ripiano||'',
-              tipologia:p.filters?.tipologia||'',
-              posizione:p.filters?.posizione||''
-            });
+    function renderPresetList() {
+      const body = document.getElementById('pmBody');
+      const list = loadPresets();
+      const active = getActivePresetName();
+      if (!list.length) { body.innerHTML = '<div style="color:#666">Nessun preset salvato.</div>'; return; }
+      body.innerHTML = list.map(p => `
+        <div style="border:1px solid #eee;border-radius:10px;padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div><strong>${p.name}</strong>${p.name===active?'<span style="color:#0a7cff"> • attivo</span>':''}</div>
+            <div style="font-size:.9rem;color:#666">
+              ripiano: <code>${p.filters?.ripiano||''}</code> ·
+              tipologia: <code>${p.filters?.tipologia||''}</code> ·
+              posizione: <code>${p.filters?.posizione||''}</code> ·
+              campo: <code>${p.filters?.campo||''}</code> ·
+              cerca: <code>${p.filters?.quick||''}</code>
+            </div>
+          </div>
+          <div style="display:flex;gap:6px">
+            <button data-act="apply" data-name="${p.name}">Applica</button>
+            <button data-act="rename" data-name="${p.name}">Rinomina</button>
+            <button data-act="delete" data-name="${p.name}" style="color:#b91c1c">Elimina</button>
+          </div>
+        </div>`).join('');
+
+      body.querySelectorAll('button').forEach(b => {
+        b.addEventListener('click', e => {
+          const name = e.currentTarget.getAttribute('data-name');
+          const act  = e.currentTarget.getAttribute('data-act');
+          if (act === 'apply') {
+            setActivePresetName(name);
+            const p = loadPresets().find(x => (x.name || '') === name);
+            if (p) {
+              setFiltersToUI({
+                quick: p.filters?.quick || '',
+                campo: p.filters?.campo || (UI.campo?.options?.[0]?.value || 'Tutti'),
+                ripiano: p.filters?.ripiano || '',
+                tipologia: p.filters?.tipologia || '',
+                posizione: p.filters?.posizione || ''
+              });
+            }
+            modal.remove();
           }
-          modal.remove();
-        }
-        if(act==='rename'){const list=loadPresets();const idx=list.findIndex(x=>(x.name||'')===name);
-          if(idx<0)return;const nuovo=prompt('Nuovo nome preset:',name);if(!nuovo)return;
-          list[idx].name=nuovo;savePresets(list);
-          if(getActivePresetName()===name)setActivePresetName(nuovo);openPresetManager();}
-        if(act==='delete'){if(!confirm(`Eliminare il preset "${name}"?`))return;
-          const list=loadPresets().filter(p=>(p.name||'')!==name);savePresets(list);
-          if(getActivePresetName()===name)setActivePresetName('');openPresetManager();}
+          if (act === 'rename') {
+            const arr = loadPresets();
+            const idx = arr.findIndex(x => (x.name || '') === name);
+            if (idx < 0) return;
+            const nuovo = prompt('Nuovo nome preset:', name);
+            if (!nuovo) return;
+            arr[idx].name = nuovo;
+            savePresets(arr);
+            if (getActivePresetName() === name) setActivePresetName(nuovo);
+            renderPresetList();
+          }
+          if (act === 'delete') {
+            if (!confirm(`Eliminare il preset "${name}"?`)) return;
+            const arr = loadPresets().filter(p => (p.name || '') !== name);
+            savePresets(arr);
+            if (getActivePresetName() === name) setActivePresetName('');
+            renderPresetList();
+          }
+        });
       });
+    }
+    renderPresetList();
+
+    // Esporta preset
+    document.getElementById('pmExport').addEventListener('click', () => {
+      const payload = {
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        activePreset: getActivePresetName(),
+        presets: loadPresets()
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'kardex_presets.json';
+      a.click();
+    });
+
+    // Importa preset
+    document.getElementById('pmImport').addEventListener('change', async (e) => {
+      const file = e.target.files[0]; if (!file) return;
+      try {
+        const text = await file.text();
+        const obj = JSON.parse(text);
+        if (!Array.isArray(obj?.presets)) { alert('File preset non valido'); return; }
+        savePresets(obj.presets);
+        if (obj.activePreset) setActivePresetName(obj.activePreset);
+        renderPresetList();
+        alert('✅ Preset importati');
+      } catch {
+        alert('❌ Errore import preset');
+      }
     });
   }
 
   // ---------- Eventi ----------
-  function wireEvents(){
-    const on=(el,ev,fn)=>el&&el.addEventListener(ev,fn);
+  function wireEvents() {
+    const on = (el, ev, fn) => el && el.addEventListener(ev, fn);
     ['input','change'].forEach(ev=>{
-      on(UI.q,ev,render);on(UI.campo,ev,render);on(UI.ripiano,ev,render);
-      on(UI.tipologia,ev,render);on(UI.posizione,ev,render);
+      on(UI.q,ev,render);
+      on(UI.campo,ev,render);
+      on(UI.ripiano,ev,render);
+      on(UI.tipologia,ev,render);
+      on(UI.posizione,ev,render);
     });
     on(UI.btnClear,'click',()=>setFiltersToUI({quick:'',campo:UI.campo?.options?.[0]?.value||'Tutti',ripiano:'',tipologia:'',posizione:''}));
     on(UI.btnReset,'click',()=>{localStorage.clear();setFiltersToUI({quick:'',campo:UI.campo?.options?.[0]?.value||'Tutti',ripiano:'',tipologia:'',posizione:''});});
@@ -361,11 +417,23 @@
     on(UI.btnManage,'click',openPresetManager);
   }
 
-  async function bootstrap(){
-    if(UI.tableHead){HEADERS=Array.from(UI.tableHead.querySelectorAll('th')).map(th=>th.textContent.trim()).filter(Boolean);}
+  // ---------- Bootstrap ----------
+  async function bootstrap() {
+    if (UI.tableHead) {
+      HEADERS = Array.from(UI.tableHead.querySelectorAll('th')).map(th => th.textContent.trim()).filter(Boolean);
+    }
     loadState();
-    if(!ROWS.length){try{const res=await fetch('./data/kardex.json',{cache:'no-store'});if(res.ok){const j=await res.json();ROWS=Array.isArray(j)?j:(j.rows||j.data||[]);}}catch{}}
-    render();wireEvents();
+    if (!ROWS.length) {
+      try {
+        const res = await fetch('./data/kardex.json', { cache: 'no-store' });
+        if (res.ok) {
+          const json = await res.json();
+          ROWS = Array.isArray(json) ? json : (json.rows || json.data || []);
+        }
+      } catch {}
+    }
+    render();
+    wireEvents();
   }
-  document.addEventListener('DOMContentLoaded',bootstrap);
+  document.addEventListener('DOMContentLoaded', bootstrap);
 })();

@@ -98,29 +98,40 @@
     return row;
   }
 
-  function filterRows() {
-    const f = getFiltersFromUI();
-    const q = lower(f.quick);
-    const campo = f.campo;
+function filterRows() {
+  const f = getFiltersFromUI();
 
-    FILTERED_ROWS = ROWS.filter((r0) => {
-      const r = normalizeRow(r0);
+  // normalizzatori robusti (spazi, maiuscole/minuscole)
+  const norm = (s) => (s ?? '').toString().trim().replace(/\s+/g,' ').toLowerCase();
 
-      // Tipologia ESCLUSIVA
-      if (f.tipologia && lower(r.TIPO || r.tipologia) !== lower(f.tipologia)) return false;
-      if (f.ripiano && lower(String(r.RIPIANO ?? r.ripiano)) !== lower(f.ripiano)) return false;
-      if (f.posizione && lower(r.POSIZIONE || r.posizione) !== lower(f.posizione)) return false;
+  const q = norm(f.quick);
+  const campo = f.campo;
 
-      if (q) {
-        if (campo && !/tutti/i.test(campo)) {
-          const v = r[campo] ?? r[campo?.toUpperCase?.()] ?? '';
-          return lower(v).includes(q);
-        }
-        return Object.keys(r).some((k) => lower(r[k]).includes(q));
+  FILTERED_ROWS = ROWS.filter((raw) => {
+    const r = normalizeRow(raw);
+
+    // --- FILTRI ESCLUSIVI ---
+    // Tipologia esclusiva (mostra SOLO il tipo esatto richiesto)
+    if (f.tipologia && norm(r.TIPO || r.tipologia) !== norm(f.tipologia)) return false;
+
+    // Ripiano e Posizione (AND)
+    if (f.ripiano   && norm(String(r.RIPIANO ?? r.ripiano)) !== norm(f.ripiano))   return false;
+    if (f.posizione && norm(r.POSIZIONE || r.posizione)     !== norm(f.posizione)) return false;
+
+    // --- Ricerca veloce ---
+    if (q) {
+      if (campo && !/tutti/i.test(campo)) {
+        const v = r[campo] ?? r[campo?.toUpperCase?.()] ?? '';
+        return norm(v).includes(q);
       }
-      return true;
-    });
-  }
+      // cerca in tutte le colonne
+      return Object.keys(r).some((k) => norm(r[k]).includes(q));
+    }
+
+    return true;
+  });
+}
+
 
   function renderTable() {
     if (!UI.tableBody) return;

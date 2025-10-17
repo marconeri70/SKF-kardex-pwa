@@ -1,4 +1,4 @@
-// app.js – versione completa per GitHub Pages (PWA e percorsi relativi)
+// app.js – versione completa (GitHub Pages) con TIPO esclusivo e preset allineati ai filtri
 (() => {
   'use strict';
 
@@ -86,7 +86,7 @@
   }
 
   // ---------- Normalizzazione e filtro ----------
-  const lower = x => (x ?? '').toString().toLowerCase();
+  const norm = s => (s ?? '').toString().trim().replace(/\s+/g,' ').toLowerCase();
 
   function normalizeRow(row) {
     if (Array.isArray(row)) {
@@ -98,40 +98,32 @@
     return row;
   }
 
-function filterRows() {
-  const f = getFiltersFromUI();
+  // >>> FILTRO con TIPO ESCLUSIVO e stesso comportamento dei filtri/preset
+  function filterRows() {
+    const f = getFiltersFromUI();
+    const q = norm(f.quick);
+    const campo = f.campo;
 
-  // normalizzatori robusti (spazi, maiuscole/minuscole)
-  const norm = (s) => (s ?? '').toString().trim().replace(/\s+/g,' ').toLowerCase();
+    FILTERED_ROWS = ROWS.filter((raw) => {
+      const r = normalizeRow(raw);
 
-  const q = norm(f.quick);
-  const campo = f.campo;
+      // --- ESCLUSIVI --- (AND)
+      if (f.tipologia && norm(r.TIPO || r.tipologia) !== norm(f.tipologia)) return false;
+      if (f.ripiano   && norm(String(r.RIPIANO ?? r.ripiano)) !== norm(f.ripiano))   return false;
+      if (f.posizione && norm(r.POSIZIONE || r.posizione)     !== norm(f.posizione)) return false;
 
-  FILTERED_ROWS = ROWS.filter((raw) => {
-    const r = normalizeRow(raw);
-
-    // --- FILTRI ESCLUSIVI ---
-    // Tipologia esclusiva (mostra SOLO il tipo esatto richiesto)
-    if (f.tipologia && norm(r.TIPO || r.tipologia) !== norm(f.tipologia)) return false;
-
-    // Ripiano e Posizione (AND)
-    if (f.ripiano   && norm(String(r.RIPIANO ?? r.ripiano)) !== norm(f.ripiano))   return false;
-    if (f.posizione && norm(r.POSIZIONE || r.posizione)     !== norm(f.posizione)) return false;
-
-    // --- Ricerca veloce ---
-    if (q) {
-      if (campo && !/tutti/i.test(campo)) {
-        const v = r[campo] ?? r[campo?.toUpperCase?.()] ?? '';
-        return norm(v).includes(q);
+      // --- Ricerca veloce ---
+      if (q) {
+        if (campo && !/tutti/i.test(campo)) {
+          const v = r[campo] ?? r[campo?.toUpperCase?.()] ?? '';
+          return norm(v).includes(q);
+        }
+        return Object.keys(r).some((k) => norm(r[k]).includes(q));
       }
-      // cerca in tutte le colonne
-      return Object.keys(r).some((k) => norm(r[k]).includes(q));
-    }
 
-    return true;
-  });
-}
-
+      return true;
+    });
+  }
 
   function renderTable() {
     if (!UI.tableBody) return;
@@ -191,7 +183,7 @@ function filterRows() {
 
   function exportAsJSON() {
     const payload = {
-      version: 4,
+      version: 5,
       exportedAt: new Date().toISOString(),
       activePreset: getActivePresetName(),
       filters: getFiltersFromUI(),
@@ -201,7 +193,7 @@ function filterRows() {
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `kardex_${payload.activePreset || 'no-preset'}.json`;
+    a.download = `kardex_${payload.activePreset || 'no-preset'}.json`
     a.click();
   }
 
@@ -278,208 +270,102 @@ function filterRows() {
   }
 
   // ---------- Preset ----------
-function saveCurrentAsPreset() {
-  const name = (UI.presetName?.value || '').trim();
-  if (!name) { alert('Inserisci un nome preset'); return; }
+  function saveCurrentAsPreset() {
+    const name = (UI.presetName?.value || '').trim();
+    if (!name) { alert('Inserisci un nome preset'); return; }
 
-  const f = getFiltersFromUI();
-
-  // Se sto salvando un preset per TIPO, rendo il comportamento più prevedibile:
-  // - campo su "Tutti"
-  // - quick vuota
-  // Così il preset mostrerà SOLO quel tipo (grazie al filtro esclusivo sopra).
-  const clean = { ...f };
-  if (clean.tipologia && !clean.quick) {
-    clean.campo = 'Tutti';
-    clean.quick = '';
-  }
-
-  const presets = loadPresets();
-  const payload = { name, filters: clean, savedAt: new Date().toISOString() };
-  const idx = presets.findIndex(p => (p.name || '').toLowerCase() === name.toLowerCase());
-  if (idx >= 0) presets[idx] = payload; else presets.push(payload);
-  savePresets(presets);
-  setActivePresetName(name);
-  alert('✅ Preset salvato');
-}
-
-  function openPresetManager() {
-  let modal = document.getElementById('presetModal');
-  if (act === 'apply') {
-  setActivePresetName(name);
-  const p = loadPresets().find(x => (x.name || '') === name);
-  if (p) {
-    // Applica esattamente gli stessi campi dei filtri
-    setFiltersToUI({
-      quick:     p.filters?.quick     || '',
-      campo:     p.filters?.campo     || (UI.campo?.options?.[0]?.value || 'Tutti'),
-      ripiano:   p.filters?.ripiano   || '',
-      tipologia: p.filters?.tipologia || '',
-      posizione: p.filters?.posizione || ''
-    });
-  }
-  modal.remove();
-  // render già richiamato dentro setFiltersToUI() -> window.render()
-}
-
-    modal.innerHTML = `
-      <div style="background:#fff;color:#111;max-width:520px;width:92%;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.25)">
-        <div style="padding:14px 16px;border-bottom:1px solid #eee;display:flex;align-items:center;justify-content:space-between">
-          <strong>Preset salvati</strong>
-          <button id="pmClose" style="border:0;background:transparent;font-size:18px;cursor:pointer">✖</button>
-        </div>
-        <div id="pmBody" style="padding:12px 16px;max-height:60vh;overflow:auto"></div>
-        <div style="padding:12px 16px;border-top:1px solid #eee;display:flex;gap:8px;justify-content:flex-end">
-          <button id="pmExport">Esporta preset</button>
-          <label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer">
-            <input id="pmImport" type="file" style="display:none"/>
-            <span class="btn" style="padding:.6rem .9rem;background:#eee;border-radius:8px;">Importa preset</span>
-          </label>
-        </div>
-      </div>`;
-    document.body.appendChild(modal);
-    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
-    document.getElementById('pmClose').addEventListener('click', () => modal.remove());
-
-    document.getElementById('pmExport').addEventListener('click', () => {
-      const payload = {
-        version: 1,
-        exportedAt: new Date().toISOString(),
-        activePreset: getActivePresetName(),
-        presets: loadPresets(),
-      };
-      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'kardex_presets.json';
-      a.click();
-    });
-
-    document.getElementById('pmImport').addEventListener('change', async (e) => {
-      const file = e.target.files[0]; if (!file) return;
-      try {
-        const text = await file.text();
-        const obj = JSON.parse(text);
-        if (!Array.isArray(obj?.presets)) { alert('File preset non valido'); return; }
-        savePresets(obj.presets);
-        if (obj.activePreset) setActivePresetName(obj.activePreset);
-        renderPresetList();
-        alert('✅ Preset importati');
-      } catch {
-        alert('❌ Errore import preset');
-      }
-    });
-
-    function renderPresetList() {
-      const body = document.getElementById('pmBody');
-      const list = loadPresets();
-      const active = getActivePresetName();
-      if (!list.length) { body.innerHTML = '<div style="color:#666">Nessun preset salvato.</div>'; return; }
-      body.innerHTML = list.map(p => `
-        <div style="border:1px solid #eee;border-radius:10px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-          <div>
-            <div><strong>${p.name}</strong> ${p.name === active ? '<span style="color:#0a7cff">• attivo</span>' : ''}</div>
-            <div style="font-size:.9rem;color:#666">
-              ripiano: <code>${p.filters?.ripiano || ''}</code> ·
-              tipologia: <code>${p.filters?.tipologia || ''}</code> ·
-              posizione: <code>${p.filters?.posizione || ''}</code> ·
-              campo: <code>${p.filters?.campo || ''}</code> ·
-              cerca: <code>${p.filters?.quick || ''}</code>
-            </div>
-          </div>
-          <div style="display:flex;gap:6px">
-            <button data-act="apply" data-name="${p.name}">Applica</button>
-            <button data-act="rename" data-name="${p.name}">Rinomina</button>
-            <button data-act="delete" data-name="${p.name}" style="color:#b91c1c">Elimina</button>
-          </div>
-        </div>
-      `).join('');
-
-      body.querySelectorAll('button').forEach(b => {
-        b.addEventListener('click', e => {
-          const name = e.currentTarget.getAttribute('data-name');
-          const act  = e.currentTarget.getAttribute('data-act');
-          if (act === 'apply') {
-            setActivePresetName(name);
-            const p = loadPresets().find(x => (x.name || '') === name);
-            if (p) setFiltersToUI(p.filters);
-            modal.remove();
-          }
-          if (act === 'rename') {
-            const list = loadPresets();
-            const idx = list.findIndex(x => (x.name || '') === name);
-            if (idx < 0) return;
-            const nuovo = prompt('Nuovo nome preset:', name);
-            if (!nuovo) return;
-            list[idx].name = nuovo;
-            savePresets(list);
-            if (getActivePresetName() === name) setActivePresetName(nuovo);
-            renderPresetList();
-          }
-          if (act === 'delete') {
-            if (!confirm(`Eliminare il preset "${name}"?`)) return;
-            const list = loadPresets().filter(p => (p.name || '') !== name);
-            savePresets(list);
-            if (getActivePresetName() === name) setActivePresetName('');
-            renderPresetList();
-          }
-        });
-      });
+    const f = getFiltersFromUI();
+    const clean = { ...f };
+    if (clean.tipologia && !clean.quick) {
+      clean.campo = 'Tutti';
+      clean.quick = '';
     }
 
-    renderPresetList();
+    const presets = loadPresets();
+    const payload = { name, filters: clean, savedAt: new Date().toISOString() };
+    const idx = presets.findIndex((p) => (p.name || '').toLowerCase() === name.toLowerCase());
+    if (idx >= 0) presets[idx] = payload;
+    else presets.push(payload);
+    savePresets(presets);
+    setActivePresetName(name);
+    alert('✅ Preset salvato');
+  }
+
+  function openPresetManager() {
+    let modal = document.getElementById('presetModal');
+    if (modal) modal.remove();
+    modal = document.createElement('div');
+    Object.assign(modal.style, {position:'fixed',inset:'0',background:'rgba(0,0,0,.35)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:'9999'});
+    modal.innerHTML = `<div style="background:#fff;color:#111;max-width:520px;width:92%;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.25)">
+      <div style="padding:14px 16px;border-bottom:1px solid #eee;display:flex;align-items:center;justify-content:space-between">
+        <strong>Preset salvati</strong>
+        <button id="pmClose" style="border:0;background:transparent;font-size:18px;cursor:pointer">✖</button>
+      </div>
+      <div id="pmBody" style="padding:12px 16px;max-height:60vh;overflow:auto"></div>
+    </div>`;
+    document.body.appendChild(modal);
+    document.getElementById('pmClose').addEventListener('click',()=>modal.remove());
+
+    const list=loadPresets(),active=getActivePresetName(),body=document.getElementById('pmBody');
+    if(!list.length){body.innerHTML='<div style="color:#666">Nessun preset salvato.</div>';return;}
+    body.innerHTML=list.map(p=>`
+      <div style="border:1px solid #eee;border-radius:10px;padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between">
+        <div><strong>${p.name}</strong>${p.name===active?'<span style="color:#0a7cff"> • attivo</span>':''}</div>
+        <div style="display:flex;gap:6px">
+          <button data-act="apply" data-name="${p.name}">Applica</button>
+          <button data-act="rename" data-name="${p.name}">Rinomina</button>
+          <button data-act="delete" data-name="${p.name}" style="color:#b91c1c">Elimina</button>
+        </div>
+      </div>`).join('');
+    body.querySelectorAll('button').forEach(b=>{
+      b.addEventListener('click',e=>{
+        const name=e.currentTarget.dataset.name,act=e.currentTarget.dataset.act;
+        if(act==='apply'){
+          setActivePresetName(name);
+          const p=loadPresets().find(x=>(x.name||'')===name);
+          if(p){
+            setFiltersToUI({
+              quick:p.filters?.quick||'',
+              campo:p.filters?.campo|| (UI.campo?.options?.[0]?.value||'Tutti'),
+              ripiano:p.filters?.ripiano||'',
+              tipologia:p.filters?.tipologia||'',
+              posizione:p.filters?.posizione||''
+            });
+          }
+          modal.remove();
+        }
+        if(act==='rename'){const list=loadPresets();const idx=list.findIndex(x=>(x.name||'')===name);
+          if(idx<0)return;const nuovo=prompt('Nuovo nome preset:',name);if(!nuovo)return;
+          list[idx].name=nuovo;savePresets(list);
+          if(getActivePresetName()===name)setActivePresetName(nuovo);openPresetManager();}
+        if(act==='delete'){if(!confirm(`Eliminare il preset "${name}"?`))return;
+          const list=loadPresets().filter(p=>(p.name||'')!==name);savePresets(list);
+          if(getActivePresetName()===name)setActivePresetName('');openPresetManager();}
+      });
+    });
   }
 
   // ---------- Eventi ----------
-  function wireEvents() {
-    const attach = (el, ev, fn) => el && el.addEventListener(ev, fn);
-
-    ['input', 'change'].forEach((ev) => {
-      attach(UI.q, ev, render);
-      attach(UI.campo, ev, render);
-      attach(UI.ripiano, ev, render);
-      attach(UI.tipologia, ev, render);
-      attach(UI.posizione, ev, render);
+  function wireEvents(){
+    const on=(el,ev,fn)=>el&&el.addEventListener(ev,fn);
+    ['input','change'].forEach(ev=>{
+      on(UI.q,ev,render);on(UI.campo,ev,render);on(UI.ripiano,ev,render);
+      on(UI.tipologia,ev,render);on(UI.posizione,ev,render);
     });
-
-    attach(UI.btnClear, 'click', (e) => {
-      e.preventDefault?.();
-      setFiltersToUI({ quick: '', campo: UI.campo?.options?.[0]?.value || 'Tutti', ripiano: '', tipologia: '', posizione: '' });
-    });
-
-    attach(UI.btnReset, 'click', (e) => {
-      e.preventDefault?.();
-      localStorage.clear();
-      setFiltersToUI({ quick: '', campo: UI.campo?.options?.[0]?.value || 'Tutti', ripiano: '', tipologia: '', posizione: '' });
-    });
-
-    attach(UI.btnSave, 'click', (e) => { e.preventDefault?.(); saveCurrentAsPreset(); });
-    attach(UI.exportCsv, 'click', (e) => { e.preventDefault?.(); exportAsCSV(); });
-    attach(UI.exportJson, 'click', (e) => { e.preventDefault?.(); exportAsJSON(); });
-    attach(UI.fileInput, 'change', (e) => importFileAuto(e.target.files[0], { append: false }));
-    attach(UI.btnManage, 'click', () => openPresetManager());
+    on(UI.btnClear,'click',()=>setFiltersToUI({quick:'',campo:UI.campo?.options?.[0]?.value||'Tutti',ripiano:'',tipologia:'',posizione:''}));
+    on(UI.btnReset,'click',()=>{localStorage.clear();setFiltersToUI({quick:'',campo:UI.campo?.options?.[0]?.value||'Tutti',ripiano:'',tipologia:'',posizione:''});});
+    on(UI.btnSave,'click',saveCurrentAsPreset);
+    on(UI.exportCsv,'click',exportAsCSV);
+    on(UI.exportJson,'click',exportAsJSON);
+    on(UI.fileInput,'change',e=>importFileAuto(e.target.files[0]));
+    on(UI.btnManage,'click',openPresetManager);
   }
 
-  // ---------- Bootstrap ----------
-  async function bootstrap() {
-    if (UI.tableHead) {
-      HEADERS = Array.from(UI.tableHead.querySelectorAll('th')).map(th => th.textContent.trim()).filter(Boolean);
-    }
+  async function bootstrap(){
+    if(UI.tableHead){HEADERS=Array.from(UI.tableHead.querySelectorAll('th')).map(th=>th.textContent.trim()).filter(Boolean);}
     loadState();
-
-    if (!ROWS.length) {
-      try {
-        const res = await fetch('./data/kardex.json', { cache: 'no-store' });
-        if (res.ok) {
-          const json = await res.json();
-          ROWS = Array.isArray(json) ? json : (json.rows || json.data || []);
-        }
-      } catch {}
-    }
-
-    render();
-    wireEvents();
+    if(!ROWS.length){try{const res=await fetch('./data/kardex.json',{cache:'no-store'});if(res.ok){const j=await res.json();ROWS=Array.isArray(j)?j:(j.rows||j.data||[]);}}catch{}}
+    render();wireEvents();
   }
-
-  document.addEventListener('DOMContentLoaded', bootstrap);
+  document.addEventListener('DOMContentLoaded',bootstrap);
 })();

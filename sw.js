@@ -1,5 +1,5 @@
 
-const CACHE = 'kardex-pages-v2';
+const CACHE = 'kardex-pages-v3';
 const ASSETS = [
   './',
   './index.html',

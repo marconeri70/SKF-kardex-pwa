@@ -1,4 +1,4 @@
-// app.js – completo con Tipologia esclusiva e Gestione Preset (Import/Export)
+// app.js – completo con Tipologia esclusiva, Gestione Preset (Import/Export) e salvataggio intelligente
 (() => {
   'use strict';
 
@@ -148,7 +148,7 @@
 
   function exportAsJSON() {
     const payload = {
-      version: 6,
+      version: 7,
       exportedAt: new Date().toISOString(),
       activePreset: getActivePresetName(),
       filters: getFiltersFromUI(),
@@ -214,26 +214,91 @@
   }
 
   // ---------- Preset ----------
-  // ⬇️ Versione che forzatamente legge Tipologia/Posizione e le salva
+  // Salvataggio intelligente: se metti solo Tipologia, completa ripiano/posizione e (se più combinazioni) crea più preset
   function saveCurrentAsPreset() {
-    const name = (UI.presetName?.value || '').trim();
-    if (!name) { alert('Inserisci un nome preset'); return; }
+    const f0 = getFiltersFromUI();
+    const tNorm = s => (s ?? '').toString().trim().replace(/\s+/g,' ').toLowerCase();
+    const hasTipo = !!f0.tipologia?.trim();
 
-    const f = getFiltersFromUI();
-    const presetFilters = {
-      quick:     f.quick || '',
-      campo:     f.campo || (UI.campo?.options?.[0]?.value || 'Tutti'),
-      ripiano:   f.ripiano || '',
-      tipologia: f.tipologia || (UI.tipologia?.value?.trim() || ''),
-      posizione: f.posizione || (UI.posizione?.value?.trim() || '')
+    // auto-nome se nome vuoto e c'è tipologia
+    if (UI.presetName && !UI.presetName.value.trim() && hasTipo) {
+      UI.presetName.value = `${f0.tipologia}${f0.posizione ? ' ' + f0.posizione : ''}${f0.ripiano ? ' (RIP. ' + f0.ripiano + ')' : ''}`;
+    }
+    let name = (UI.presetName?.value || '').trim();
+
+    if (!name && !hasTipo) {
+      alert('Inserisci almeno un Nome preset oppure la Tipologia.');
+      return;
+    }
+
+    // base pulita (ricerca vuota e campo su "Tutti")
+    const baseClean = {
+      quick: '',
+      campo: UI.campo?.options?.[0]?.value || 'Tutti',
+      ripiano: f0.ripiano || '',
+      tipologia: f0.tipologia || '',
+      posizione: f0.posizione || ''
     };
 
     const presets = loadPresets();
-    const payload = { name, filters: presetFilters, savedAt: new Date().toISOString() };
+
+    if (!hasTipo) {
+      // caso semplice: salvo un preset con i campi dati
+      const payload = { name: name || 'Preset', filters: baseClean, savedAt: new Date().toISOString() };
+      const idx = presets.findIndex(p => (p.name || '').toLowerCase() === (name || 'preset').toLowerCase());
+      if (idx >= 0) presets[idx] = payload; else presets.push(payload);
+      savePresets(presets); setActivePresetName(payload.name);
+      alert('✅ Preset salvato'); return;
+    }
+
+    // Cerco tutte le righe del tipo
+    const matches = ROWS.map(normalizeRow).filter(r => tNorm(r.TIPO || r.tipologia) === tNorm(f0.tipologia));
+    if (!matches.length) { alert('❌ Nessuna riga trovata con questa Tipologia.'); return; }
+
+    // Unici per (ripiano, posizione)
+    const seen = new Set(); const combos = [];
+    for (const r of matches) {
+      const rip = String(r.RIPIANO ?? r.ripiano ?? '').trim();
+      const pos = String(r.POSIZIONE ?? r.posizione ?? '').trim();
+      const key = `${rip}|${pos}`;
+      if (!seen.has(key)) { seen.add(key); combos.push({ ripiano: rip, posizione: pos }); }
+    }
+
+    const wantsAutoAll = !baseClean.ripiano && !baseClean.posizione;
+
+    if (wantsAutoAll && combos.length > 1) {
+      // più combinazioni -> creo più preset
+      let created = 0, lastName = '';
+      for (const c of combos) {
+        const autoName = `${f0.tipologia}${c.posizione ? ' ' + c.posizione : ''}${c.ripiano ? ' (RIP. ' + c.ripiano + ')' : ''}`;
+        const filters = { ...baseClean, ripiano: c.ripiano, posizione: c.posizione };
+        const payload = { name: autoName, filters, savedAt: new Date().toISOString() };
+        const idx = presets.findIndex(p => (p.name || '').toLowerCase() === autoName.toLowerCase());
+        if (idx >= 0) presets[idx] = payload; else presets.push(payload);
+        created++; lastName = autoName;
+      }
+      savePresets(presets);
+      setActivePresetName(lastName);
+      if (UI.presetName) UI.presetName.value = lastName;
+      alert(`✅ Creati ${created} preset per "${f0.tipologia}" (uno per ogni combinazione Ripiano/Posizione).`);
+      return;
+    }
+
+    // singola combinazione (o ripiano/posizione già forniti)
+    const chosen = combos[0];
+    if (!baseClean.ripiano)   baseClean.ripiano   = chosen?.ripiano || '';
+    if (!baseClean.posizione) baseClean.posizione = chosen?.posizione || '';
+
+    if (!name) {
+      name = `${f0.tipologia}${baseClean.posizione ? ' ' + baseClean.posizione : ''}${baseClean.ripiano ? ' (RIP. ' + baseClean.ripiano + ')' : ''}`;
+      if (UI.presetName) UI.presetName.value = name;
+    }
+
+    const payload = { name, filters: baseClean, savedAt: new Date().toISOString() };
     const idx = presets.findIndex(p => (p.name || '').toLowerCase() === name.toLowerCase());
     if (idx >= 0) presets[idx] = payload; else presets.push(payload);
     savePresets(presets); setActivePresetName(name);
-    alert('✅ Preset salvato con successo!');
+    alert('✅ Preset salvato');
   }
 
   // --- Gestisci Preset con Import/Export ---
@@ -358,6 +423,19 @@
     on(UI.exportJson,'click',exportAsJSON);
     on(UI.fileInput,'change',e=>importFileAuto(e.target.files[0]));
     on(UI.btnManage,'click',openPresetManager);
+
+    // Auto-compila "Nome preset" mentre digiti la Tipologia (non sovrascrive se già presente)
+    if (UI.tipologia) {
+      UI.tipologia.addEventListener('input', () => {
+        if (!UI.presetName || UI.presetName.value.trim()) return;
+        const tipo = UI.tipologia.value.trim();
+        const rip  = UI.ripiano?.value.trim() || '';
+        const pos  = UI.posizione?.value.trim() || '';
+        if (tipo) {
+          UI.presetName.value = `${tipo}${pos ? ' ' + pos : ''}${rip ? ' (RIP. ' + rip + ')' : ''}`;
+        }
+      });
+    }
   }
 
   // ---------- Bootstrap ----------

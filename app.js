@@ -1,374 +1,322 @@
-// v16 – Console essenziale: mostra contenuto e posizioni per vassoio; Preleva non cambia tab
+// v17 — Console: conteggio per lato (Sx/Ct/Dx) per ogni TIPO + preset condivisi con "Dati"
 let ROWS = [];
 const $ = (id) => document.getElementById(id);
 
-/* ====== RIFERIMENTI UI DATI ====== */
-const tbody = $('tbody');
-const q = $('q');
-const selCampo = $('campo');
-const clearBtn = $('clear');
-const exportBtn = $('export');
-const fileInput = $('file');
-const count = $('count');
-const themeBtn = $('theme');
-const resetBtn = $('reset');
+/* ======= UI: DATI ======= */
+const tbody = $('tbody'), q = $('q'), selCampo = $('campo'), clearBtn = $('clear'),
+      exportBtn = $('export'), fileInput = $('file'), count = $('count'),
+      themeBtn = $('theme'), resetBtn = $('reset');
+const fRip = $('f_rip'), fTip = $('f_tip'), fPos = $('f_pos');
+const presetNameInput = $('presetName'), savePresetBtn = $('savePreset'), presetList = $('presetList');
 
-/* Filtri avanzati */
-const fRip = $('f_rip');
-const fTip = $('f_tip');
-const fPos = $('f_pos');
-
-/* Preset */
-const presetNameInput = $('presetName');
-const savePresetBtn = $('savePreset');
-const presetList = $('presetList');
-
-/* ===== Tema ===== */
-(function initTheme(){
+/* ======= Tema ======= */
+(function(){
   const saved = localStorage.getItem('kardex-theme');
   if (saved === 'light' || saved === 'dark') document.documentElement.setAttribute('data-theme', saved);
-  themeBtn?.addEventListener('click', () => {
-    const cur = document.documentElement.getAttribute('data-theme') || 'auto';
-    const next = cur === 'dark' ? 'light' : 'dark';
-    document.documentElement.setAttribute('data-theme', next);
-    localStorage.setItem('kardex-theme', next);
-    themeBtn.textContent = (next === 'dark') ? '🌙 Tema' : '☀️ Tema';
+  themeBtn?.addEventListener('click', ()=>{
+    const cur=document.documentElement.getAttribute('data-theme')||'auto';
+    const next=cur==='dark'?'light':'dark';
+    document.documentElement.setAttribute('data-theme',next);
+    localStorage.setItem('kardex-theme',next);
+    themeBtn.textContent = (next==='dark')?'🌙 Tema':'☀️ Tema';
     saveState();
   });
-  const cur = document.documentElement.getAttribute('data-theme') || 'auto';
-  themeBtn && (themeBtn.textContent = (cur === 'dark') ? '🌙 Tema' : '☀️ Tema');
+  const cur=document.documentElement.getAttribute('data-theme')||'auto';
+  themeBtn && (themeBtn.textContent=(cur==='dark')?'🌙 Tema':'☀️ Tema');
 })();
 
-/* ===== Stato persistente ===== */
-const STATE_KEY = 'kardex-state-v16';
-function saveState() {
-  const state = {
-    q: q?.value ?? '',
-    campo: selCampo?.value ?? 'ALL',
-    fRip: fRip?.value ?? '',
-    fTip: fTip?.value ?? '',
-    fPos: fPos?.value ?? '',
-    sort: sortOrder,
-    theme: document.documentElement.getAttribute('data-theme') || 'auto'
-  };
-  try { localStorage.setItem(STATE_KEY, JSON.stringify(state)); } catch {}
+/* ======= State ======= */
+const STATE_KEY='kardex-state-v17';
+function saveState(){
+  const s={ q:q?.value??'', campo:selCampo?.value??'ALL',
+            fRip:fRip?.value??'', fTip:fTip?.value??'', fPos:fPos?.value??'',
+            sort:sortOrder, theme:document.documentElement.getAttribute('data-theme')||'auto' };
+  try{ localStorage.setItem(STATE_KEY, JSON.stringify(s)); }catch{}
 }
-function loadState() {
-  try {
-    const raw = localStorage.getItem(STATE_KEY);
-    if (!raw) return;
-    const s = JSON.parse(raw);
-    if (q) q.value = s.q ?? '';
-    if (selCampo) selCampo.value = s.campo ?? 'ALL';
-    if (fRip) fRip.value = s.fRip ?? '';
-    if (fTip) fTip.value = s.fTip ?? '';
-    if (fPos) fPos.value = s.fPos ?? '';
-    if (Array.isArray(s.sort)) {
-      sortOrder = s.sort.filter(x => x && x.key);
-      updateSortIndicators();
-    }
-    if (s.theme === 'light' || s.theme === 'dark') {
-      document.documentElement.setAttribute('data-theme', s.theme);
-      themeBtn && (themeBtn.textContent = (s.theme === 'dark') ? '🌙 Tema' : '☀️ Tema');
-    }
-  } catch {}
+function loadState(){
+  try{
+    const s=JSON.parse(localStorage.getItem(STATE_KEY)||'{}');
+    if(q) q.value=s.q||''; if(selCampo) selCampo.value=s.campo||'ALL';
+    if(fRip) fRip.value=s.fRip||''; if(fTip) fTip.value=s.fTip||''; if(fPos) fPos.value=s.fPos||'';
+    if(Array.isArray(s.sort)){ sortOrder=s.sort; updateSortIndicators(); }
+    if(s.theme==='light'||s.theme==='dark'){ document.documentElement.setAttribute('data-theme',s.theme); themeBtn&&(themeBtn.textContent=(s.theme==='dark')?'🌙 Tema':'☀️ Tema'); }
+  }catch{}
 }
 
-/* ===== Ricerca & Filtri ===== */
-const norm = (s) => String(s ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-
-async function loadData() {
-  try {
-    const resp = await fetch('./data/kardex.json', { cache: 'no-store' });
+/* ======= Dati ======= */
+async function loadData(){
+  try{
+    const resp = await fetch('./data/kardex.json', { cache:'no-store' });
     ROWS = await resp.json();
-  } catch { ROWS = []; }
+  }catch{ ROWS=[]; }
   loadState();
   render();
+  buildConsolePresetSelect();  // popula anche la console
 }
 
-/* match rapido */
-function quickMatch(r, campo, txtRaw) {
-  const txt = norm(txtRaw);
-  if (!txt) return true;
-  const onlyDigits = /^\d+$/.test(txtRaw);
-  const rip = norm(r.RIPIANO), tip = norm(r.TIPO), pos = norm(r.POSIZIONE);
-  if (campo === 'RIPIANO') {
-    if (onlyDigits) {
-      const raw = String(r.RIPIANO ?? '');
-      if (/^\d+/.test(raw)) return (raw.match(/^\d+/)?.[0] || '') === txtRaw;
-      return rip === txt;
-    }
+/* ======= Ricerca / Filtri ======= */
+const norm = s => String(s??'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+function quickMatch(r,campo,txtRaw){
+  const txt = norm(txtRaw); if(!txt) return true;
+  const onlyDigits=/^\d+$/.test(txtRaw);
+  const rip=norm(r.RIPIANO), tip=norm(r.TIPO), pos=norm(r.POSIZIONE);
+  if(campo==='RIPIANO'){
+    if(onlyDigits){ const head=String(r.RIPIANO??'').match(/^\d+/)?.[0]||''; return head===txtRaw; }
     return rip.includes(txt);
   }
-  if (campo === 'TIPO') return tip.includes(txt);
-  if (campo === 'POSIZIONE') return pos.includes(txt);
-  return rip.includes(txt) || tip.includes(txt) || pos.includes(txt);
+  if(campo==='TIPO') return tip.includes(txt);
+  if(campo==='POSIZIONE') return pos.includes(txt);
+  return rip.includes(txt)||tip.includes(txt)||pos.includes(txt);
 }
-
-/* operatori: =esatto, !escludi, prefisso*, contiene */
-function matchText(fieldValue, query) {
-  const v = norm(fieldValue);
-  let qv = String(query || '').trim();
-  if (!qv) return true;
-  if (qv.startsWith('!')) { qv = qv.slice(1).trim(); if (!qv) return true; return !v.includes(norm(qv)); }
-  if (qv.startsWith('=')) { qv = qv.slice(1).trim(); return v === norm(qv); }
-  if (qv.endsWith('*')) { qv = qv.slice(0, -1).trim(); return v.startsWith(norm(qv)); }
-  return v.includes(norm(qv));
+function matchText(v,qv){
+  const V=norm(v); let Q=String(qv||'').trim(); if(!Q) return true;
+  if(Q.startsWith('!')){ Q=Q.slice(1).trim(); return !V.includes(norm(Q)); }
+  if(Q.startsWith('=')){ Q=Q.slice(1).trim(); return V===norm(Q); }
+  if(Q.endsWith('*')){ Q=Q.slice(0,-1).trim(); return V.startsWith(norm(Q)); }
+  return V.includes(norm(Q));
 }
-
-function advancedMatch(r) {
-  const fr = fRip?.value?.trim() ?? '';
-  const ft = fTip?.value?.trim() ?? '';
-  const fp = fPos?.value?.trim() ?? '';
-  if (!fr && !ft && !fp) return true;
-  const ripRaw = String(r.RIPIANO ?? '');
-  const tipRaw = String(r.TIPO ?? '');
-  const posRaw = String(r.POSIZIONE ?? '');
-  let okRip = true;
-  if (fr) {
-    if (/^\d+$/.test(fr)) {
-      const head = ripRaw.match(/^\d+/)?.[0] || '';
-      okRip = head === fr;
-    } else { okRip = matchText(ripRaw, fr); }
+function advancedMatch(r){
+  const fr=fRip?.value?.trim()??'', ft=fTip?.value?.trim()??'', fp=fPos?.value?.trim()??'';
+  let okRip=true;
+  if(fr){
+    if(/^\d+$/.test(fr)){ const head=String(r.RIPIANO??'').match(/^\d+/)?.[0]||''; okRip=head===fr; }
+    else okRip=matchText(r.RIPIANO,fr);
   }
-  const okTip = matchText(tipRaw, ft);
-  const okPos = matchText(posRaw, fp);
-  return okRip && okTip && okPos;
+  return okRip && matchText(r.TIPO,ft) && matchText(r.POSIZIONE,fp);
 }
+function filtered(){ const campo=selCampo?.value??'ALL'; const txt=q?.value?.trim()??''; return ROWS.filter(r=>quickMatch(r,campo,txt)&&advancedMatch(r)); }
 
-function filtered() {
-  const campo = selCampo?.value ?? 'ALL';
-  const txtRaw = q?.value?.trim() ?? '';
-  return ROWS.filter(r => quickMatch(r, campo, txtRaw) && advancedMatch(r));
-}
-
-/* ===== Multi-sort ===== */
-let sortOrder = [];
-const ths = Array.from(document.querySelectorAll('th.sortable'));
-function toggleSort(key, additive) {
-  if (!additive) {
-    const current = sortOrder[0];
-    if (current && current.key === key) current.dir = current.dir === 'asc' ? 'desc' : 'asc';
-    else sortOrder = [{ key, dir: 'asc' }];
-  } else {
-    const idx = sortOrder.findIndex(s => s.key === key);
-    if (idx === -1) sortOrder.push({ key, dir: 'asc' });
-    else sortOrder[idx].dir = sortOrder[idx].dir === 'asc' ? 'desc' : 'asc';
-    sortOrder = sortOrder.slice(0, 3);
-  }
+/* ======= Multi-sort ======= */
+let sortOrder=[];
+const ths=[...document.querySelectorAll('th.sortable')];
+ths.forEach(th=>th.addEventListener('click',e=>toggleSort(th.dataset.key,e.shiftKey)));
+function toggleSort(key,add){
+  if(!add){ const cur=sortOrder[0]; sortOrder=(cur&&cur.key===key)?[{key,dir:cur.dir==='asc'?'desc':'asc'}]:[{key,'dir':'asc'}]; }
+  else{ const i=sortOrder.findIndex(s=>s.key===key); if(i===-1) sortOrder.push({key,dir:'asc'}); else sortOrder[i].dir=sortOrder[i].dir==='asc'?'desc':'asc'; sortOrder=sortOrder.slice(0,3); }
   updateSortIndicators(); render(); saveState();
 }
-ths.forEach(th => th.addEventListener('click', (ev) => toggleSort(th.dataset.key, ev.shiftKey === true)));
-function updateSortIndicators() {
-  ths.forEach(th => {
-    const s = th.querySelector('.sort');
-    if (!s) return;
-    const idx = sortOrder.findIndex(x => x.key === th.dataset.key);
-    if (idx === -1) { s.textContent = ''; return; }
-    const item = sortOrder[idx]; const rank = (idx + 1);
-    s.textContent = (item.dir === 'asc' ? '▲' : '▼') + rank;
+function updateSortIndicators(){
+  ths.forEach(th=>{ const s=th.querySelector('.sort'); if(!s) return;
+    const i=sortOrder.findIndex(x=>x.key===th.dataset.key);
+    s.textContent = i===-1 ? '' : (sortOrder[i].dir==='asc'?'▲':'▼')+(i+1);
+  });
+}
+function sortRows(rows){
+  if(!sortOrder.length) return rows;
+  return rows.slice().sort((a,b)=>{
+    for(const {key,dir} of sortOrder){
+      const mul=dir==='asc'?1:-1;
+      const av=String(a[key]??'').toLowerCase(), bv=String(b[key]??'').toLowerCase();
+      const an=av.match(/^\d+/), bn=bv.match(/^\d+/);
+      let cmp=(an&&bn)?(parseInt(an[0],10)-parseInt(bn[0],10)):av.localeCompare(bv,'it',{numeric:true,sensitivity:'base'});
+      if(cmp!==0) return mul*cmp;
+    } return 0;
   });
 }
 
-/* ===== Render tabella ===== */
-function render() {
-  let rows = filtered();
-  rows = sortRows(rows);
-  count && (count.textContent = rows.length + ' risultati');
-  if (!tbody) return;
-  tbody.innerHTML = rows.map(r =>
-    `<tr>
-      <td data-label="RIPIANO">${escapeHtml(r.RIPIANO ?? '')}</td>
-      <td data-label="TIPO">${escapeHtml(r.TIPO ?? '')}</td>
-      <td data-label="POSIZIONE"><span class="chip">${escapeHtml(r.POSIZIONE ?? '')}</span></td>
-    </tr>`
-  ).join('');
-}
+/* ======= Render tabella ======= */
 function escapeHtml(x){return String(x).replace(/[&<>"]/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[s]))}
-function sortRows(rows) {
-  if (!sortOrder.length) return rows;
-  return rows.slice().sort((a, b) => {
-    for (const { key, dir } of sortOrder) {
-      const mul = dir === 'asc' ? 1 : -1;
-      const av = String(a[key] ?? '').toLowerCase();
-      const bv = String(b[key] ?? '').toLowerCase();
-      const an = av.match(/^\d+/), bn = bv.match(/^\d+/);
-      let cmp;
-      if (an && bn) cmp = parseInt(an[0],10) - parseInt(bn[0],10);
-      else cmp = av.localeCompare(bv, 'it', { numeric:true, sensitivity:'base' });
-      if (cmp !== 0) return mul * cmp;
-    }
-    return 0;
-  });
+function render(){
+  let rows=sortRows(filtered());
+  count && (count.textContent=rows.length+' risultati');
+  if(!tbody) return;
+  tbody.innerHTML = rows.map(r=>`
+    <tr>
+      <td data-label="RIPIANO">${escapeHtml(r.RIPIANO??'')}</td>
+      <td data-label="TIPO">${escapeHtml(r.TIPO??'')}</td>
+      <td data-label="POSIZIONE"><span class="chip">${escapeHtml(r.POSIZIONE??'')}</span></td>
+    </tr>`).join('');
 }
 
-/* ===== Export / Clear / Reset ===== */
-exportBtn?.addEventListener('click', () => {
-  const csv = toCSV(sortRows(filtered()));
-  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = 'kardex_export.csv'; a.click(); URL.revokeObjectURL(url);
-});
-function toCSV(rows) {
-  const headers = ['RIPIANO','TIPO','POSIZIONE'];
-  const lines = [headers.join(',')];
-  for (const r of rows) {
-    const vals = headers.map(h => String(r[h] ?? '').replaceAll('"','""'));
-    lines.push(vals.map(v => /[,\"\n]/.test(v) ? `"${v}"` : v).join(','));
+/* ======= Export / Import ======= */
+exportBtn?.addEventListener('click',()=>{
+  const headers=['RIPIANO','TIPO','POSIZIONE'], lines=[headers.join(',')];
+  for(const r of sortRows(filtered())){
+    const vals=headers.map(h=>String(r[h]??'').replaceAll('"','""'));
+    lines.push(vals.map(v=> /[,\"\n]/.test(v) ? `"${v}"` : v).join(','));
   }
-  return lines.join('\n');
-}
-clearBtn?.addEventListener('click', () => {
-  if (q) q.value=''; if (selCampo) selCampo.value='ALL';
-  if (fRip) fRip.value=''; if (fTip) fTip.value=''; if (fPos) fPos.value='';
-  render(); saveState();
+  const blob=new Blob([lines.join('\n')],{type:'text/csv;charset=utf-8;'}), url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download='kardex_export.csv'; a.click(); URL.revokeObjectURL(url);
 });
-resetBtn?.addEventListener('click', () => {
-  localStorage.removeItem(STATE_KEY);
-  if (q) q.value=''; if (selCampo) selCampo.value='ALL';
-  if (fRip) fRip.value=''; if (fTip) fTip.value=''; if (fPos) fPos.value='';
-  sortOrder = []; updateSortIndicators(); render(); saveState();
-});
-[q, selCampo, fRip, fTip, fPos].forEach(el => { el && el.addEventListener('input', () => { render(); saveState(); }); });
-selCampo?.addEventListener('change', () => { render(); saveState(); });
-document.addEventListener('change', (e) => { if (e.target && e.target.id === 'campo') { render(); saveState(); }});
-
-/* ===== Import ===== */
-fileInput?.addEventListener('change', async (ev) => {
-  const f = ev.target.files?.[0]; if (!f) return;
-  const ext = (f.name.split('.').pop()||'').toLowerCase();
-  if (ext === 'csv') {
-    const text = await f.text();
-    const lines = text.split(/\r?\n/).filter(x=>x.length);
-    const [head, ...rest] = lines;
-    const headers = head.split(',').map(h => h.trim().toUpperCase());
-    const idxR = headers.findIndex(h => h.includes('RIPIANO'));
-    const idxT = headers.findIndex(h => h.includes('TIPO'));
-    const idxP = headers.findIndex(h => h.includes('POSIZIONE'));
-    const parseLine = (line) => {
-      const parts = (line.match(/("[^"]*"|[^,]+)/g) || []).map(s=>s.replace(/^"|"$/g,''));
-      return { RIPIANO: parts[idxR]||'', TIPO: parts[idxT]||'', POSIZIONE: parts[idxP]||'' };
-    };
-    ROWS = rest.map(parseLine).filter(r=>r.RIPIANO||r.TIPO||r.POSIZIONE);
-  } else {
-    const buf = await f.arrayBuffer();
-    const wb = XLSX.read(buf, { type:'array' });
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    const arr = XLSX.utils.sheet_to_json(ws, { defval:'' });
-    const mapRow = (r) => {
-      const keys = Object.keys(r);
-      const get = (pred) => { const k = keys.find(k => pred(k.toUpperCase())); return k ? r[k] : ''; };
-      return { RIPIANO: get(k=>k.includes('RIPIANO')), TIPO: get(k=>k.includes('TIPO')), POSIZIONE: get(k=>k.includes('POSIZIONE')) };
-    };
-    ROWS = arr.map(mapRow).filter(r=>r.RIPIANO||r.TIPO||r.POSIZIONE);
+fileInput?.addEventListener('change', async (ev)=>{
+  const f=ev.target.files?.[0]; if(!f) return;
+  const ext=(f.name.split('.').pop()||'').toLowerCase();
+  if(ext==='csv'){
+    const text=await f.text(); const [head,...rows]=text.split(/\r?\n/).filter(Boolean);
+    const headers=head.split(',').map(h=>h.trim().toUpperCase());
+    const iR=headers.findIndex(h=>h.includes('RIPIANO')), iT=headers.findIndex(h=>h.includes('TIPO')), iP=headers.findIndex(h=>h.includes('POSIZIONE'));
+    ROWS = rows.map(line=>{
+      const parts=(line.match(/("[^"]*"|[^,]+)/g)||[]).map(s=>s.replace(/^"|"$/g,''));
+      return {RIPIANO:parts[iR]||'', TIPO:parts[iT]||'', POSIZIONE:parts[iP]||''};
+    });
+  }else{
+    const buf=await f.arrayBuffer(), wb=XLSX.read(buf,{type:'array'}), ws=wb.Sheets[wb.SheetNames[0]];
+    const arr=XLSX.utils.sheet_to_json(ws,{defval:''});
+    ROWS = arr.map(r=>{
+      const keys=Object.keys(r), get=(pred)=>{const k=keys.find(k=>pred(k.toUpperCase())); return k?r[k]:'';};
+      return {RIPIANO:get(k=>k.includes('RIPIANO')), TIPO:get(k=>k.includes('TIPO')), POSIZIONE:get(k=>k.includes('POSIZIONE'))};
+    });
   }
-  fileInput.value = '';
-  render(); saveState();
+  ev.target.value=''; render();
 });
 
-/* ===== Preset ===== */
-const PRESETS_KEY = 'kardex-presets-v16';
-function enforceExactType(s){ if(!s) return s; const t=String(s).trim(); if(/^=|^!|.*\*$/.test(t)) return t; return '=' + t; }
-function getCurrentConfig(){ return { q:q?.value??'', campo:selCampo?.value??'ALL', fRip:fRip?.value??'', fTip:fTip?.value??'', fPos:fPos?.value??'', sort:sortOrder }; }
-function applyConfig(cfg){
-  if(!cfg) return;
-  if(q) q.value = cfg.q ?? ''; if(selCampo) selCampo.value = cfg.campo ?? 'ALL';
-  if(fRip) fRip.value = cfg.fRip ?? ''; if(fTip) fTip.value = cfg.fTip ?? ''; if(fPos) fPos.value = cfg.fPos ?? '';
-  if(Array.isArray(cfg.sort)){ sortOrder = cfg.sort; updateSortIndicators(); }
-  render(); saveState();
-}
+/* ======= Preset condivisi ======= */
+const PRESETS_KEY='kardex-presets-v16'; // usiamo lo stesso storage della v16
 function loadPresets(){ try{return JSON.parse(localStorage.getItem(PRESETS_KEY))||[]}catch{return[]} }
 function savePresets(list){ localStorage.setItem(PRESETS_KEY, JSON.stringify(list)); }
+function enforceExactType(s){ if(!s) return s; const t=String(s).trim(); if(/^=|^!|.*\*$/.test(t)) return t; return '=' + t; }
+function getCurrentConfig(){ return { q:q?.value??'', campo:selCampo?.value??'ALL', fRip:fRip?.value??'', fTip:fTip?.value??'', fPos:fPos?.value??'', sort:sortOrder }; }
+function applyConfig(cfg){ if(!cfg) return; q.value=cfg.q||''; selCampo.value=cfg.campo||'ALL'; fRip.value=cfg.fRip||''; fTip.value=cfg.fTip||''; fPos.value=cfg.fPos||''; sortOrder=cfg.sort||[]; updateSortIndicators(); render(); saveState(); }
 function renderPresets(){
-  if(!presetList) return;
-  const presets = loadPresets(); presetList.innerHTML='';
-  presets.forEach((p,idx)=>{
-    const btn=document.createElement('button'); btn.textContent=p.name; btn.className='secondary'; btn.addEventListener('click',()=>applyConfig(p.cfg));
-    const del=document.createElement('button'); del.textContent='❌'; del.className='secondary'; del.style.padding='0 6px';
-    del.addEventListener('click',()=>{ const n=presets.filter((_,i)=>i!==idx); savePresets(n); renderPresets(); });
-    const wrap=document.createElement('div'); wrap.style.display='flex'; wrap.style.alignItems='center'; wrap.style.gap='4px'; wrap.appendChild(btn); wrap.appendChild(del);
-    presetList.appendChild(wrap);
+  const list=loadPresets(); presetList.innerHTML='';
+  list.forEach((p,i)=>{
+    const b=document.createElement('button'); b.textContent=p.name; b.className='secondary'; b.onclick=()=>applyConfig(p.cfg);
+    const d=document.createElement('button'); d.textContent='❌'; d.className='secondary'; d.style.padding='0 6px'; d.onclick=()=>{ savePresets(list.filter((_,k)=>k!==i)); renderPresets(); };
+    const w=document.createElement('span'); w.style.display='inline-flex'; w.style.gap='4px'; w.append(b,d); presetList.append(w);
   });
 }
 savePresetBtn?.addEventListener('click',()=>{
-  const name=presetNameInput?.value?.trim(); if(!name){alert('Inserisci un nome per il preset');return;}
+  const name=(presetNameInput?.value||'').trim(); if(!name) return alert('Nome preset?');
   const cfg=getCurrentConfig(); cfg.q=''; cfg.campo='ALL'; cfg.fTip=enforceExactType(cfg.fTip);
-  const presets=loadPresets(); presets.push({name,cfg}); savePresets(presets); if(presetNameInput) presetNameInput.value=''; renderPresets();
+  const list=loadPresets(); list.push({name,cfg}); savePresets(list); presetNameInput.value=''; renderPresets(); buildConsolePresetSelect();
 });
 renderPresets();
 
-/* ===== Avvio dati ===== */
-loadData();
+/* ======= TABS ======= */
+const dataCard=$('dataView'), consoleView=$('consoleView'), tabData=$('tabData'), tabConsole=$('tabConsole');
+function showData(){ dataCard.classList.remove('hidden'); consoleView.classList.add('hidden'); localStorage.setItem('kardex-tab','data'); }
+function showConsole(){ dataCard.classList.add('hidden'); consoleView.classList.remove('hidden'); localStorage.setItem('kardex-tab','console'); }
+tabData?.addEventListener('click',showData); tabConsole?.addEventListener('click',showConsole);
+(function(){ (localStorage.getItem('kardex-tab')==='console')?showConsole():showData(); })();
 
-/* ===== TAB ===== */
-const dataCard = document.getElementById('dataView');
-const consoleView = document.getElementById('consoleView');
-const tabData = document.getElementById('tabData');
-const tabConsole = document.getElementById('tabConsole');
-function showData(){ dataCard?.classList.remove('hidden'); consoleView?.classList.add('hidden'); localStorage.setItem('kardex-tab','data'); }
-function showConsole(){ dataCard?.classList.add('hidden'); consoleView?.classList.remove('hidden'); localStorage.setItem('kardex-tab','console'); }
-tabData?.addEventListener('click', showData);
-tabConsole?.addEventListener('click', showConsole);
-(function restoreTab(){ (localStorage.getItem('kardex-tab') === 'console') ? showConsole() : showData(); })();
-
-/* ===== Console nuova ===== */
-const CCACHE = 'kardex-console-v16';
+/* ======= CONSOLE ======= */
 const c = {
   target: $('c_vassoio_target'),
-  title: $('c_title'),
-  list: $('c_cont_list'),
-  hint: $('c_rows_hint'),
-  posSx: $('pos_sx'),
-  posCt: $('pos_ct'),
-  posDx: $('pos_dx'),
-  home: $('c_home'),
-  svuota: $('c_svuota'),
   preleva: $('c_preleva'),
+  svuota:  $('c_svuota'),
+  home:    $('c_home'),
+  list:    $('c_cont_list'),
+  title:   $('c_title'),
+  hint:    $('c_rows_hint'),
+  posSx:   $('pos_sx'),
+  posCt:   $('pos_ct'),
+  posDx:   $('pos_dx'),
+  pSel:    $('c_preset_select'),
+  pApply:  $('c_preset_apply'),
+  pClear:  $('c_preset_clear'),
+  pDesc:   $('c_preset_desc'),
 };
 
-function headNumber(str){ const m=String(str||'').match(/^\d+/); return m?m[0]:''; }
+function headNumber(s){ return String(s||'').match(/^\d+/)?.[0] || ''; }
 function deriveSide(posText){
-  const t = norm(posText);
-  if (t.includes('sinist') || t.includes('sx')) return 'Sinistra';
-  if (t.includes('destr') || t.includes('dx')) return 'Destra';
-  if (t.includes('centr') || t.includes('centro')) return 'Centrale';
+  const t=norm(posText);
+  if (t.includes('sinist') || t.includes(' sx')) return 'Sx';
+  if (t.includes('destr')  || t.includes(' dx')) return 'Dx';
+  if (t.includes('centr')  || t.includes(' centro')) return 'Ct';
   return null;
 }
-function analyzeTray(trayNum){
-  if(!trayNum){ setContentTitle('Contenuto vassoio —'); c.list.innerHTML=''; c.hint.textContent='0 righe'; setSides('-','-','-'); return; }
-  const rows = ROWS.filter(r => headNumber(r.RIPIANO) === String(trayNum));
-  setContentTitle(`Contenuto vassoio ${trayNum}`);
-  c.hint.textContent = `${rows.length} righe`;
-  // Conteggio per TIPO
-  const byTipo = new Map();
-  for (const r of rows){ const t = String(r.TIPO||'').trim() || '(Senza tipo)'; byTipo.set(t,(byTipo.get(t)||0)+1); }
-  const content = Array.from(byTipo.entries()).map(([label,count])=>({label,count})).sort((a,b)=>b.count-a.count);
-  c.list.innerHTML = content.map(it => `<li>${escapeHtml(it.label)} <span class="muted">(${it.count})</span></li>`).join('');
-  localStorage.setItem(CCACHE, JSON.stringify({ tray: trayNum, content }));
-  // Posizioni
-  let sx=0, ct=0, dx=0;
-  for (const r of rows){
-    const s = deriveSide(r.POSIZIONE);
-    if (s==='Sinistra') sx++;
-    else if (s==='Destra') dx++;
-    else if (s==='Centrale') ct++;
+
+/* Preset attivo in Console (solo filtri, NON ordini) */
+let consolePreset = null; // {name,cfg}
+function buildConsolePresetSelect(){
+  if(!c.pSel) return;
+  const presets = loadPresets();
+  c.pSel.innerHTML = `<option value="">— Seleziona preset —</option>` +
+    presets.map((p,i)=>`<option value="${i}">${escapeHtml(p.name)}</option>`).join('');
+  // ripristina descrizione
+  if (consolePreset) {
+    c.pSel.value = presets.findIndex(p=>p.name===consolePreset.name);
+    updateConsolePresetDesc();
   }
+}
+function updateConsolePresetDesc(){
+  if(!c.pDesc){return;}
+  if(!consolePreset){ c.pDesc.textContent='Nessun preset attivo'; return; }
+  const cfg = consolePreset.cfg || {};
+  const parts = [];
+  if (cfg.fRip) parts.push(`Ripiano: ${cfg.fRip}`);
+  if (cfg.fTip) parts.push(`Tipo: ${cfg.fTip}`);
+  if (cfg.fPos) parts.push(`Posizione: ${cfg.fPos}`);
+  c.pDesc.textContent = parts.length ? parts.join(' • ') : 'Preset senza filtri';
+}
+c.pApply?.addEventListener('click',()=>{
+  const presets=loadPresets();
+  const idx = parseInt(c.pSel.value,10);
+  if(isNaN(idx)){ consolePreset=null; updateConsolePresetDesc(); analyzeTray(+c.target.value||0); return; }
+  consolePreset = presets[idx] || null;
+  updateConsolePresetDesc();
+  analyzeTray(+c.target.value||0);
+});
+c.pClear?.addEventListener('click',()=>{
+  consolePreset=null; c.pSel.value=''; updateConsolePresetDesc(); analyzeTray(+c.target.value||0);
+});
+
+/* Applica eventuale preset-console a una riga */
+function matchConsolePreset(r){
+  if(!consolePreset) return true;
+  const cfg = consolePreset.cfg || {};
+  // ripiano: se numero, match sull'HEAD numerico; altrimenti operatore come in Dati
+  let okRip=true;
+  if (cfg.fRip) {
+    const fr = cfg.fRip.trim();
+    if (/^\d+$/.test(fr)) okRip = headNumber(r.RIPIANO) === fr;
+    else okRip = matchText(String(r.RIPIANO||''), fr);
+  }
+  const okTip = cfg.fTip ? matchText(String(r.TIPO||''), cfg.fTip) : true;
+  const okPos = cfg.fPos ? matchText(String(r.POSIZIONE||''), cfg.fPos) : true;
+  return okRip && okTip && okPos;
+}
+
+/* Analisi vassoio: TIPO -> {tot,sx,ct,dx} */
+function analyzeTray(tray){
+  const T = String(tray||'');
+  c.title.textContent = T ? `Contenuto vassoio ${T}` : 'Contenuto vassoio —';
+  if(!T){ c.list.innerHTML=''; c.hint.textContent='0 righe'; setSides('—','—','—'); return; }
+
+  const rows = ROWS.filter(r => headNumber(r.RIPIANO) === T).filter(matchConsolePreset);
+  c.hint.textContent = `${rows.length} righe`;
+
+  const byType = new Map();
+  let sx=0, ct=0, dx=0;
+
+  for(const r of rows){
+    const t = (String(r.TIPO||'').trim() || '(Senza tipo)');
+    const side = deriveSide(r.POSIZIONE);
+    const obj = byType.get(t) || {tot:0,sx:0,ct:0,dx:0};
+    obj.tot++;
+    if(side==='Sx'){ obj.sx++; sx++; }
+    else if(side==='Ct'){ obj.ct++; ct++; }
+    else if(side==='Dx'){ obj.dx++; dx++; }
+    byType.set(t,obj);
+  }
+
+  const items = [...byType.entries()]
+    .sort((a,b)=> b[1].tot - a[1].tot)
+    .map(([label,o]) =>
+      `<li class="item">
+         <span>${escapeHtml(label)}</span>
+         <span class="badges">
+           <span class="badge">Sx ${o.sx}</span>
+           <span class="badge">Ct ${o.ct}</span>
+           <span class="badge">Dx ${o.dx}</span>
+           <span class="badge">Tot ${o.tot}</span>
+         </span>
+       </li>`
+    );
+
+  c.list.innerHTML = items.length ? items.join('') : `<li class="item"><span class="muted">Nessun dato</span></li>`;
   setSides(sx||'—', ct||'—', dx||'—');
 }
-function setContentTitle(t){ c.title.textContent=t; }
-function setSides(sx, ct, dx){ c.posSx.textContent=String(sx); c.posCt.textContent=String(ct); c.posDx.textContent=String(dx); }
+function setSides(sx,ct,dx){ c.posSx.textContent=String(sx); c.posCt.textContent=String(ct); c.posDx.textContent=String(dx); }
 
-/* pulsanti */
-c.preleva?.addEventListener('click', ()=>{ const t = +c.target.value || 0; analyzeTray(t); /* resta in console */ });
-c.target?.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ c.preleva.click(); } });
+c.preleva?.addEventListener('click', ()=> analyzeTray(+c.target.value || 0));
 c.svuota?.addEventListener('click', ()=>{ c.target.value=0; analyzeTray(0); });
-c.home?.addEventListener('click', ()=>{ showData(); });
+c.home?.addEventListener('click', ()=> showData());
+c.target?.addEventListener('keydown', e=>{ if(e.key==='Enter') c.preleva.click(); });
 
-/* ripristino ultimo contenuto */
-(function restoreConsole(){
-  try{
-    const s = JSON.parse(localStorage.getItem(CCACHE)||'{}');
-    if (s.tray) { c.target.value = s.tray; analyzeTray(s.tray); }
-  }catch{}
-})();
+/* ===== Start ===== */
+[q, selCampo, fRip, fTip, fPos].forEach(el=> el&&el.addEventListener('input',()=>{render();saveState();}));
+clearBtn?.addEventListener('click',()=>{ if(q) q.value=''; if(selCampo) selCampo.value='ALL'; if(fRip) fRip.value=''; if(fTip) fTip.value=''; if(fPos) fPos.value=''; render(); saveState(); });
+resetBtn?.addEventListener('click',()=>{ localStorage.removeItem(STATE_KEY); sortOrder=[]; updateSortIndicators(); if(q) q.value=''; if(selCampo) selCampo.value='ALL'; if(fRip) fRip.value=''; if(fTip) fTip.value=''; if(fPos) fPos.value=''; render(); saveState(); });
+
+loadData();

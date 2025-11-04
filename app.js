@@ -1,4 +1,4 @@
-// v18 — Console: accanto al TIPO mostro la posizione nel vassoio come (1/2/3) = (Sx/Ct/Dx)
+// v19 — Console: schede grandi per lato con elenco tipi; export/import preset JSON
 let ROWS = [];
 const $ = (id) => document.getElementById(id);
 
@@ -8,6 +8,7 @@ const tbody = $('tbody'), q = $('q'), selCampo = $('campo'), clearBtn = $('clear
       themeBtn = $('theme'), resetBtn = $('reset');
 const fRip = $('f_rip'), fTip = $('f_tip'), fPos = $('f_pos');
 const presetNameInput = $('presetName'), savePresetBtn = $('savePreset'), presetList = $('presetList');
+const exportPresetsBtn = $('exportPresets'), importPresetsBtn = $('importPresetsBtn'), importPresetsInput = $('importPresets');
 
 /* ======= Tema ======= */
 (function(){
@@ -26,7 +27,7 @@ const presetNameInput = $('presetName'), savePresetBtn = $('savePreset'), preset
 })();
 
 /* ======= State ======= */
-const STATE_KEY='kardex-state-v18';
+const STATE_KEY='kardex-state-v19';
 function saveState(){
   const s={ q:q?.value??'', campo:selCampo?.value??'ALL',
             fRip:fRip?.value??'', fTip:fTip?.value??'', fPos:fPos?.value??'',
@@ -132,12 +133,36 @@ function render(){
 exportBtn?.addEventListener('click',()=>{
   const headers=['RIPIANO','TIPO','POSIZIONE'], lines=[headers.join(',')];
   for(const r of sortRows(filtered())){
-    const vals=headers.map(h=>String(r[h]??'').replaceAll('"','"'));
+    const vals=headers.map(h=>String(r[h]??'').replaceAll('"','""'));
     lines.push(vals.map(v=> /[,\"\n]/.test(v) ? `"${v}"` : v).join(','));
   }
   const blob=new Blob([lines.join('\n')],{type:'text/csv;charset=utf-8;'}), url=URL.createObjectURL(blob);
   const a=document.createElement('a'); a.href=url; a.download='kardex_export.csv'; a.click(); URL.revokeObjectURL(url);
 });
+
+/* Preset JSON */
+const PRESETS_KEY='kardex-presets-v16'; // manteniamo compatibilità
+function loadPresets(){ try{return JSON.parse(localStorage.getItem(PRESETS_KEY))||[]}catch{return[]} }
+function savePresets(list){ localStorage.setItem(PRESETS_KEY, JSON.stringify(list)); }
+
+exportPresetsBtn?.addEventListener('click',()=>{
+  const data = JSON.stringify(loadPresets(), null, 2);
+  const blob = new Blob([data], {type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='kardex_presets.json'; a.click();
+});
+
+importPresetsBtn?.addEventListener('click',()=>importPresetsInput.click());
+importPresetsInput?.addEventListener('change', async (e)=>{
+  const f=e.target.files?.[0]; if(!f) return;
+  try{
+    const txt=await f.text(); const list=JSON.parse(txt);
+    if(Array.isArray(list)){ savePresets(list); renderPresets(); buildConsolePresetSelect(); alert('Preset importati.'); }
+    else alert('File preset non valido.');
+  }catch{ alert('Errore durante l\'import dei preset.'); }
+  e.target.value='';
+});
+
+/* Import sheet */
 fileInput?.addEventListener('change', async (ev)=>{
   const f=ev.target.files?.[0]; if(!f) return;
   const ext=(f.name.split('.').pop()||'').toLowerCase();
@@ -160,10 +185,7 @@ fileInput?.addEventListener('change', async (ev)=>{
   ev.target.value=''; render();
 });
 
-/* ======= Preset condivisi ======= */
-const PRESETS_KEY='kardex-presets-v16';
-function loadPresets(){ try{return JSON.parse(localStorage.getItem(PRESETS_KEY))||[]}catch{return[]} }
-function savePresets(list){ localStorage.setItem(PRESETS_KEY, JSON.stringify(list)); }
+/* ======= Preset UI in Dati ======= */
 function enforceExactType(s){ if(!s) return s; const t=String(s).trim(); if(/^=|^!|.*\*$/.test(t)) return t; return '=' + t; }
 function getCurrentConfig(){ return { q:q?.value??'', campo:selCampo?.value??'ALL', fRip:fRip?.value??'', fTip:fTip?.value??'', fPos:fPos?.value??'', sort:sortOrder }; }
 function applyConfig(cfg){ if(!cfg) return; q.value=cfg.q||''; selCampo.value=cfg.campo||'ALL'; fRip.value=cfg.fRip||''; fTip.value=cfg.fTip||''; fPos.value=cfg.fPos||''; sortOrder=cfg.sort||[]; updateSortIndicators(); render(); saveState(); }
@@ -201,6 +223,9 @@ const c = {
   posSx:   $('pos_sx'),
   posCt:   $('pos_ct'),
   posDx:   $('pos_dx'),
+  posSxList: $('pos_sx_list'),
+  posCtList: $('pos_ct_list'),
+  posDxList: $('pos_dx_list'),
   pSel:    $('c_preset_select'),
   pApply:  $('c_preset_apply'),
   pClear:  $('c_preset_clear'),
@@ -263,16 +288,20 @@ function matchConsolePreset(r){
   return okRip && okTip && okPos;
 }
 
-/* Analisi vassoio con posizioni (1/2/3) accanto al tipo */
+/* Analisi vassoio + riempimento carte laterali */
 function analyzeTray(tray){
   const T = String(tray||'');
   c.title.textContent = T ? `Contenuto vassoio ${T}` : 'Contenuto vassoio —';
-  if(!T){ c.list.innerHTML=''; c.hint.textContent='0 righe'; setSides('—','—','—'); return; }
+  if(!T){
+    c.list.innerHTML=''; c.hint.textContent='0 righe';
+    setSides('—','—','—'); fillSideLists([],[],[]); return;
+  }
 
   const rows = ROWS.filter(r => headNumber(r.RIPIANO) === T).filter(matchConsolePreset);
   c.hint.textContent = `${rows.length} righe`;
 
   const byType = new Map(); // TIPO -> {sx,ct,dx,tot}
+  const sxList=[], ctList=[], dxList=[];
   let sx=0, ct=0, dx=0;
 
   for(const r of rows){
@@ -280,30 +309,50 @@ function analyzeTray(tray){
     const side = deriveSide(r.POSIZIONE);
     const o = byType.get(t) || {sx:0,ct:0,dx:0,tot:0};
     o.tot++;
-    if(side==='Sx'){ o.sx++; sx++; }
-    else if(side==='Ct'){ o.ct++; ct++; }
-    else if(side==='Dx'){ o.dx++; dx++; }
+    if(side==='Sx'){ o.sx++; sx++; sxList.push(t); }
+    else if(side==='Ct'){ o.ct++; ct++; ctList.push(t); }
+    else if(side==='Dx'){ o.dx++; dx++; dxList.push(t); }
     byType.set(t,o);
   }
 
+  // Lista principale con posizioni numeriche tra parentesi
   const items = [...byType.entries()]
     .sort((a,b)=> b[1].tot - a[1].tot)
     .map(([label,o])=>{
-      const nums=[];
-      if(o.sx) nums.push(sideIndex.Sx); // 1
-      if(o.ct) nums.push(sideIndex.Ct); // 2
-      if(o.dx) nums.push(sideIndex.Dx); // 3
+      const nums=[]; if(o.sx) nums.push(1); if(o.ct) nums.push(2); if(o.dx) nums.push(3);
       const posTag = nums.length ? ` <span class="muted">(${nums.join(', ')})</span>` : '';
       return `<li class="item">
         <span>${escapeHtml(label)}${posTag}</span>
         <span class="badges"><span class="badge">Tot ${o.tot}</span></span>
       </li>`;
     });
-
   c.list.innerHTML = items.length ? items.join('') : `<li class="item"><span class="muted">Nessun dato</span></li>`;
+
+  // Schede grandi per lato (elenco tipi × count)
+  const toCountList = (arr) => {
+    const m=new Map(); arr.forEach(t=>m.set(t,(m.get(t)||0)+1));
+    return [...m.entries()].sort((a,b)=>b[1]-a[1]).map(([t,n])=>`<li><span>${escapeHtml(t)}</span><span class="badge">×${n}</span></li>`).join('') || `<li class="muted" style="border:none">—</li>`;
+  };
+  fillSideLists(
+    toCountList(sxList),
+    toCountList(ctList),
+    toCountList(dxList)
+  );
+
   setSides(sx||'—', ct||'—', dx||'—');
 }
 function setSides(sx,ct,dx){ c.posSx.textContent=String(sx); c.posCt.textContent=String(ct); c.posDx.textContent=String(dx); }
+function fillSideLists(htmlSx,htmlCt,htmlDx){
+  if (Array.isArray(htmlSx)) { // compat
+    $('pos_sx_list').innerHTML=htmlSx.join('');
+    $('pos_ct_list').innerHTML=htmlCt.join('');
+    $('pos_dx_list').innerHTML=htmlDx.join('');
+  } else {
+    $('pos_sx_list').innerHTML=htmlSx;
+    $('pos_ct_list').innerHTML=htmlCt;
+    $('pos_dx_list').innerHTML=htmlDx;
+  }
+}
 
 c.preleva?.addEventListener('click', ()=> analyzeTray(+c.target.value || 0));
 c.svuota?.addEventListener('click', ()=>{ c.target.value=0; analyzeTray(0); });

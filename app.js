@@ -1,4 +1,4 @@
-// v17 — Console: conteggio per lato (Sx/Ct/Dx) per ogni TIPO + preset condivisi con "Dati"
+// v18 — Console: accanto al TIPO mostro la posizione nel vassoio come (1/2/3) = (Sx/Ct/Dx)
 let ROWS = [];
 const $ = (id) => document.getElementById(id);
 
@@ -26,7 +26,7 @@ const presetNameInput = $('presetName'), savePresetBtn = $('savePreset'), preset
 })();
 
 /* ======= State ======= */
-const STATE_KEY='kardex-state-v17';
+const STATE_KEY='kardex-state-v18';
 function saveState(){
   const s={ q:q?.value??'', campo:selCampo?.value??'ALL',
             fRip:fRip?.value??'', fTip:fTip?.value??'', fPos:fPos?.value??'',
@@ -51,7 +51,7 @@ async function loadData(){
   }catch{ ROWS=[]; }
   loadState();
   render();
-  buildConsolePresetSelect();  // popula anche la console
+  buildConsolePresetSelect();
 }
 
 /* ======= Ricerca / Filtri ======= */
@@ -132,7 +132,7 @@ function render(){
 exportBtn?.addEventListener('click',()=>{
   const headers=['RIPIANO','TIPO','POSIZIONE'], lines=[headers.join(',')];
   for(const r of sortRows(filtered())){
-    const vals=headers.map(h=>String(r[h]??'').replaceAll('"','""'));
+    const vals=headers.map(h=>String(r[h]??'').replaceAll('"','"'));
     lines.push(vals.map(v=> /[,\"\n]/.test(v) ? `"${v}"` : v).join(','));
   }
   const blob=new Blob([lines.join('\n')],{type:'text/csv;charset=utf-8;'}), url=URL.createObjectURL(blob);
@@ -161,17 +161,17 @@ fileInput?.addEventListener('change', async (ev)=>{
 });
 
 /* ======= Preset condivisi ======= */
-const PRESETS_KEY='kardex-presets-v16'; // usiamo lo stesso storage della v16
+const PRESETS_KEY='kardex-presets-v16';
 function loadPresets(){ try{return JSON.parse(localStorage.getItem(PRESETS_KEY))||[]}catch{return[]} }
 function savePresets(list){ localStorage.setItem(PRESETS_KEY, JSON.stringify(list)); }
 function enforceExactType(s){ if(!s) return s; const t=String(s).trim(); if(/^=|^!|.*\*$/.test(t)) return t; return '=' + t; }
 function getCurrentConfig(){ return { q:q?.value??'', campo:selCampo?.value??'ALL', fRip:fRip?.value??'', fTip:fTip?.value??'', fPos:fPos?.value??'', sort:sortOrder }; }
 function applyConfig(cfg){ if(!cfg) return; q.value=cfg.q||''; selCampo.value=cfg.campo||'ALL'; fRip.value=cfg.fRip||''; fTip.value=cfg.fTip||''; fPos.value=cfg.fPos||''; sortOrder=cfg.sort||[]; updateSortIndicators(); render(); saveState(); }
 function renderPresets(){
-  const list=loadPresets(); presetList.innerHTML='';
+  const list=loadPresets(); if(!presetList) return; presetList.innerHTML='';
   list.forEach((p,i)=>{
     const b=document.createElement('button'); b.textContent=p.name; b.className='secondary'; b.onclick=()=>applyConfig(p.cfg);
-    const d=document.createElement('button'); d.textContent='❌'; d.className='secondary'; d.style.padding='0 6px'; d.onclick=()=>{ savePresets(list.filter((_,k)=>k!==i)); renderPresets(); };
+    const d=document.createElement('button'); d.textContent='❌'; d.className='secondary'; d.style.padding='0 6px'; d.onclick=()=>{ savePresets(list.filter((_,k)=>k!==i)); renderPresets(); buildConsolePresetSelect(); };
     const w=document.createElement('span'); w.style.display='inline-flex'; w.style.gap='4px'; w.append(b,d); presetList.append(w);
   });
 }
@@ -210,22 +210,22 @@ const c = {
 function headNumber(s){ return String(s||'').match(/^\d+/)?.[0] || ''; }
 function deriveSide(posText){
   const t=norm(posText);
-  if (t.includes('sinist') || t.includes(' sx')) return 'Sx';
-  if (t.includes('destr')  || t.includes(' dx')) return 'Dx';
-  if (t.includes('centr')  || t.includes(' centro')) return 'Ct';
+  if (t.includes('sinist') || t.includes(' sx')) return 'Sx';   // 1
+  if (t.includes('centr')  || t.includes(' centro')) return 'Ct'; // 2
+  if (t.includes('destr')  || t.includes(' dx')) return 'Dx';   // 3
   return null;
 }
+const sideIndex = { Sx:1, Ct:2, Dx:3 };
 
-/* Preset attivo in Console (solo filtri, NON ordini) */
-let consolePreset = null; // {name,cfg}
+/* Preset Console */
+let consolePreset = null;
 function buildConsolePresetSelect(){
   if(!c.pSel) return;
   const presets = loadPresets();
   c.pSel.innerHTML = `<option value="">— Seleziona preset —</option>` +
     presets.map((p,i)=>`<option value="${i}">${escapeHtml(p.name)}</option>`).join('');
-  // ripristina descrizione
   if (consolePreset) {
-    c.pSel.value = presets.findIndex(p=>p.name===consolePreset.name);
+    c.pSel.value = String(presets.findIndex(p=>p.name===consolePreset.name));
     updateConsolePresetDesc();
   }
 }
@@ -242,20 +242,16 @@ function updateConsolePresetDesc(){
 c.pApply?.addEventListener('click',()=>{
   const presets=loadPresets();
   const idx = parseInt(c.pSel.value,10);
-  if(isNaN(idx)){ consolePreset=null; updateConsolePresetDesc(); analyzeTray(+c.target.value||0); return; }
-  consolePreset = presets[idx] || null;
+  consolePreset = isNaN(idx) ? null : presets[idx] || null;
   updateConsolePresetDesc();
   analyzeTray(+c.target.value||0);
 });
 c.pClear?.addEventListener('click',()=>{
   consolePreset=null; c.pSel.value=''; updateConsolePresetDesc(); analyzeTray(+c.target.value||0);
 });
-
-/* Applica eventuale preset-console a una riga */
 function matchConsolePreset(r){
   if(!consolePreset) return true;
   const cfg = consolePreset.cfg || {};
-  // ripiano: se numero, match sull'HEAD numerico; altrimenti operatore come in Dati
   let okRip=true;
   if (cfg.fRip) {
     const fr = cfg.fRip.trim();
@@ -267,7 +263,7 @@ function matchConsolePreset(r){
   return okRip && okTip && okPos;
 }
 
-/* Analisi vassoio: TIPO -> {tot,sx,ct,dx} */
+/* Analisi vassoio con posizioni (1/2/3) accanto al tipo */
 function analyzeTray(tray){
   const T = String(tray||'');
   c.title.textContent = T ? `Contenuto vassoio ${T}` : 'Contenuto vassoio —';
@@ -276,33 +272,33 @@ function analyzeTray(tray){
   const rows = ROWS.filter(r => headNumber(r.RIPIANO) === T).filter(matchConsolePreset);
   c.hint.textContent = `${rows.length} righe`;
 
-  const byType = new Map();
+  const byType = new Map(); // TIPO -> {sx,ct,dx,tot}
   let sx=0, ct=0, dx=0;
 
   for(const r of rows){
     const t = (String(r.TIPO||'').trim() || '(Senza tipo)');
     const side = deriveSide(r.POSIZIONE);
-    const obj = byType.get(t) || {tot:0,sx:0,ct:0,dx:0};
-    obj.tot++;
-    if(side==='Sx'){ obj.sx++; sx++; }
-    else if(side==='Ct'){ obj.ct++; ct++; }
-    else if(side==='Dx'){ obj.dx++; dx++; }
-    byType.set(t,obj);
+    const o = byType.get(t) || {sx:0,ct:0,dx:0,tot:0};
+    o.tot++;
+    if(side==='Sx'){ o.sx++; sx++; }
+    else if(side==='Ct'){ o.ct++; ct++; }
+    else if(side==='Dx'){ o.dx++; dx++; }
+    byType.set(t,o);
   }
 
   const items = [...byType.entries()]
     .sort((a,b)=> b[1].tot - a[1].tot)
-    .map(([label,o]) =>
-      `<li class="item">
-         <span>${escapeHtml(label)}</span>
-         <span class="badges">
-           <span class="badge">Sx ${o.sx}</span>
-           <span class="badge">Ct ${o.ct}</span>
-           <span class="badge">Dx ${o.dx}</span>
-           <span class="badge">Tot ${o.tot}</span>
-         </span>
-       </li>`
-    );
+    .map(([label,o])=>{
+      const nums=[];
+      if(o.sx) nums.push(sideIndex.Sx); // 1
+      if(o.ct) nums.push(sideIndex.Ct); // 2
+      if(o.dx) nums.push(sideIndex.Dx); // 3
+      const posTag = nums.length ? ` <span class="muted">(${nums.join(', ')})</span>` : '';
+      return `<li class="item">
+        <span>${escapeHtml(label)}${posTag}</span>
+        <span class="badges"><span class="badge">Tot ${o.tot}</span></span>
+      </li>`;
+    });
 
   c.list.innerHTML = items.length ? items.join('') : `<li class="item"><span class="muted">Nessun dato</span></li>`;
   setSides(sx||'—', ct||'—', dx||'—');

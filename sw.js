@@ -1,8 +1,8 @@
-const CACHE_NAME = 'kardex-cache-v18';
+const CACHE_NAME = 'kardex-cache-v19';
 const ASSETS = [
-  './manifest.webmanifest?v=18',
-  './assets/icon-192.png?v=18',
-  './assets/icon-512.png?v=18',
+  './manifest.webmanifest?v=19',
+  './assets/icon-192.png?v=19',
+  './assets/icon-512.png?v=19',
   './data/kardex.json',
   'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js'
 ];

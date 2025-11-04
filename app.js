@@ -1,8 +1,8 @@
-// v15 – Console: contenuto per vassoio + posizioni testuali; preset, filtri operatori, multi-sort, memoria
+// v16 – Console essenziale: mostra contenuto e posizioni per vassoio; Preleva non cambia tab
 let ROWS = [];
 const $ = (id) => document.getElementById(id);
 
-// ===== RIFERIMENTI UI DATI =====
+/* ====== RIFERIMENTI UI DATI ====== */
 const tbody = $('tbody');
 const q = $('q');
 const selCampo = $('campo');
@@ -13,17 +13,17 @@ const count = $('count');
 const themeBtn = $('theme');
 const resetBtn = $('reset');
 
-// Filtri avanzati
+/* Filtri avanzati */
 const fRip = $('f_rip');
 const fTip = $('f_tip');
 const fPos = $('f_pos');
 
-// Preset
+/* Preset */
 const presetNameInput = $('presetName');
 const savePresetBtn = $('savePreset');
 const presetList = $('presetList');
 
-// ===== Tema =====
+/* ===== Tema ===== */
 (function initTheme(){
   const saved = localStorage.getItem('kardex-theme');
   if (saved === 'light' || saved === 'dark') document.documentElement.setAttribute('data-theme', saved);
@@ -39,8 +39,8 @@ const presetList = $('presetList');
   themeBtn && (themeBtn.textContent = (cur === 'dark') ? '🌙 Tema' : '☀️ Tema');
 })();
 
-// ===== Stato persistente =====
-const STATE_KEY = 'kardex-state-v15';
+/* ===== Stato persistente ===== */
+const STATE_KEY = 'kardex-state-v16';
 function saveState() {
   const state = {
     q: q?.value ?? '',
@@ -74,7 +74,7 @@ function loadState() {
   } catch {}
 }
 
-// ===== Ricerca & Filtri =====
+/* ===== Ricerca & Filtri ===== */
 const norm = (s) => String(s ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
 async function loadData() {
@@ -86,6 +86,7 @@ async function loadData() {
   render();
 }
 
+/* match rapido */
 function quickMatch(r, campo, txtRaw) {
   const txt = norm(txtRaw);
   if (!txt) return true;
@@ -104,7 +105,7 @@ function quickMatch(r, campo, txtRaw) {
   return rip.includes(txt) || tip.includes(txt) || pos.includes(txt);
 }
 
-// Operatori testo: =esatto, !escludi, prefisso*, altrimenti contiene
+/* operatori: =esatto, !escludi, prefisso*, contiene */
 function matchText(fieldValue, query) {
   const v = norm(fieldValue);
   let qv = String(query || '').trim();
@@ -120,19 +121,15 @@ function advancedMatch(r) {
   const ft = fTip?.value?.trim() ?? '';
   const fp = fPos?.value?.trim() ?? '';
   if (!fr && !ft && !fp) return true;
-
   const ripRaw = String(r.RIPIANO ?? '');
   const tipRaw = String(r.TIPO ?? '');
   const posRaw = String(r.POSIZIONE ?? '');
-
   let okRip = true;
   if (fr) {
     if (/^\d+$/.test(fr)) {
       const head = ripRaw.match(/^\d+/)?.[0] || '';
       okRip = head === fr;
-    } else {
-      okRip = matchText(ripRaw, fr);
-    }
+    } else { okRip = matchText(ripRaw, fr); }
   }
   const okTip = matchText(tipRaw, ft);
   const okPos = matchText(posRaw, fp);
@@ -145,7 +142,7 @@ function filtered() {
   return ROWS.filter(r => quickMatch(r, campo, txtRaw) && advancedMatch(r));
 }
 
-// ===== Multi-sort =====
+/* ===== Multi-sort ===== */
 let sortOrder = [];
 const ths = Array.from(document.querySelectorAll('th.sortable'));
 function toggleSort(key, additive) {
@@ -173,6 +170,7 @@ function updateSortIndicators() {
   });
 }
 
+/* ===== Render tabella ===== */
 function render() {
   let rows = filtered();
   rows = sortRows(rows);
@@ -204,7 +202,7 @@ function sortRows(rows) {
   });
 }
 
-// ===== Export / Clear / Reset =====
+/* ===== Export / Clear / Reset ===== */
 exportBtn?.addEventListener('click', () => {
   const csv = toCSV(sortRows(filtered()));
   const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
@@ -221,7 +219,6 @@ function toCSV(rows) {
   }
   return lines.join('\n');
 }
-
 clearBtn?.addEventListener('click', () => {
   if (q) q.value=''; if (selCampo) selCampo.value='ALL';
   if (fRip) fRip.value=''; if (fTip) fTip.value=''; if (fPos) fPos.value='';
@@ -237,7 +234,7 @@ resetBtn?.addEventListener('click', () => {
 selCampo?.addEventListener('change', () => { render(); saveState(); });
 document.addEventListener('change', (e) => { if (e.target && e.target.id === 'campo') { render(); saveState(); }});
 
-// ===== Import =====
+/* ===== Import ===== */
 fileInput?.addEventListener('change', async (ev) => {
   const f = ev.target.files?.[0]; if (!f) return;
   const ext = (f.name.split('.').pop()||'').toLowerCase();
@@ -270,8 +267,8 @@ fileInput?.addEventListener('change', async (ev) => {
   render(); saveState();
 });
 
-// ===== Preset =====
-const PRESETS_KEY = 'kardex-presets-v15';
+/* ===== Preset ===== */
+const PRESETS_KEY = 'kardex-presets-v16';
 function enforceExactType(s){ if(!s) return s; const t=String(s).trim(); if(/^=|^!|.*\*$/.test(t)) return t; return '=' + t; }
 function getCurrentConfig(){ return { q:q?.value??'', campo:selCampo?.value??'ALL', fRip:fRip?.value??'', fTip:fTip?.value??'', fPos:fPos?.value??'', sort:sortOrder }; }
 function applyConfig(cfg){
@@ -301,10 +298,10 @@ savePresetBtn?.addEventListener('click',()=>{
 });
 renderPresets();
 
-// ===== Avvio dati =====
+/* ===== Avvio dati ===== */
 loadData();
 
-/* ===== TAB: Dati / Console ===== */
+/* ===== TAB ===== */
 const dataCard = document.getElementById('dataView');
 const consoleView = document.getElementById('consoleView');
 const tabData = document.getElementById('tabData');
@@ -315,84 +312,63 @@ tabData?.addEventListener('click', showData);
 tabConsole?.addEventListener('click', showConsole);
 (function restoreTab(){ (localStorage.getItem('kardex-tab') === 'console') ? showConsole() : showData(); })();
 
-/* ===== Console: contenuto/posizioni ===== */
-const CKEY = 'kardex-console-state';
+/* ===== Console nuova ===== */
+const CCACHE = 'kardex-console-v16';
 const c = {
-  alt: $('c_alt_val'), peso: $('c_peso_val'), carico: $('c_carico_val'), att: $('c_vassoio_att'),
   target: $('c_vassoio_target'),
+  title: $('c_title'),
   list: $('c_cont_list'),
-  posA: $('c_pos_a'), posB: $('c_pos_b'),
-  home: $('c_home'), mod: $('c_modifica'), svuota: $('c_svuota'),
-  sblocca: $('c_sblocca'), preleva: $('c_preleva'),
+  hint: $('c_rows_hint'),
+  posSx: $('pos_sx'),
+  posCt: $('pos_ct'),
+  posDx: $('pos_dx'),
+  home: $('c_home'),
+  svuota: $('c_svuota'),
+  preleva: $('c_preleva'),
 };
-(function loadConsoleState(){
-  try{
-    const s=JSON.parse(localStorage.getItem(CKEY)||'{}');
-    if(s.att) c.att.textContent=s.att;
-    if(typeof s.target!=='undefined') c.target.value=s.target;
-    if(s.posA) c.posA.value=s.posA;
-    if(s.posB) c.posB.value=s.posB;
-    if(Array.isArray(s.content)) renderContentList(s.content);
-  }catch{}
-})();
-function saveConsoleState(extra={}){
-  const content = getCurrentContentCache();
-  const s={ att:c.att?.textContent||'-', target:+c.target?.value||0, posA:c.posA?.value||'-', posB:c.posB?.value||'-', content };
-  localStorage.setItem(CKEY, JSON.stringify({ ...s, ...extra }));
-}
-let _contentCache = null;
-function getCurrentContentCache(){ return _contentCache ? _contentCache.slice() : []; }
-function renderContentList(items){
-  c.list.innerHTML = items.map(it => `<li>${escapeHtml(it.label)} <span class="muted">(${it.count})</span></li>`).join('');
-}
 
 function headNumber(str){ const m=String(str||'').match(/^\d+/); return m?m[0]:''; }
 function deriveSide(posText){
   const t = norm(posText);
-  if (t.includes('sinist')) return 'Sinistra';
-  if (t.includes('destr')) return 'Destra';
-  if (t.includes('centr')) return 'Centrale';
+  if (t.includes('sinist') || t.includes('sx')) return 'Sinistra';
+  if (t.includes('destr') || t.includes('dx')) return 'Destra';
+  if (t.includes('centr') || t.includes('centro')) return 'Centrale';
   return null;
 }
 function analyzeTray(trayNum){
-  if(!trayNum) { _contentCache=[]; c.list.innerHTML=''; c.posA.value='-'; c.posB.value='-'; return; }
-  const matches = ROWS.filter(r => headNumber(r.RIPIANO) === String(trayNum));
-  // contenuto per TIPO
+  if(!trayNum){ setContentTitle('Contenuto vassoio —'); c.list.innerHTML=''; c.hint.textContent='0 righe'; setSides('-','-','-'); return; }
+  const rows = ROWS.filter(r => headNumber(r.RIPIANO) === String(trayNum));
+  setContentTitle(`Contenuto vassoio ${trayNum}`);
+  c.hint.textContent = `${rows.length} righe`;
+  // Conteggio per TIPO
   const byTipo = new Map();
-  for (const r of matches){
-    const t = String(r.TIPO||'').trim() || '(Senza tipo)';
-    byTipo.set(t, (byTipo.get(t)||0)+1);
-  }
+  for (const r of rows){ const t = String(r.TIPO||'').trim() || '(Senza tipo)'; byTipo.set(t,(byTipo.get(t)||0)+1); }
   const content = Array.from(byTipo.entries()).map(([label,count])=>({label,count})).sort((a,b)=>b.count-a.count);
-  _contentCache = content;
-  renderContentList(content);
-  // posizioni
-  const sideCounts = { 'Sinistra':0, 'Centrale':0, 'Destra':0 };
-  for (const r of matches){
+  c.list.innerHTML = content.map(it => `<li>${escapeHtml(it.label)} <span class="muted">(${it.count})</span></li>`).join('');
+  localStorage.setItem(CCACHE, JSON.stringify({ tray: trayNum, content }));
+  // Posizioni
+  let sx=0, ct=0, dx=0;
+  for (const r of rows){
     const s = deriveSide(r.POSIZIONE);
-    if (s) sideCounts[s] = (sideCounts[s]||0)+1;
+    if (s==='Sinistra') sx++;
+    else if (s==='Destra') dx++;
+    else if (s==='Centrale') ct++;
   }
-  const ranked = Object.entries(sideCounts).sort((a,b)=>b[1]-a[1]).filter(([,v])=>v>0).map(([k])=>k);
-  c.posA.value = ranked[0] || '-';
-  c.posB.value = ranked[1] || '-';
+  setSides(sx||'—', ct||'—', dx||'—');
 }
-function gotoTray(n){
-  // filtra in Dati e passa alla tab Dati
-  if (fRip) fRip.value = String(n);
-  if (q) q.value = ''; if (selCampo) selCampo.value = 'ALL';
-  render(); saveState(); showData();
-}
+function setContentTitle(t){ c.title.textContent=t; }
+function setSides(sx, ct, dx){ c.posSx.textContent=String(sx); c.posCt.textContent=String(ct); c.posDx.textContent=String(dx); }
 
-c.preleva?.addEventListener('click', ()=>{
-  const t = +c.target.value || 0;
-  c.att.textContent = t;
-  analyzeTray(t);
-  saveConsoleState();
-  gotoTray(t);
-});
+/* pulsanti */
+c.preleva?.addEventListener('click', ()=>{ const t = +c.target.value || 0; analyzeTray(t); /* resta in console */ });
 c.target?.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ c.preleva.click(); } });
-
+c.svuota?.addEventListener('click', ()=>{ c.target.value=0; analyzeTray(0); });
 c.home?.addEventListener('click', ()=>{ showData(); });
-c.mod?.addEventListener('click', ()=>{ alert('Modalità modifica parametri abilitata'); });
-c.svuota?.addEventListener('click', ()=>{ c.target.value=0; c.posA.value='-'; c.posB.value='-'; _contentCache=[]; c.list.innerHTML=''; saveConsoleState(); });
-c.sblocca?.addEventListener('click', ()=>{ alert('Sblocco eseguito'); });
+
+/* ripristino ultimo contenuto */
+(function restoreConsole(){
+  try{
+    const s = JSON.parse(localStorage.getItem(CCACHE)||'{}');
+    if (s.tray) { c.target.value = s.tray; analyzeTray(s.tray); }
+  }catch{}
+})();

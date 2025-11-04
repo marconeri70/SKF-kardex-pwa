@@ -4,10 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Kardex Viewer</title>
-  <link rel="manifest" href="manifest.webmanifest?v=15" />
+  <link rel="manifest" href="manifest.webmanifest?v=16" />
   <meta name="theme-color" content="#0e4ead" />
-  <link rel="apple-touch-icon" href="assets/icon-512.png?v=15" />
-  <link rel="icon" href="favicon.ico?v=15" type="image/x-icon">
+  <link rel="apple-touch-icon" href="assets/icon-512.png?v=16" />
+  <link rel="icon" href="favicon.ico?v=16" type="image/x-icon">
   <style>
     :root {
       --bg:#f6f7fb; --card:#fff; --text:#0f172a; --muted:#6b7280;
@@ -37,10 +37,8 @@
     main{max-width:1100px;margin:18px auto;padding:0 16px}
     .card{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:16px}
     .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-    .row>*{margin:4px 0}
     input[type="text"],input[type="number"],select,button{padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:#fff;color:var(--text)}
-    html[data-theme="dark"] input[type="text"],html[data-theme="dark"] input[type="number"],html[data-theme="dark"] select,html[data-theme="dark"] button{background:#0b1426;border-color:var(--border);color:var(--text)}
-    input[readonly]{background:var(--table-head)}
+    html[data-theme="dark"] input,html[data-theme="dark"] select,html[data-theme="dark"] button{background:#0b1426;border-color:var(--border);color:var(--text)}
     button{background:var(--primary);color:#fff;border:none;cursor:pointer;transition:transform .05s ease}
     button:hover{transform:translateY(-1px)}
     button.secondary{background:var(--primary-weak);color:var(--text)}
@@ -72,42 +70,36 @@
     .field{display:flex;flex-direction:column;gap:6px}
     .field label{font-size:12px;color:var(--muted)}
 
-    /* === Console stile pannello macchina === */
+    /* ===== Console nuova ===== */
     .console-card{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:16px}
     .console-grid{display:grid;grid-template-columns:repeat(12,1fr);gap:12px}
     .console-title{grid-column:1/13;text-align:center;font-weight:800;font-size:18px;color:var(--text)}
-    .console-box{border:2px solid var(--border);border-radius:12px;background:var(--table-head);padding:10px;display:flex;flex-direction:column;gap:6px;justify-content:center}
-    .console-kv{display:flex;align-items:center;justify-content:space-between;gap:12px}
-    .console-label{color:var(--muted);font-size:14px}
-    .console-value{font-weight:800;font-size:22px}
-    .console-big{grid-column:7/13;border:3px solid var(--border);background:var(--card)}
-    .console-big .console-value{font-size:42px;text-align:center}
-    .console-num, .console-txt{width:100%;padding:12px;border:2px solid var(--border);border-radius:10px;background:var(--card);color:var(--text);text-align:center;font-weight:800;font-size:20px}
-    .console-actions{display:flex;gap:10px;justify-content:space-between;margin-top:14px}
-    .console-actions button{flex:1}
-    .console-mini{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-    .console-caption{font-size:12px;color:var(--muted)}
-    .cont-list{margin:0;padding-left:18px;max-height:130px;overflow:auto}
-    .cont-list li{margin:2px 0}
-    @media(max-width:860px){.console-grid{grid-template-columns:1fr}.console-big{grid-column:1/2}}
+    .console-box{border:2px solid var(--border);border-radius:12px;background:var(--table-head);padding:12px}
+    .console-num{width:100%;padding:12px;border:2px solid var(--border);border-radius:10px;background:var(--card);color:var(--text);text-align:center;font-weight:800;font-size:20px}
+    .cont-list{margin:6px 0 0;padding-left:18px;max-height:180px;overflow:auto}
+    .pos-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+    .pos-item{border:2px solid var(--border);border-radius:10px;background:var(--card);padding:12px;text-align:center}
+    .pos-item .lab{font-size:12px;color:var(--muted)}
+    .pos-item .val{font-weight:800;font-size:20px;margin-top:4px}
+    @media(max-width:860px){.console-grid{grid-template-columns:1fr}}
     .hidden{display:none}
   </style>
   <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script defer src="app.js?v=15"></script>
+  <script defer src="app.js?v=16"></script>
 </head>
 <body>
   <header>
     <div class="wrap">
       <div class="brand">
-        <div class="logo"><img src="assets/icon-512.png?v=15" alt="Logo SKF"></div>
+        <div class="logo"><img src="assets/icon-512.png?v=16" alt="Logo SKF"></div>
         <div>
           <div style="font-weight:800;font-size:18px;letter-spacing:.3px">Kardex Viewer</div>
           <div class="muted" style="opacity:.9">Ricerca • Filtri • Importa/Esporta • Offline</div>
         </div>
       </div>
       <div class="toolbar">
-        <button id="tabData" class="toggle" title="Vista dati">📋 Dati</button>
-        <button id="tabConsole" class="toggle" title="Vista console">🖥️ Console</button>
+        <button id="tabData" class="toggle">📋 Dati</button>
+        <button id="tabConsole" class="toggle">🖥️ Console</button>
         <button id="theme" class="toggle" title="Tema">🌙 Tema</button>
         <button id="reset" class="toggle" title="Resetta">↺ Reset impostazioni</button>
       </div>
@@ -170,57 +162,60 @@
       <p class="hint">Click = ordina per colonna. <b>SHIFT + Click</b> aggiunge ordinamento secondario (▲1, ▼2, …).</p>
     </section>
 
-    <!-- ===== CONSOLE ===== -->
+    <!-- ===== CONSOLE (nuova) ===== -->
     <section id="consoleView" class="console-card hidden">
       <div class="console-grid">
-        <div class="console-title">Mod. semi-automatica</div>
+        <div class="console-title">Console inventario</div>
 
-        <!-- Info + Contenuto -->
-        <div class="console-box" style="grid-column:1/7">
-          <div class="console-kv"><span class="console-label">Altezza</span><span class="console-value"><span id="c_alt_val">400</span> mm</span></div>
-          <div class="console-kv"><span class="console-label">Peso per vassoio</span><span class="console-value"><span id="c_peso_val">650</span> kg</span></div>
-          <div class="console-kv"><span class="console-label">Carico attuale</span><span class="console-value"><span id="c_carico_val">177</span> kg</span></div>
-          <div class="console-kv"><span class="console-label">Vassoio attuale</span><span class="console-value" id="c_vassoio_att">-</span></div>
-          <div class="console-kv"><span class="console-label">Contenuto</span><span class="console-label" id="c_cont_hint">(TIPO presenti)</span></div>
+        <!-- Vassoio target -->
+        <div class="console-box" style="grid-column:1/13">
+          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap">
+            <label for="c_vassoio_target" class="muted" style="min-width:100px">Vassoio</label>
+            <input id="c_vassoio_target" type="number" class="console-num" value="0" min="0" style="max-width:220px" />
+            <button id="c_preleva">⬇️ Preleva</button>
+            <button id="c_svuota" class="secondary">🗑️ Svuota</button>
+            <button id="c_home" class="secondary">🏠 Home</button>
+          </div>
+        </div>
+
+        <!-- Contenuto vassoio -->
+        <div class="console-box" style="grid-column:1/13">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <strong id="c_title">Contenuto vassoio —</strong>
+            <span class="muted" id="c_rows_hint">0 righe</span>
+          </div>
           <ul id="c_cont_list" class="cont-list"></ul>
         </div>
 
-        <!-- Vassoio target -->
-        <div class="console-box console-big">
-          <div class="console-label">Vassoio</div>
-          <input id="c_vassoio_target" type="number" class="console-num" value="0" min="0" />
-          <div class="console-caption">Inserisci il numero vassoio da richiamare</div>
+        <!-- Posizioni -->
+        <div class="console-box" style="grid-column:1/13">
+          <div class="pos-grid">
+            <div class="pos-item">
+              <div class="lab">Sinistra</div>
+              <div id="pos_sx" class="val">—</div>
+            </div>
+            <div class="pos-item">
+              <div class="lab">Centrale</div>
+              <div id="pos_ct" class="val">—</div>
+            </div>
+            <div class="pos-item">
+              <div class="lab">Destra</div>
+              <div id="pos_dx" class="val">—</div>
+            </div>
+          </div>
         </div>
 
-        <!-- Posizioni (testuali) -->
-        <div class="console-box" style="grid-column:1/7">
-          <div class="console-label">Posizione A</div>
-          <input id="c_pos_a" class="console-txt" type="text" value="-" readonly />
-        </div>
-        <div class="console-box" style="grid-column:7/13">
-          <div class="console-label">Posizione B</div>
-          <input id="c_pos_b" class="console-txt" type="text" value="-" readonly />
-        </div>
-
-        <!-- Azioni -->
-        <div class="console-actions" style="grid-column:1/13">
-          <button id="c_home" class="secondary">🏠 Home</button>
-          <button id="c_modifica" class="secondary">✏️ Modifica</button>
-          <button id="c_svuota" class="secondary">🗑️ Svuota</button>
-          <button id="c_sblocca" class="secondary">🔓 Sblocca</button>
-          <button id="c_preleva">⬇️ Preleva</button>
-        </div>
       </div>
     </section>
 
     <p class="muted" style="margin-top:10px">Dopo il primo caricamento, il sito funziona anche offline (Aggiungi a schermata Home su Android).</p>
   </main>
 
-  <footer>Versione UI: <strong>v15</strong></footer>
+  <footer>Versione UI: <strong>v16</strong></footer>
 
   <script>
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', ()=> navigator.serviceWorker.register('./sw.js?v=15'));
+      window.addEventListener('load', ()=> navigator.serviceWorker.register('./sw.js?v=16'));
     }
   </script>
 </body>

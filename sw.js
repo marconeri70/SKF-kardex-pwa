@@ -1,9 +1,8 @@
-const CACHE_NAME = 'kardex-cache-v14';
-
+const CACHE_NAME = 'kardex-cache-v15';
 const ASSETS = [
-  './manifest.webmanifest?v=14',
-  './assets/icon-192.png?v=14',
-  './assets/icon-512.png?v=14',
+  './manifest.webmanifest?v=15',
+  './assets/icon-192.png?v=15',
+  './assets/icon-512.png?v=15',
   './data/kardex.json',
   'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js'
 ];
@@ -11,7 +10,6 @@ const ASSETS = [
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS)));
 });
-
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys().then(keys =>
@@ -19,42 +17,25 @@ self.addEventListener('activate', (e) => {
     )
   );
 });
-
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   const url = new URL(req.url);
-
-  // Network-first per HTML e app.js (aggiornamenti immediati)
   const isHTML = req.mode === 'navigate' || (req.destination === 'document');
   if (isHTML || url.pathname.endsWith('/app.js')) {
     e.respondWith(
-      fetch(req).then(resp => {
-        const clone = resp.clone();
-        caches.open(CACHE_NAME).then(c => c.put(req, clone));
-        return resp;
-      }).catch(() => caches.match(req))
+      fetch(req).then(resp => { caches.open(CACHE_NAME).then(c => c.put(req, resp.clone())); return resp; })
+                .catch(() => caches.match(req))
     );
     return;
   }
-
-  // Network-first per icone (logo PWA)
   if (url.pathname.includes('/assets/icon-') && url.pathname.endsWith('.png')) {
     e.respondWith(
-      fetch(req).then(resp => {
-        const clone = resp.clone();
-        caches.open(CACHE_NAME).then(c => c.put(req, clone));
-        return resp;
-      }).catch(() => caches.match(req))
+      fetch(req).then(resp => { caches.open(CACHE_NAME).then(c => c.put(req, resp.clone())); return resp; })
+                .catch(() => caches.match(req))
     );
     return;
   }
-
-  // Cache-first per il resto
   e.respondWith(
-    caches.match(req).then(resp => resp || fetch(req).then(fresp => {
-      const clone = fresp.clone();
-      caches.open(CACHE_NAME).then(c => c.put(req, clone));
-      return fresp;
-    }).catch(()=>resp))
+    caches.match(req).then(resp => resp || fetch(req).then(fr => { caches.open(CACHE_NAME).then(c => c.put(req, fr.clone())); return fr; }).catch(()=>resp))
   );
 });

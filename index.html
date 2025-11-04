@@ -4,10 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Kardex Viewer</title>
-  <link rel="manifest" href="manifest.webmanifest?v=18" />
+  <link rel="manifest" href="manifest.webmanifest?v=19" />
   <meta name="theme-color" content="#0e4ead" />
-  <link rel="apple-touch-icon" href="assets/icon-512.png?v=18" />
-  <link rel="icon" href="favicon.ico?v=18" type="image/x-icon">
+  <link rel="apple-touch-icon" href="assets/icon-512.png?v=19" />
+  <link rel="icon" href="favicon.ico?v=19" type="image/x-icon">
   <style>
     :root{
       --bg:#f6f7fb; --card:#fff; --text:#0f172a; --muted:#6b7280;
@@ -70,21 +70,29 @@
     .console-title{grid-column:1/13;text-align:center;font-weight:800}
     .box{border:2px solid var(--border);border-radius:12px;background:var(--table-head);padding:12px}
     .num{width:100%;padding:12px;border:2px solid var(--border);border-radius:10px;background:#fff;text-align:center;font-weight:800;font-size:20px}
-    .list{margin:8px 0 0;padding-left:0;list-style:none;max-height:220px;overflow:auto}
+    .list{margin:8px 0 0;padding-left:0;list-style:none;max-height:260px;overflow:auto}
     .item{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-radius:10px;background:var(--card);border:1px solid var(--border);margin-bottom:8px}
     .badges{display:flex;gap:6px;flex-wrap:wrap}
     .badge{background:var(--badge);border:1px solid var(--border);border-radius:999px;padding:2px 8px;font-size:12px}
     @media(max-width:860px){.console-grid{grid-template-columns:1fr}}
     .hidden{display:none}
+
+    /* Side cards grandi */
+    .sides{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:8px}
+    @media(max-width:860px){.sides{grid-template-columns:1fr}}
+    .side-card{background:var(--card);border:2px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:14px;min-height:140px}
+    .side-title{font-weight:800;margin-bottom:8px}
+    .side-list{list-style:none;margin:0;padding:0}
+    .side-list li{padding:6px 8px;border:1px solid var(--border);border-radius:10px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center}
   </style>
   <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script defer src="app.js?v=18"></script>
+  <script defer src="app.js?v=19"></script>
 </head>
 <body>
   <header>
     <div class="wrap">
       <div class="brand">
-        <div class="logo"><img src="assets/icon-512.png?v=18" alt="SKF"></div>
+        <div class="logo"><img src="assets/icon-512.png?v=19" alt="SKF"></div>
         <div>
           <div style="font-weight:800">Kardex Viewer</div>
           <div class="muted">Ricerca • Filtri • Import/Export • Offline</div>
@@ -112,6 +120,9 @@
         </select>
         <button id="clear" class="secondary">Pulisci</button>
         <button id="export">Export CSV</button>
+        <button id="exportPresets" class="secondary">Export Preset</button>
+        <input id="importPresets" type="file" accept="application/json" style="display:none">
+        <button id="importPresetsBtn" class="secondary">Import Preset</button>
         <span id="count" class="count">0 risultati</span>
       </div>
 
@@ -185,12 +196,19 @@
           <ul id="c_cont_list" class="list"></ul>
         </div>
 
-        <!-- Posizioni riepilogo -->
-        <div class="box" style="grid-column:1/13">
-          <div class="row" style="gap:8px;flex-wrap:wrap">
-            <span class="badge">Sinistra: <b id="pos_sx">—</b></span>
-            <span class="badge">Centrale: <b id="pos_ct">—</b></span>
-            <span class="badge">Destra: <b id="pos_dx">—</b></span>
+        <!-- Posizioni: carte grandi con elenco tipi -->
+        <div class="sides" style="grid-column:1/13">
+          <div class="side-card">
+            <div class="side-title">Sinistra: <b id="pos_sx">—</b></div>
+            <ul id="pos_sx_list" class="side-list"></ul>
+          </div>
+          <div class="side-card">
+            <div class="side-title">Centrale: <b id="pos_ct">—</b></div>
+            <ul id="pos_ct_list" class="side-list"></ul>
+          </div>
+          <div class="side-card">
+            <div class="side-title">Destra: <b id="pos_dx">—</b></div>
+            <ul id="pos_dx_list" class="side-list"></ul>
           </div>
         </div>
 
@@ -200,11 +218,11 @@
     <p class="muted" style="margin-top:10px">Dopo il primo caricamento, il sito funziona anche offline (Aggiungi a schermata Home).</p>
   </main>
 
-  <footer style="text-align:center;margin:16px 0" class="muted">Versione UI: <b>v18</b></footer>
+  <footer style="text-align:center;margin:16px 0" class="muted">Versione UI: <b>v19</b></footer>
 
   <script>
     if('serviceWorker' in navigator){
-      window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=18'));
+      window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=19'));
     }
   </script>
 </body>

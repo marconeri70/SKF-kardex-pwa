@@ -4,10 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Kardex Viewer</title>
-  <link rel="manifest" href="manifest.webmanifest?v=14" />
+  <link rel="manifest" href="manifest.webmanifest?v=15" />
   <meta name="theme-color" content="#0e4ead" />
-  <link rel="apple-touch-icon" href="assets/icon-512.png?v=14" />
-  <link rel="icon" href="favicon.ico?v=14" type="image/x-icon">
+  <link rel="apple-touch-icon" href="assets/icon-512.png?v=15" />
+  <link rel="icon" href="favicon.ico?v=15" type="image/x-icon">
   <style>
     :root {
       --bg:#f6f7fb; --card:#fff; --text:#0f172a; --muted:#6b7280;
@@ -38,8 +38,9 @@
     .card{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:16px}
     .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
     .row>*{margin:4px 0}
-    input[type="text"],select,button{padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:#fff;color:var(--text)}
-    html[data-theme="dark"] input[type="text"],html[data-theme="dark"] select,html[data-theme="dark"] button{background:#0b1426;border-color:var(--border);color:var(--text)}
+    input[type="text"],input[type="number"],select,button{padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:#fff;color:var(--text)}
+    html[data-theme="dark"] input[type="text"],html[data-theme="dark"] input[type="number"],html[data-theme="dark"] select,html[data-theme="dark"] button{background:#0b1426;border-color:var(--border);color:var(--text)}
+    input[readonly]{background:var(--table-head)}
     button{background:var(--primary);color:#fff;border:none;cursor:pointer;transition:transform .05s ease}
     button:hover{transform:translateY(-1px)}
     button.secondary{background:var(--primary-weak);color:var(--text)}
@@ -81,22 +82,24 @@
     .console-value{font-weight:800;font-size:22px}
     .console-big{grid-column:7/13;border:3px solid var(--border);background:var(--card)}
     .console-big .console-value{font-size:42px;text-align:center}
-    .console-num{width:100%;padding:12px;border:2px solid var(--border);border-radius:10px;background:var(--card);color:var(--text);text-align:center;font-weight:800;font-size:20px}
+    .console-num, .console-txt{width:100%;padding:12px;border:2px solid var(--border);border-radius:10px;background:var(--card);color:var(--text);text-align:center;font-weight:800;font-size:20px}
     .console-actions{display:flex;gap:10px;justify-content:space-between;margin-top:14px}
     .console-actions button{flex:1}
     .console-mini{display:grid;grid-template-columns:1fr 1fr;gap:8px}
     .console-caption{font-size:12px;color:var(--muted)}
+    .cont-list{margin:0;padding-left:18px;max-height:130px;overflow:auto}
+    .cont-list li{margin:2px 0}
     @media(max-width:860px){.console-grid{grid-template-columns:1fr}.console-big{grid-column:1/2}}
     .hidden{display:none}
   </style>
   <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script defer src="app.js?v=14"></script>
+  <script defer src="app.js?v=15"></script>
 </head>
 <body>
   <header>
     <div class="wrap">
       <div class="brand">
-        <div class="logo"><img src="assets/icon-512.png?v=14" alt="Logo SKF"></div>
+        <div class="logo"><img src="assets/icon-512.png?v=15" alt="Logo SKF"></div>
         <div>
           <div style="font-weight:800;font-size:18px;letter-spacing:.3px">Kardex Viewer</div>
           <div class="muted" style="opacity:.9">Ricerca • Filtri • Importa/Esporta • Offline</div>
@@ -105,14 +108,14 @@
       <div class="toolbar">
         <button id="tabData" class="toggle" title="Vista dati">📋 Dati</button>
         <button id="tabConsole" class="toggle" title="Vista console">🖥️ Console</button>
-        <button id="theme" class="toggle" title="Tema chiaro/scuro">🌙 Tema</button>
-        <button id="reset" class="toggle" title="Resetta filtri e ordinamento">↺ Reset impostazioni</button>
+        <button id="theme" class="toggle" title="Tema">🌙 Tema</button>
+        <button id="reset" class="toggle" title="Resetta">↺ Reset impostazioni</button>
       </div>
     </div>
   </header>
 
   <main>
-    <!-- ===== DATI (tabella) ===== -->
+    <!-- ===== DATI ===== -->
     <section class="card" id="dataView">
       <div class="row">
         <input id="q" type="text" placeholder="Cerca veloce…" />
@@ -131,8 +134,8 @@
         <summary>Filtri avanzati (AND)</summary>
         <div class="grid">
           <div class="field"><label for="f_rip">Ripiano</label><input id="f_rip" type="text" placeholder="es. 10" /></div>
-          <div class="field"><label for="f_tip">Tipo</label><input id="f_tip" type="text" placeholder="es. Montaggio (/=, !, * )" /></div>
-          <div class="field"><label for="f_pos">Posizione</label><input id="f_pos" type="text" placeholder="es. Destra" /></div>
+          <div class="field"><label for="f_tip">Tipo</label><input id="f_tip" type="text" placeholder="es. =Montaggio" /></div>
+          <div class="field"><label for="f_pos">Posizione</label><input id="f_pos" type="text" placeholder="es. Sinistra" /></div>
         </div>
 
         <div style="margin-top:12px">
@@ -156,9 +159,9 @@
       <table>
         <thead>
           <tr>
-            <th class="sortable" data-key="RIPIANO" title="Click = ordina • SHIFT+Click = secondaria">RIPIANO <span class="sort"></span></th>
-            <th class="sortable" data-key="TIPO" title="Click = ordina • SHIFT+Click = secondaria">TIPO <span class="sort"></span></th>
-            <th class="sortable" data-key="POSIZIONE" title="Click = ordina • SHIFT+Click = secondaria">POSIZIONE <span class="sort"></span></th>
+            <th class="sortable" data-key="RIPIANO">RIPIANO <span class="sort"></span></th>
+            <th class="sortable" data-key="TIPO">TIPO <span class="sort"></span></th>
+            <th class="sortable" data-key="POSIZIONE">POSIZIONE <span class="sort"></span></th>
           </tr>
         </thead>
         <tbody id="tbody"></tbody>
@@ -167,43 +170,39 @@
       <p class="hint">Click = ordina per colonna. <b>SHIFT + Click</b> aggiunge ordinamento secondario (▲1, ▼2, …).</p>
     </section>
 
-    <!-- ===== CONSOLE (pannello macchina) ===== -->
+    <!-- ===== CONSOLE ===== -->
     <section id="consoleView" class="console-card hidden">
       <div class="console-grid">
         <div class="console-title">Mod. semi-automatica</div>
 
+        <!-- Info + Contenuto -->
         <div class="console-box" style="grid-column:1/7">
           <div class="console-kv"><span class="console-label">Altezza</span><span class="console-value"><span id="c_alt_val">400</span> mm</span></div>
           <div class="console-kv"><span class="console-label">Peso per vassoio</span><span class="console-value"><span id="c_peso_val">650</span> kg</span></div>
           <div class="console-kv"><span class="console-label">Carico attuale</span><span class="console-value"><span id="c_carico_val">177</span> kg</span></div>
-          <div class="console-kv"><span class="console-label">Vassoio attuale</span><span class="console-value" id="c_vassoio_att">2</span></div>
+          <div class="console-kv"><span class="console-label">Vassoio attuale</span><span class="console-value" id="c_vassoio_att">-</span></div>
+          <div class="console-kv"><span class="console-label">Contenuto</span><span class="console-label" id="c_cont_hint">(TIPO presenti)</span></div>
+          <ul id="c_cont_list" class="cont-list"></ul>
         </div>
 
+        <!-- Vassoio target -->
         <div class="console-box console-big">
           <div class="console-label">Vassoio</div>
           <input id="c_vassoio_target" type="number" class="console-num" value="0" min="0" />
           <div class="console-caption">Inserisci il numero vassoio da richiamare</div>
         </div>
 
-        <div class="console-box" style="grid-column:1/3">
-          <div class="console-label">Livello</div>
-          <input id="c_livello" type="number" class="console-num" value="0" min="0" />
+        <!-- Posizioni (testuali) -->
+        <div class="console-box" style="grid-column:1/7">
+          <div class="console-label">Posizione A</div>
+          <input id="c_pos_a" class="console-txt" type="text" value="-" readonly />
         </div>
-
-        <div class="console-box" style="grid-column:3/7">
-          <div class="console-mini">
-            <div><div class="console-label">Posizione</div><input id="c_pos_sx" type="number" class="console-num" value="0" min="0" /></div>
-            <div><div class="console-label">Profondità</div><input id="c_prof_sx" type="number" class="console-num" value="0" min="0" /></div>
-          </div>
-        </div>
-
         <div class="console-box" style="grid-column:7/13">
-          <div class="console-mini">
-            <div><div class="console-label">Posizione</div><input id="c_pos_dx" type="number" class="console-num" value="0" min="0" /></div>
-            <div><div class="console-label">Profondità</div><input id="c_prof_dx" type="number" class="console-num" value="0" min="0" /></div>
-          </div>
+          <div class="console-label">Posizione B</div>
+          <input id="c_pos_b" class="console-txt" type="text" value="-" readonly />
         </div>
 
+        <!-- Azioni -->
         <div class="console-actions" style="grid-column:1/13">
           <button id="c_home" class="secondary">🏠 Home</button>
           <button id="c_modifica" class="secondary">✏️ Modifica</button>
@@ -217,11 +216,11 @@
     <p class="muted" style="margin-top:10px">Dopo il primo caricamento, il sito funziona anche offline (Aggiungi a schermata Home su Android).</p>
   </main>
 
-  <footer>Versione UI: <strong>v14</strong></footer>
+  <footer>Versione UI: <strong>v15</strong></footer>
 
   <script>
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', ()=> navigator.serviceWorker.register('./sw.js?v=14'));
+      window.addEventListener('load', ()=> navigator.serviceWorker.register('./sw.js?v=15'));
     }
   </script>
 </body>

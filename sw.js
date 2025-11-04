@@ -1,14 +1,60 @@
+const CACHE_NAME = 'kardex-cache-v14';
 
-const CACHE = 'kardex-pages-v3';
 const ASSETS = [
-  './',
-  './index.html',
-  './app.js',
-  './manifest.webmanifest',
+  './manifest.webmanifest?v=14',
+  './assets/icon-192.png?v=14',
+  './assets/icon-512.png?v=14',
   './data/kardex.json',
-  './assets/icon-192.png',
-  './assets/icon-512.png'
+  'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js'
 ];
-self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS))); });
-self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(keys => Promise.all(keys.map(k => k!==CACHE && caches.delete(k))))); });
-self.addEventListener('fetch', e => { e.respondWith(caches.match(e.request).then(r => r || fetch(e.request))); });
+
+self.addEventListener('install', (e) => {
+  e.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS)));
+});
+
+self.addEventListener('activate', (e) => {
+  e.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+    )
+  );
+});
+
+self.addEventListener('fetch', (e) => {
+  const req = e.request;
+  const url = new URL(req.url);
+
+  // Network-first per HTML e app.js (aggiornamenti immediati)
+  const isHTML = req.mode === 'navigate' || (req.destination === 'document');
+  if (isHTML || url.pathname.endsWith('/app.js')) {
+    e.respondWith(
+      fetch(req).then(resp => {
+        const clone = resp.clone();
+        caches.open(CACHE_NAME).then(c => c.put(req, clone));
+        return resp;
+      }).catch(() => caches.match(req))
+    );
+    return;
+  }
+
+  // Network-first per icone (logo PWA)
+  if (url.pathname.includes('/assets/icon-') && url.pathname.endsWith('.png')) {
+    e.respondWith(
+      fetch(req).then(resp => {
+        const clone = resp.clone();
+        caches.open(CACHE_NAME).then(c => c.put(req, clone));
+        return resp;
+      }).catch(() => caches.match(req))
+    );
+    return;
+  }
+
+  // Cache-first per il resto
+  e.respondWith(
+    caches.match(req).then(resp => resp || fetch(req).then(fresp => {
+      const clone = fresp.clone();
+      caches.open(CACHE_NAME).then(c => c.put(req, clone));
+      return fresp;
+    }).catch(()=>resp))
+  );
+});

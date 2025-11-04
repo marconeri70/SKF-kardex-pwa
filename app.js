@@ -1,4 +1,4 @@
-// v14 – Console + Tab, preset con Tipo esatto, filtri operatori, multi-sort, memoria impostazioni, mobile card
+// v15 – Console: contenuto per vassoio + posizioni testuali; preset, filtri operatori, multi-sort, memoria
 let ROWS = [];
 const $ = (id) => document.getElementById(id);
 
@@ -40,7 +40,7 @@ const presetList = $('presetList');
 })();
 
 // ===== Stato persistente =====
-const STATE_KEY = 'kardex-state-v14';
+const STATE_KEY = 'kardex-state-v15';
 function saveState() {
   const state = {
     q: q?.value ?? '',
@@ -145,10 +145,9 @@ function filtered() {
   return ROWS.filter(r => quickMatch(r, campo, txtRaw) && advancedMatch(r));
 }
 
-// ===== Multi-sort (SHIFT + click) =====
-let sortOrder = []; // [{key:'RIPIANO', dir:'asc'}, {key:'TIPO', dir:'desc'}]
+// ===== Multi-sort =====
+let sortOrder = [];
 const ths = Array.from(document.querySelectorAll('th.sortable'));
-
 function toggleSort(key, additive) {
   if (!additive) {
     const current = sortOrder[0];
@@ -160,28 +159,34 @@ function toggleSort(key, additive) {
     else sortOrder[idx].dir = sortOrder[idx].dir === 'asc' ? 'desc' : 'asc';
     sortOrder = sortOrder.slice(0, 3);
   }
-  updateSortIndicators();
-  render();
-  saveState();
+  updateSortIndicators(); render(); saveState();
 }
-
-ths.forEach(th => th.addEventListener('click', (ev) => {
-  const key = th.dataset.key;
-  toggleSort(key, ev.shiftKey === true);
-}));
-
+ths.forEach(th => th.addEventListener('click', (ev) => toggleSort(th.dataset.key, ev.shiftKey === true)));
 function updateSortIndicators() {
   ths.forEach(th => {
     const s = th.querySelector('.sort');
     if (!s) return;
     const idx = sortOrder.findIndex(x => x.key === th.dataset.key);
     if (idx === -1) { s.textContent = ''; return; }
-    const item = sortOrder[idx];
-    const rank = (idx + 1);
+    const item = sortOrder[idx]; const rank = (idx + 1);
     s.textContent = (item.dir === 'asc' ? '▲' : '▼') + rank;
   });
 }
 
+function render() {
+  let rows = filtered();
+  rows = sortRows(rows);
+  count && (count.textContent = rows.length + ' risultati');
+  if (!tbody) return;
+  tbody.innerHTML = rows.map(r =>
+    `<tr>
+      <td data-label="RIPIANO">${escapeHtml(r.RIPIANO ?? '')}</td>
+      <td data-label="TIPO">${escapeHtml(r.TIPO ?? '')}</td>
+      <td data-label="POSIZIONE"><span class="chip">${escapeHtml(r.POSIZIONE ?? '')}</span></td>
+    </tr>`
+  ).join('');
+}
+function escapeHtml(x){return String(x).replace(/[&<>"]/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[s]))}
 function sortRows(rows) {
   if (!sortOrder.length) return rows;
   return rows.slice().sort((a, b) => {
@@ -199,23 +204,14 @@ function sortRows(rows) {
   });
 }
 
-// ===== Render =====
-function render() {
-  let rows = filtered();
-  rows = sortRows(rows);
-  count && (count.textContent = rows.length + ' risultati');
-  if (!tbody) return;
-  tbody.innerHTML = rows.map(r =>
-    `<tr>
-      <td data-label="RIPIANO">${escapeHtml(r.RIPIANO ?? '')}</td>
-      <td data-label="TIPO">${escapeHtml(r.TIPO ?? '')}</td>
-      <td data-label="POSIZIONE"><span class="chip">${escapeHtml(r.POSIZIONE ?? '')}</span></td>
-    </tr>`
-  ).join('');
-}
-
-function escapeHtml(x){return String(x).replace(/[&<>"]/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[s]))}
-
+// ===== Export / Clear / Reset =====
+exportBtn?.addEventListener('click', () => {
+  const csv = toCSV(sortRows(filtered()));
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'kardex_export.csv'; a.click(); URL.revokeObjectURL(url);
+});
 function toCSV(rows) {
   const headers = ['RIPIANO','TIPO','POSIZIONE'];
   const lines = [headers.join(',')];
@@ -226,29 +222,17 @@ function toCSV(rows) {
   return lines.join('\n');
 }
 
-// ===== Export, Clear, Reset =====
-exportBtn?.addEventListener('click', () => {
-  const csv = toCSV(sortRows(filtered()));
-  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = 'kardex_export.csv'; a.click(); URL.revokeObjectURL(url);
-});
-
 clearBtn?.addEventListener('click', () => {
   if (q) q.value=''; if (selCampo) selCampo.value='ALL';
   if (fRip) fRip.value=''; if (fTip) fTip.value=''; if (fPos) fPos.value='';
   render(); saveState();
 });
-
 resetBtn?.addEventListener('click', () => {
   localStorage.removeItem(STATE_KEY);
   if (q) q.value=''; if (selCampo) selCampo.value='ALL';
   if (fRip) fRip.value=''; if (fTip) fTip.value=''; if (fPos) fPos.value='';
   sortOrder = []; updateSortIndicators(); render(); saveState();
 });
-
-// Re-render & save on input
 [q, selCampo, fRip, fTip, fPos].forEach(el => { el && el.addEventListener('input', () => { render(); saveState(); }); });
 selCampo?.addEventListener('change', () => { render(); saveState(); });
 document.addEventListener('change', (e) => { if (e.target && e.target.id === 'campo') { render(); saveState(); }});
@@ -286,8 +270,8 @@ fileInput?.addEventListener('change', async (ev) => {
   render(); saveState();
 });
 
-// ===== Preset Filtri =====
-const PRESETS_KEY = 'kardex-presets-v14';
+// ===== Preset =====
+const PRESETS_KEY = 'kardex-presets-v15';
 function enforceExactType(s){ if(!s) return s; const t=String(s).trim(); if(/^=|^!|.*\*$/.test(t)) return t; return '=' + t; }
 function getCurrentConfig(){ return { q:q?.value??'', campo:selCampo?.value??'ALL', fRip:fRip?.value??'', fTip:fTip?.value??'', fPos:fPos?.value??'', sort:sortOrder }; }
 function applyConfig(cfg){
@@ -331,29 +315,84 @@ tabData?.addEventListener('click', showData);
 tabConsole?.addEventListener('click', showConsole);
 (function restoreTab(){ (localStorage.getItem('kardex-tab') === 'console') ? showConsole() : showData(); })();
 
-/* ===== Stato Console ===== */
+/* ===== Console: contenuto/posizioni ===== */
 const CKEY = 'kardex-console-state';
 const c = {
   alt: $('c_alt_val'), peso: $('c_peso_val'), carico: $('c_carico_val'), att: $('c_vassoio_att'),
-  target: $('c_vassoio_target'), livello: $('c_livello'), posSx: $('c_pos_sx'), profSx: $('c_prof_sx'),
-  posDx: $('c_pos_dx'), profDx: $('c_prof_dx'), home: $('c_home'), mod: $('c_modifica'),
-  svuota: $('c_svuota'), sblocca: $('c_sblocca'), preleva: $('c_preleva'),
+  target: $('c_vassoio_target'),
+  list: $('c_cont_list'),
+  posA: $('c_pos_a'), posB: $('c_pos_b'),
+  home: $('c_home'), mod: $('c_modifica'), svuota: $('c_svuota'),
+  sblocca: $('c_sblocca'), preleva: $('c_preleva'),
 };
 (function loadConsoleState(){
   try{
     const s=JSON.parse(localStorage.getItem(CKEY)||'{}');
-    if(s.alt) c.alt.textContent=s.alt; if(s.peso) c.peso.textContent=s.peso; if(s.carico) c.carico.textContent=s.carico; if(s.att) c.att.textContent=s.att;
-    ['target','livello','posSx','profSx','posDx','profDx'].forEach(k=>{ if(typeof s[k]!=='undefined' && c[k]) c[k].value=s[k]; });
+    if(s.att) c.att.textContent=s.att;
+    if(typeof s.target!=='undefined') c.target.value=s.target;
+    if(s.posA) c.posA.value=s.posA;
+    if(s.posB) c.posB.value=s.posB;
+    if(Array.isArray(s.content)) renderContentList(s.content);
   }catch{}
 })();
-function saveConsoleState(){
-  const s={ alt:c.alt?.textContent, peso:c.peso?.textContent, carico:c.carico?.textContent, att:c.att?.textContent,
-    target:+c.target?.value||0, livello:+c.livello?.value||0, posSx:+c.posSx?.value||0, profSx:+c.profSx?.value||0, posDx:+c.posDx?.value||0, profDx:+c.profDx?.value||0 };
-  localStorage.setItem(CKEY, JSON.stringify(s));
+function saveConsoleState(extra={}){
+  const content = getCurrentContentCache();
+  const s={ att:c.att?.textContent||'-', target:+c.target?.value||0, posA:c.posA?.value||'-', posB:c.posB?.value||'-', content };
+  localStorage.setItem(CKEY, JSON.stringify({ ...s, ...extra }));
 }
-['target','livello','posSx','profSx','posDx','profDx'].forEach(k=>{ c[k]?.addEventListener('input', saveConsoleState); });
+let _contentCache = null;
+function getCurrentContentCache(){ return _contentCache ? _contentCache.slice() : []; }
+function renderContentList(items){
+  c.list.innerHTML = items.map(it => `<li>${escapeHtml(it.label)} <span class="muted">(${it.count})</span></li>`).join('');
+}
+
+function headNumber(str){ const m=String(str||'').match(/^\d+/); return m?m[0]:''; }
+function deriveSide(posText){
+  const t = norm(posText);
+  if (t.includes('sinist')) return 'Sinistra';
+  if (t.includes('destr')) return 'Destra';
+  if (t.includes('centr')) return 'Centrale';
+  return null;
+}
+function analyzeTray(trayNum){
+  if(!trayNum) { _contentCache=[]; c.list.innerHTML=''; c.posA.value='-'; c.posB.value='-'; return; }
+  const matches = ROWS.filter(r => headNumber(r.RIPIANO) === String(trayNum));
+  // contenuto per TIPO
+  const byTipo = new Map();
+  for (const r of matches){
+    const t = String(r.TIPO||'').trim() || '(Senza tipo)';
+    byTipo.set(t, (byTipo.get(t)||0)+1);
+  }
+  const content = Array.from(byTipo.entries()).map(([label,count])=>({label,count})).sort((a,b)=>b.count-a.count);
+  _contentCache = content;
+  renderContentList(content);
+  // posizioni
+  const sideCounts = { 'Sinistra':0, 'Centrale':0, 'Destra':0 };
+  for (const r of matches){
+    const s = deriveSide(r.POSIZIONE);
+    if (s) sideCounts[s] = (sideCounts[s]||0)+1;
+  }
+  const ranked = Object.entries(sideCounts).sort((a,b)=>b[1]-a[1]).filter(([,v])=>v>0).map(([k])=>k);
+  c.posA.value = ranked[0] || '-';
+  c.posB.value = ranked[1] || '-';
+}
+function gotoTray(n){
+  // filtra in Dati e passa alla tab Dati
+  if (fRip) fRip.value = String(n);
+  if (q) q.value = ''; if (selCampo) selCampo.value = 'ALL';
+  render(); saveState(); showData();
+}
+
+c.preleva?.addEventListener('click', ()=>{
+  const t = +c.target.value || 0;
+  c.att.textContent = t;
+  analyzeTray(t);
+  saveConsoleState();
+  gotoTray(t);
+});
+c.target?.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ c.preleva.click(); } });
+
 c.home?.addEventListener('click', ()=>{ showData(); });
 c.mod?.addEventListener('click', ()=>{ alert('Modalità modifica parametri abilitata'); });
-c.svuota?.addEventListener('click', ()=>{ ['target','livello','posSx','profSx','posDx','profDx'].forEach(k=> c[k].value=0); saveConsoleState(); });
+c.svuota?.addEventListener('click', ()=>{ c.target.value=0; c.posA.value='-'; c.posB.value='-'; _contentCache=[]; c.list.innerHTML=''; saveConsoleState(); });
 c.sblocca?.addEventListener('click', ()=>{ alert('Sblocco eseguito'); });
-c.preleva?.addEventListener('click', ()=>{ const t=+c.target.value||0; c.att.textContent=t; saveConsoleState(); });

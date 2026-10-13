@@ -22,31 +22,58 @@ public class RingGestureAccessibilityService extends AccessibilityService {
         if(prefs==null) prefs=getSharedPreferences("ringhid",MODE_PRIVATE);
 
         int key=event.getKeyCode(), scan=event.getScanCode();
+        String keyName=KeyEvent.keyCodeToString(key);
         String device="Sconosciuto";
+        boolean external=false;
         InputDevice d=InputDevice.getDevice(event.getDeviceId());
-        if(d!=null && d.getName()!=null) device=d.getName();
+        if(d!=null){
+            if(d.getName()!=null) device=d.getName();
+            external=d.isExternal();
+        }
 
-        prefs.edit().putString("last_device",device).putInt("last_key",key)
-                .putInt("last_scan",scan).putLong("last_time",System.currentTimeMillis()).apply();
+        // Ignore the phone's own buttons (gpio-keys, built-in keyboard, etc.).
+        // This prevents volume/power buttons used for screenshots from being
+        // accidentally recorded as R09 gestures.
+        if(!external){
+            prefs.edit()
+                .putString("ignored_device",device)
+                .putInt("ignored_key",key)
+                .putInt("ignored_scan",scan)
+                .putLong("ignored_time",System.currentTimeMillis())
+                .apply();
+            sendBroadcast(new Intent(ACTION_EVENT).setPackage(getPackageName()));
+            return false;
+        }
+
+        prefs.edit()
+            .putString("last_device",device)
+            .putInt("last_key",key)
+            .putString("last_key_name",keyName)
+            .putInt("last_scan",scan)
+            .putLong("last_time",System.currentTimeMillis())
+            .apply();
 
         String signature=signature(key,scan,device);
+
         if(prefs.getBoolean("capture_armed",false)){
             String action=prefs.getString("capture_action","Scorri giù");
-            prefs.edit().putString("map_"+signature,action).putBoolean("capture_armed",false).apply();
+            String label=device+" · "+keyName+" ("+key+") · Scan "+scan;
+            prefs.edit()
+                .putString("map_"+signature,action)
+                .putString("label_"+signature,label)
+                .putBoolean("capture_armed",false)
+                .apply();
             sendBroadcast(new Intent(ACTION_EVENT).setPackage(getPackageName()));
             vibrate();
             return true;
         }
 
         String action=prefs.getString("map_"+signature,null);
-        if(action==null){
-            // fallback: some HID stacks change scanCode but keep keyCode stable
-            for(Map.Entry<String,?> e:prefs.getAll().entrySet()){
-                if(e.getKey().startsWith("map_k"+key+"_")) { action=String.valueOf(e.getValue()); break; }
-            }
-        }
         sendBroadcast(new Intent(ACTION_EVENT).setPackage(getPackageName()));
-        if(action!=null){ runAction(action); return true; }
+        if(action!=null){
+            runAction(action);
+            return true;
+        }
         return false;
     }
 
@@ -68,11 +95,18 @@ public class RingGestureAccessibilityService extends AccessibilityService {
             case "Brano successivo": media(KeyEvent.KEYCODE_MEDIA_NEXT); break;
             case "Brano precedente": media(KeyEvent.KEYCODE_MEDIA_PREVIOUS); break;
             case "Apri fotocamera":
-                try { Intent i=new Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA); i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); startActivity(i); } catch(Exception ignored){}
+                try {
+                    Intent i=new Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA);
+                    i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(i);
+                } catch(Exception ignored){}
                 break;
             case "Apri Heart Monitor":
                 Intent launch=getPackageManager().getLaunchIntentForPackage(getPackageName());
-                if(launch!=null){ launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); startActivity(launch); }
+                if(launch!=null){
+                    launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(launch);
+                }
                 break;
         }
         vibrate();
@@ -80,7 +114,9 @@ public class RingGestureAccessibilityService extends AccessibilityService {
 
     private void volume(boolean up){
         AudioManager am=(AudioManager)getSystemService(AUDIO_SERVICE);
-        am.adjustStreamVolume(AudioManager.STREAM_MUSIC, up?AudioManager.ADJUST_RAISE:AudioManager.ADJUST_LOWER, AudioManager.FLAG_SHOW_UI);
+        am.adjustStreamVolume(AudioManager.STREAM_MUSIC,
+                up?AudioManager.ADJUST_RAISE:AudioManager.ADJUST_LOWER,
+                AudioManager.FLAG_SHOW_UI);
     }
 
     private void media(int code){
@@ -94,26 +130,40 @@ public class RingGestureAccessibilityService extends AccessibilityService {
         AccessibilityNodeInfo root=getRootInActiveWindow();
         if(root==null) return;
         int action=down?AccessibilityNodeInfo.ACTION_SCROLL_FORWARD:AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD;
-        Deque<AccessibilityNodeInfo> q=new ArrayDeque<>(); q.add(root);
+        Deque<AccessibilityNodeInfo> q=new ArrayDeque<>();
+        q.add(root);
         while(!q.isEmpty()){
             AccessibilityNodeInfo n=q.removeFirst();
-            if(n.getActionList().stream().anyMatch(x -> x.getId()==action)){ n.performAction(action); return; }
-            for(int i=0;i<n.getChildCount();i++){ AccessibilityNodeInfo c=n.getChild(i); if(c!=null) q.add(c); }
+            for(AccessibilityNodeInfo.AccessibilityAction x:n.getActionList()){
+                if(x.getId()==action){
+                    n.performAction(action);
+                    return;
+                }
+            }
+            for(int i=0;i<n.getChildCount();i++){
+                AccessibilityNodeInfo c=n.getChild(i);
+                if(c!=null) q.add(c);
+            }
         }
     }
 
     private void vibrate(){
         Vibrator v=(Vibrator)getSystemService(VIBRATOR_SERVICE);
         if(v==null) return;
-        if(Build.VERSION.SDK_INT>=26) v.vibrate(VibrationEffect.createOneShot(45,VibrationEffect.DEFAULT_AMPLITUDE));
-        else v.vibrate(45);
+        if(Build.VERSION.SDK_INT>=26)
+            v.vibrate(VibrationEffect.createOneShot(45,VibrationEffect.DEFAULT_AMPLITUDE));
+        else
+            v.vibrate(45);
     }
 
     @Override public void onAccessibilityEvent(android.view.accessibility.AccessibilityEvent e) {}
     @Override public void onInterrupt() {}
 
     public static boolean isEnabled(Context c){
-        String enabled=android.provider.Settings.Secure.getString(c.getContentResolver(), android.provider.Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
-        return enabled!=null && enabled.contains(c.getPackageName()+"/"+RingGestureAccessibilityService.class.getName());
+        String enabled=android.provider.Settings.Secure.getString(
+                c.getContentResolver(),
+                android.provider.Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
+        return enabled!=null &&
+                enabled.contains(c.getPackageName()+"/"+RingGestureAccessibilityService.class.getName());
     }
 }

@@ -8,12 +8,15 @@ import android.media.AudioManager;
 import android.os.*;
 import android.provider.MediaStore;
 import android.view.*;
-import android.view.accessibility.AccessibilityNodeInfo;
 import java.util.*;
 
 public class RingGestureAccessibilityService extends AccessibilityService {
     public static final String ACTION_EVENT="it.marconeri.heartmonitorhid.HID_EVENT";
     private SharedPreferences prefs;
+    private final Handler handler=new Handler(Looper.getMainLooper());
+    private int pulseCount=0;
+    private long lastPulse=0;
+    private final Runnable finalizeSequence=this::fireSequence;
 
     @Override public void onServiceConnected() {
         prefs=getSharedPreferences("ringhid",MODE_PRIVATE);
@@ -23,89 +26,50 @@ public class RingGestureAccessibilityService extends AccessibilityService {
         if(event.getAction()!=KeyEvent.ACTION_DOWN) return false;
         if(prefs==null) prefs=getSharedPreferences("ringhid",MODE_PRIVATE);
 
-        int key=event.getKeyCode(), scan=event.getScanCode();
-        String keyName=KeyEvent.keyCodeToString(key);
-        String device="Sconosciuto";
-        boolean external=false;
         InputDevice d=InputDevice.getDevice(event.getDeviceId());
-        if(d!=null){
-            if(d.getName()!=null) device=d.getName();
-            external=d.isExternal();
-        }
+        String device=d!=null && d.getName()!=null ? d.getName() : "Sconosciuto";
+        boolean external=d!=null && d.isExternal();
 
-        // Ignore phone hardware keys such as gpio-keys.
-        if(!external){
-            prefs.edit()
-                .putString("ignored_device",device)
-                .putInt("ignored_key",key)
-                .putInt("ignored_scan",scan)
-                .putLong("ignored_time",System.currentTimeMillis())
-                .apply();
-            sendBroadcast(new Intent(ACTION_EVENT).setPackage(getPackageName()));
-            return false;
-        }
+        if(!external) return false;
 
-        String signature=signature(key,scan,device);
+        int key=event.getKeyCode(), scan=event.getScanCode();
         prefs.edit()
             .putString("last_device",device)
             .putInt("last_key",key)
-            .putString("last_key_name",keyName)
+            .putString("last_key_name",KeyEvent.keyCodeToString(key))
             .putInt("last_scan",scan)
             .putLong("last_time",System.currentTimeMillis())
-            .putString("last_signature",signature)
             .apply();
 
-        if(prefs.getBoolean("capture_armed",false)){
-            String slot=prefs.getString("capture_slot","Su");
-            String action=prefs.getString("capture_action","Scorri su");
+        long now=SystemClock.uptimeMillis();
+        if(now-lastPulse<120) return true; // debounce
+        lastPulse=now;
 
-            // If this HID signature is already used by another gesture slot,
-            // do not silently overwrite it: the ring would be indistinguishable.
-            String existingSlot=prefs.getString("sig_slot_"+signature,null);
-            if(existingSlot!=null && !existingSlot.equals(slot)){
-                prefs.edit()
-                    .putBoolean("capture_armed",false)
-                    .putString("capture_error","Il gesto «"+slot+"» invia lo stesso comando HID di «"+existingSlot+"». Il firmware non permette di distinguerli in modalità HID.")
-                    .apply();
-                sendBroadcast(new Intent(ACTION_EVENT).setPackage(getPackageName()));
-                vibratePattern(false);
-                return true;
-            }
-
-            // Re-registering a slot replaces only that slot's old signature.
-            String oldSig=prefs.getString("slot_sig_"+slot,null);
-            SharedPreferences.Editor ed=prefs.edit();
-            if(oldSig!=null && !oldSig.equals(signature)){
-                ed.remove("map_"+oldSig);
-                ed.remove("sig_slot_"+oldSig);
-                ed.remove("label_"+oldSig);
-            }
-
-            String label=device+" · "+keyName+" ("+key+") · Scan "+scan;
-            ed.putString("slot_sig_"+slot,signature)
-              .putString("sig_slot_"+signature,slot)
-              .putString("map_"+signature,action)
-              .putString("label_"+signature,label)
-              .putBoolean("capture_armed",false)
-              .remove("capture_error")
-              .apply();
-
-            sendBroadcast(new Intent(ACTION_EVENT).setPackage(getPackageName()));
-            vibratePattern(true);
-            return true;
-        }
-
-        String action=prefs.getString("map_"+signature,null);
+        pulseCount=Math.min(6,pulseCount+1);
+        prefs.edit().putInt("live_pulse_count",pulseCount).apply();
+        handler.removeCallbacks(finalizeSequence);
+        handler.postDelayed(finalizeSequence,650);
         sendBroadcast(new Intent(ACTION_EVENT).setPackage(getPackageName()));
-        if(action!=null){
-            runAction(action);
-            return true;
-        }
-        return false;
+        return true;
     }
 
-    private String signature(int key,int scan,String dev){
-        return "k"+key+"_s"+scan+"_d"+Math.abs(dev.hashCode());
+    private void fireSequence(){
+        if(pulseCount<=0) return;
+        int count=pulseCount;
+        pulseCount=0;
+        prefs.edit()
+            .putInt("live_pulse_count",0)
+            .putInt("last_sequence_count",count)
+            .putLong("last_sequence_time",System.currentTimeMillis())
+            .apply();
+
+        String action=prefs.getString("seq_action_"+count,null);
+        if(action!=null && !action.equals("Nessuna")){
+            runAction(action);
+        }else{
+            vibrate(false);
+        }
+        sendBroadcast(new Intent(ACTION_EVENT).setPackage(getPackageName()));
     }
 
     private void runAction(String a){
@@ -138,15 +102,13 @@ public class RingGestureAccessibilityService extends AccessibilityService {
                 }
                 break;
         }
-        vibratePattern(true);
+        vibrate(true);
     }
 
     private void swipe(int dx,int dy){
         android.util.DisplayMetrics dm=getResources().getDisplayMetrics();
         float cx=dm.widthPixels/2f, cy=dm.heightPixels/2f;
         float spanX=dm.widthPixels*0.30f, spanY=dm.heightPixels*0.25f;
-
-        // Finger movement is opposite to content direction.
         float sx=cx, sy=cy, ex=cx, ey=cy;
         if(dx<0){ sx=cx+spanX; ex=cx-spanX; }
         if(dx>0){ sx=cx-spanX; ex=cx+spanX; }
@@ -156,10 +118,8 @@ public class RingGestureAccessibilityService extends AccessibilityService {
         Path p=new Path();
         p.moveTo(sx,sy);
         p.lineTo(ex,ey);
-        GestureDescription.StrokeDescription stroke=
-                new GestureDescription.StrokeDescription(p,0,280);
         GestureDescription.Builder b=new GestureDescription.Builder();
-        b.addStroke(stroke);
+        b.addStroke(new GestureDescription.StrokeDescription(p,0,280));
         dispatchGesture(b.build(),null,null);
     }
 
@@ -177,15 +137,15 @@ public class RingGestureAccessibilityService extends AccessibilityService {
         am.dispatchMediaKeyEvent(new KeyEvent(now,now,KeyEvent.ACTION_UP,code,0));
     }
 
-    private void vibratePattern(boolean ok){
+    private void vibrate(boolean ok){
         Vibrator v=(Vibrator)getSystemService(VIBRATOR_SERVICE);
         if(v==null) return;
         if(Build.VERSION.SDK_INT>=26){
             if(ok) v.vibrate(VibrationEffect.createOneShot(45,VibrationEffect.DEFAULT_AMPLITUDE));
-            else v.vibrate(VibrationEffect.createWaveform(new long[]{0,80,60,80},-1));
+            else v.vibrate(VibrationEffect.createWaveform(new long[]{0,35,45,35},-1));
         }else{
             if(ok) v.vibrate(45);
-            else v.vibrate(new long[]{0,80,60,80},-1);
+            else v.vibrate(new long[]{0,35,45,35},-1);
         }
     }
 

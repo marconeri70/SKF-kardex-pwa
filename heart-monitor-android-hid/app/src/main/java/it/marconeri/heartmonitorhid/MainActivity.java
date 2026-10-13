@@ -52,7 +52,7 @@ public class MainActivity extends Activity {
         title.setTextColor(Color.rgb(194,24,75));
         root.addView(title);
 
-        TextView info = text("Modalità nativa: nessuno streaming X/Y/Z. I LED ottici non vengono attivati dall'app. Android ascolta i tasti HID inviati dall'anello.", 16, false);
+        TextView info = text("Modalità HID nativa. I pulsanti fisici del telefono vengono ignorati: registriamo solo eventi provenienti da dispositivi esterni Bluetooth/HID.", 16, false);
         info.setPadding(0,dp(10),0,dp(18));
         root.addView(info);
 
@@ -78,13 +78,13 @@ public class MainActivity extends Activity {
         actionSpinner.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, actions));
         root.addView(actionSpinner, new LinearLayout.LayoutParams(-1, dp(56)));
 
-        Button capture = button("🎯 REGISTRA IL PROSSIMO GESTO HID");
+        Button capture = button("🎯 REGISTRA IL PROSSIMO GESTO R09");
         capture.setOnClickListener(v -> {
             getSharedPreferences("ringhid", MODE_PRIVATE).edit()
                 .putBoolean("capture_armed", true)
                 .putString("capture_action", actions[actionSpinner.getSelectedItemPosition()])
                 .apply();
-            Toast.makeText(this, "Ora fai il gesto con l'anello", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Ora fai il gesto con l'anello. I tasti del telefono saranno ignorati.", Toast.LENGTH_LONG).show();
             refresh();
         });
         root.addView(capture);
@@ -96,13 +96,15 @@ public class MainActivity extends Activity {
         clear.setOnClickListener(v -> {
             SharedPreferences p=getSharedPreferences("ringhid",MODE_PRIVATE);
             SharedPreferences.Editor e=p.edit();
-            for(String k:p.getAll().keySet()) if(k.startsWith("map_")) e.remove(k);
+            for(String k:p.getAll().keySet()){
+                if(k.startsWith("map_") || k.startsWith("label_")) e.remove(k);
+            }
             e.apply();
             refresh();
         });
         root.addView(clear);
 
-        TextView hint=text("Test consigliato: in QRing abilita una volta “Controllo gestuale”, poi chiudi QRing. Associa l'R09 in Bluetooth se richiesto. Nell'app premi “Registra” e fai un gesto. Se arriva un comando HID vedrai KeyCode, ScanCode e dispositivo.",14,false);
+        TextView hint=text("Nota: KeyCode 25 / ScanCode 114 da «gpio-keys» è il tasto Volume - del telefono e non è un gesto dell'anello. Un evento R09 tipico può apparire come comando multimediale, ad esempio KEYCODE_MEDIA_NEXT.",14,false);
         hint.setPadding(0,dp(18),0,0);
         root.addView(hint);
         return scroll;
@@ -113,12 +115,14 @@ public class MainActivity extends Activity {
         boolean enabled = RingGestureAccessibilityService.isEnabled(this);
         boolean armed = p.getBoolean("capture_armed",false);
         status.setText((enabled ? "✅ Servizio HID attivo" : "⚠️ Servizio HID non abilitato") +
-                (armed ? "\n🎯 Registrazione armata: fai ora il gesto" : ""));
+                (armed ? "\n🎯 In attesa del prossimo gesto esterno R09" : ""));
 
         String dev=p.getString("last_device","--");
         int key=p.getInt("last_key",-1), scan=p.getInt("last_scan",-1);
+        String keyName=p.getString("last_key_name", key<0?"--":KeyEvent.keyCodeToString(key));
         long t=p.getLong("last_time",0);
-        lastEvent.setText("ULTIMO EVENTO HID\nDispositivo: "+dev+
+        lastEvent.setText("ULTIMO EVENTO HID ESTERNO\nDispositivo: "+dev+
+                "\nTasto: "+keyName+
                 "\nKeyCode: "+(key<0?"--":key)+"   ScanCode: "+(scan<0?"--":scan)+
                 "\nOra: "+(t==0?"--":new java.text.SimpleDateFormat("HH:mm:ss", Locale.ITALY).format(new Date(t))));
 
@@ -127,25 +131,55 @@ public class MainActivity extends Activity {
         for(Map.Entry<String,?> e:p.getAll().entrySet()){
             if(e.getKey().startsWith("map_")){
                 n++;
-                sb.append("• ").append(e.getKey().substring(4).replace('_',' ')).append(" → ").append(e.getValue()).append("\n");
+                String sig=e.getKey().substring(4);
+                String label=p.getString("label_"+sig,prettyLegacy(sig));
+                sb.append("• ").append(label).append("\n  → ").append(e.getValue()).append("\n");
             }
         }
-        if(n==0) sb.append("Nessuno. Registra il primo gesto.");
+        if(n==0) sb.append("Nessuno. Registra il primo gesto R09.");
         mappings.setText(sb.toString());
     }
 
+    private String prettyLegacy(String sig){
+        try{
+            String[] parts=sig.split("_");
+            int key=Integer.parseInt(parts[0].substring(1));
+            int scan=Integer.parseInt(parts[1].substring(1));
+            return KeyEvent.keyCodeToString(key)+" ("+key+") · Scan "+scan;
+        }catch(Exception e){ return sig; }
+    }
+
     private TextView text(String s,int sp,boolean bold){
-        TextView t=new TextView(this); t.setText(s); t.setTextSize(sp); t.setTextColor(Color.rgb(40,40,45));
-        if(bold)t.setTypeface(null,1); return t;
+        TextView t=new TextView(this);
+        t.setText(s);
+        t.setTextSize(sp);
+        t.setTextColor(Color.rgb(40,40,45));
+        if(bold)t.setTypeface(null,1);
+        return t;
     }
+
     private View card(View v){
-        LinearLayout box=new LinearLayout(this); box.setPadding(dp(16),dp(15),dp(16),dp(15));
-        box.setBackgroundColor(Color.WHITE); box.addView(v,new LinearLayout.LayoutParams(-1,-2));
-        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2); lp.setMargins(0,dp(10),0,dp(8)); box.setLayoutParams(lp); return box;
+        LinearLayout box=new LinearLayout(this);
+        box.setPadding(dp(16),dp(15),dp(16),dp(15));
+        box.setBackgroundColor(Color.WHITE);
+        box.addView(v,new LinearLayout.LayoutParams(-1,-2));
+        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);
+        lp.setMargins(0,dp(10),0,dp(8));
+        box.setLayoutParams(lp);
+        return box;
     }
+
     private Button button(String s){
-        Button b=new Button(this); b.setText(s); b.setTextSize(16);
-        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(62)); lp.setMargins(0,dp(8),0,dp(8)); b.setLayoutParams(lp); return b;
+        Button b=new Button(this);
+        b.setText(s);
+        b.setTextSize(16);
+        LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(62));
+        lp.setMargins(0,dp(8),0,dp(8));
+        b.setLayoutParams(lp);
+        return b;
     }
-    private int dp(int v){ return (int)(v*getResources().getDisplayMetrics().density+0.5f); }
+
+    private int dp(int v){
+        return (int)(v*getResources().getDisplayMetrics().density+0.5f);
+    }
 }

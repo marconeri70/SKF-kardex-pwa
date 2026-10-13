@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Heart Monitor R09 HID</string>
+    <string name="accessibility_description">Intercetta i comandi HID dello smart ring R09 e li associa ad azioni Android scelte dall'utente.</string>
+</resources>

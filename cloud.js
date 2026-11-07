@@ -26,6 +26,7 @@ function renderUser(){
   $('cloudUserArea').classList.toggle('hidden',!user);
   $('cloudEditor').classList.toggle('hidden',!user);
   $('cloudUser').textContent=user?user.nome+' · '+user.ruolo:'';
+  window.dispatchEvent(new CustomEvent('kardex:auth',{detail:{logged:!!user}}));
   document.querySelectorAll('.cloudActions').forEach(el=>{
     el.replaceChildren();
     if(!user||!el.dataset.id)return;
@@ -40,6 +41,17 @@ function renderUser(){
     el.append(edit,del);
   });
 }
+window.addEventListener('kardex:quick-save',async e=>{
+  const d=e.detail||{};
+  if(!user||!token){window.dispatchEvent(new CustomEvent('kardex:quick-result',{detail:{error:'Accedi come operatore per modificare la posizione.'}}));return;}
+  const row=ROWS.find(r=>String(r.id)===String(d.id));
+  if(!row||!['Sinistra','Centrale','Destra','Da definire'].includes(d.posizione)){window.dispatchEvent(new CustomEvent('kardex:quick-result',{detail:{error:'Componente o posizione non valida.'}}));return;}
+  try{
+    await request('/api/componenti/'+encodeURIComponent(row.id),'PATCH',{ripiano:row.RIPIANO,tipo:row.TIPO,posizione:d.posizione});
+    await refresh();
+    window.dispatchEvent(new CustomEvent('kardex:quick-result',{detail:{ok:true,id:row.id}}));
+  }catch(err){window.dispatchEvent(new CustomEvent('kardex:quick-result',{detail:{error:err.message}}));}
+});
 async function refresh(){
   const data=await request('/api/componenti');
   if(!Array.isArray(data.componenti))throw new Error('Risposta inventario non valida');
@@ -47,6 +59,7 @@ async function refresh(){
   window.KARDEX_CLOUD_ONLINE=true;
   render();if(typeof analyzeTray==='function'&&$('c_vassoio_target'))analyzeTray(+$('c_vassoio_target').value||0);
   renderUser();status('Online · '+ROWS.length+' componenti');
+  window.dispatchEvent(new CustomEvent('kardex:auth',{detail:{logged:!!user}}));
 }
 function resetForm(){$('cloudForm').reset();$('cloudId').value='';}
 window.addEventListener('kardex:render',renderUser);

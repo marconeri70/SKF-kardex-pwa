@@ -4,10 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>SKF · FlexiChannel Warehouse</title>
-  <link rel="manifest" href="manifest.webmanifest?v=29" />
+  <link rel="manifest" href="manifest.webmanifest?v=30" />
   <meta name="theme-color" content="#0e4ead" />
-  <link rel="apple-touch-icon" href="assets/icon-512.png?v=29" />
-  <link rel="icon" href="favicon.ico?v=29" type="image/x-icon">
+  <link rel="apple-touch-icon" href="assets/icon-512.png?v=30" />
+  <link rel="icon" href="favicon.ico?v=30" type="image/x-icon">
   <style>
     :root{
       --bg:#f6f7fb; --card:#fff; --text:#0f172a; --muted:#6b7280;
@@ -182,16 +182,52 @@
     #advancedTools .filters>summary{font-size:13px}
     #advancedTools .filters>p{margin:10px 2px}
     @media(max-width:700px){#advancedTools .advanced-tools-body{padding:10px 0}#advancedTools .filters input{width:100%;min-width:0;font-size:16px}}
+
+    /* v30: sfondo tecnico ispirato alla tavola SKF FlexiChannel fornita */
+    body{
+      background-color:#e8f0f9;
+      background-image:
+        radial-gradient(circle at 88% 89%,transparent 0 46px,rgba(12,63,117,.10) 47px 49px,transparent 50px 63px,rgba(0,81,149,.13) 64px 70px,rgba(255,255,255,.6) 71px 77px,rgba(0,56,113,.12) 78px 83px,transparent 84px 104px,rgba(0,81,149,.12) 105px 110px,transparent 111px),
+        linear-gradient(125deg,transparent 0 65%,rgba(0,81,149,.09) 65.1% 66%,transparent 66.1%),
+        repeating-linear-gradient(135deg,transparent 0 35px,rgba(0,81,149,.035) 36px 37px,transparent 38px 73px),
+        linear-gradient(150deg,#f8fbff 0%,#e7f0fa 56%,#cddff2 100%);
+      background-attachment:fixed;
+    }
+    header{background:linear-gradient(112deg,#003b79,#005195 65%,#286fb6);border-bottom:5px solid #df402d}
+    main{position:relative}
+    main:before{content:"SKF  /  FLEXICHANNEL SMALL LOTS";display:block;font-size:11px;font-weight:850;letter-spacing:.15em;color:#005195;margin:0 3px 10px;border-left:5px solid #e2462d;padding:7px 12px;background:rgba(255,255,255,.78);border-radius:0 8px 8px 0}
+    .card,.console-card{background:rgba(255,255,255,.96);border-color:#c8d8eb;box-shadow:0 10px 24px rgba(0,55,115,.10);border-top:3px solid #005195}
+    #dataView{background-image:linear-gradient(135deg,rgba(0,81,149,.025),transparent 45%)}
+    #dataView thead th{background:linear-gradient(90deg,#005195,#276cba);color:#fff;border-bottom:3px solid #df402d}
+    #dataView tbody tr:nth-child(even){background:#eef4fc}
+    #dataView tbody tr:hover{background:#e2edfc}
+    .tray-map{background:rgba(248,251,255,.95)}
+    .tray-map-buttons button:not(.selected){background:#e5effc;color:#003b79}
+    .tray-entry-toggle:hover{background:#e9f1fb}
+    .quick-location{background:#e8f1fb}
+    html[data-theme="dark"] body,html[data-theme="auto"] body{background-color:var(--bg)}
+    html[data-theme="dark"] .card,html[data-theme="dark"] .console-card{background:var(--card);border-color:var(--border)}
+    html[data-theme="dark"] #dataView tbody tr:nth-child(even){background:var(--row-alt)}
+    html[data-theme="dark"] #dataView tbody tr:hover{background:var(--row-hover)}
+    html[data-theme="dark"] .tray-map{background:var(--card)}
+    html[data-theme="dark"] .tray-entry-toggle:hover{background:var(--primary-weak)}
+    @media(max-width:700px){
+      body{background-attachment:scroll}
+      main:before{font-size:9px;letter-spacing:.08em;margin:0 0 2px}
+      #dataView thead th{background:var(--table-head)}
+      .card,.console-card{background:var(--card)}
+      #dataView tbody tr:nth-child(even){background:var(--row-alt)}
+    }
   </style>
   <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script defer src="app.js?v=29"></script>
-  <script defer src="cloud.js?v=29"></script>
+  <script defer src="app.js?v=30"></script>
+  <script defer src="cloud.js?v=30"></script>
 </head>
 <body>
   <header>
     <div class="wrap">
       <div class="brand">
-        <div class="logo"><img src="assets/icon-512.png?v=29" alt="SKF"></div>
+        <div class="logo"><img src="assets/icon-512.png?v=30" alt="SKF"></div>
         <div>
           <div style="font-weight:800">SKF · FlexiChannel</div>
           <div class="muted">Cassino Factory · Officina 2</div>
@@ -375,11 +411,11 @@
     <p class="muted" style="margin-top:10px">Dopo il primo caricamento, il sito funziona anche offline (Aggiungi a schermata Home).</p>
   </main>
 
-  <footer style="text-align:center;margin:16px 0" class="muted">Versione UI: <b>v29</b></footer>
+  <footer style="text-align:center;margin:16px 0" class="muted">Versione UI: <b>v30</b></footer>
 
   <script>
     if('serviceWorker' in navigator){
-      window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=29'));
+      window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=30'));
     }
   </script>
 </body>

@@ -290,7 +290,7 @@
       </details>
       <section id="cloudImport" class="hidden" style="margin-top:14px"><details><summary class="import-summary">📦 Importa indice SKF · 12/10/2026</summary><p class="muted">27 righe leggibili dalla foto. Verifica le 27 voci dell’indice e importa soltanto quelle mancanti. Le posizioni già assegnate vengono conservate; per le altre viene usato «Da definire».</p><button id="cloudImportPreview" type="button" class="secondary">Verifica righe e duplicati</button><button id="cloudImportConfirm" type="button" disabled >Importa componenti mancanti</button><p id="cloudImportMessage" class="muted" role="status"></p><div id="cloudImportList" class="import-list"></div></details></section>
       <section id="cloudAdmin" class="hidden" style="margin-top:18px;border-top:1px solid var(--border);padding-top:12px">
-        <details id="cloudPositionsAdmin"><summary style="cursor:pointer;font-weight:700">📍 Gestione posizioni (v33)</summary><p class="muted">Le posizioni sono condivise fra tutti i ripiani. Rinomina e rimozione richiedono la conferma del server per proteggere i componenti associati.</p><div id="positionAdminStatus" role="status" class="muted">Verifica servizio posizioni…</div><div id="positionAdminList"></div><form id="positionAddForm" class="row"><input id="positionNewName" maxlength="60" placeholder="Nuova posizione" required><button type="submit">Aggiungi posizione</button></form></details><details id="cloudAdminDetails">
+        <details id="cloudQrAdmin"><summary style="cursor:pointer;font-weight:700">🖨️ Etichette QR dei ripiani (amministratore)</summary><p class="muted">Genera e stampa le etichette A4 con QR permanenti. I codici già stampati restano invariati.</p><button type="button" id="openQrLabels" class="secondary">Apri etichette QR da stampare</button></details><details id="cloudPositionsAdmin"><summary style="cursor:pointer;font-weight:700">📍 Gestione posizioni (v33)</summary><p class="muted">Le posizioni sono condivise fra tutti i ripiani. Rinomina e rimozione richiedono la conferma del server per proteggere i componenti associati.</p><div id="positionAdminStatus" role="status" class="muted">Verifica servizio posizioni…</div><div id="positionAdminList"></div><form id="positionAddForm" class="row"><input id="positionNewName" maxlength="60" placeholder="Nuova posizione" required><button type="submit">Aggiungi posizione</button></form></details><details id="cloudAdminDetails">
           <summary style="cursor:pointer;font-weight:700">👥 Gestione operatori (amministratore)</summary>
           <p class="muted">Crea un account con password provvisoria (minimo 12 caratteri). Consegna la password al collega attraverso un canale privato.</p>
           <form id="cloudOperatorForm" class="row">
@@ -437,5 +437,5 @@
       window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=33.1'));
     }
   </script>
-</body>
+<script>document.getElementById('openQrLabels')?.addEventListener('click',()=>window.open('./etichette.html','_blank','noopener'));</script></body>
 </html>

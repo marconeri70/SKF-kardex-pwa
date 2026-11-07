@@ -5,7 +5,7 @@
 const ROOT='https://skf-kardex-api.vocidicassino.workers.dev';
 const API=ROOT+'/api/componenti';
 let adminVerified=false;
-async function verifyAdmin(){const token=sessionStorage.getItem('kardex_token');if(!token)throw Error('Accedi come amministratore dall’app SKF Kardex.');const r=await fetch(ROOT+'/api/me',{headers:{Authorization:'Bearer '+token},cache:'no-store'});if(!r.ok)throw Error('Sessione scaduta. Accedi nuovamente.');const d=await r.json();if(d.operatore?.ruolo!=='admin')throw Error('Funzione riservata all’amministratore.');adminVerified=true;}
+async function verifyAdmin(){const token=sessionStorage.getItem('kardex_token');if(!token)throw Error('Accedi come amministratore dall’app SKF Kardex.');const r=await fetch(ROOT+'/api/me',{headers:{Authorization:'Bearer '+token},cache:'no-store'});if(!r.ok)throw Error('Sessione scaduta. Accedi nuovamente.');const d=await r.json();if((d.operatore||d.user||d)?.ruolo!=='admin')throw Error('Funzione riservata all’amministratore.');adminVerified=true;}
 const $=id=>document.getElementById(id);
 const key=s=>String(s??'').trim();
 const target=s=>{const u=new URL('./ripiano.html',location.href);u.search='';u.hash='';u.searchParams.set('ripiano',s);return u.href};

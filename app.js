@@ -1,4 +1,4 @@
-// v19 — Console: schede grandi per lato con elenco tipi; export/import preset JSON
+// v21 — Console: schede grandi per lato con elenco tipi; export/import preset JSON
 let ROWS = [];
 const $ = (id) => document.getElementById(id);
 
@@ -47,9 +47,17 @@ function loadState(){
 /* ======= Dati ======= */
 async function loadData(){
   try{
-    const resp = await fetch('./data/kardex.json', { cache:'no-store' });
-    ROWS = await resp.json();
-  }catch{ ROWS=[]; }
+    const resp = await fetch('https://skf-kardex-api.vocidicassino.workers.dev/api/componenti', { cache:'no-store' });
+    if(!resp.ok) throw new Error('Cloud HTTP '+resp.status);
+    const data = await resp.json();
+    if(!Array.isArray(data.componenti)) throw new Error('Risposta Cloud non valida');
+    ROWS = data.componenti.map(x=>({id:x.id,RIPIANO:String(x.ripiano??''),TIPO:String(x.tipo??''),POSIZIONE:String(x.posizione??'')}));
+    window.KARDEX_CLOUD_ONLINE = true;
+  }catch{
+    window.KARDEX_CLOUD_ONLINE = false;
+    try{ const local=await fetch('./data/kardex.json',{cache:'no-store'}); ROWS=await local.json(); }
+    catch{ ROWS=[]; }
+  }
   loadState();
   render();
   buildConsolePresetSelect();
@@ -125,7 +133,7 @@ function render(){
     <tr>
       <td data-label="RIPIANO">${escapeHtml(r.RIPIANO??'')}</td>
       <td data-label="TIPO">${escapeHtml(r.TIPO??'')}</td>
-      <td data-label="POSIZIONE"><span class="chip">${escapeHtml(r.POSIZIONE??'')}</span></td>
+      <td data-label="POSIZIONE"><span class="chip">${escapeHtml(r.POSIZIONE??'')}</span><span class="cloudActions" data-id="${escapeHtml(r.id??'')}"></span></td>
     </tr>`).join('');
 }
 

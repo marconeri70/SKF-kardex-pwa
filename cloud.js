@@ -21,7 +21,7 @@ function renderUser(){
   $('cloudToggleLogin').classList.toggle('hidden',logged);
   if(logged){$('cloudLoginArea').classList.add('hidden');$('cloudToggleLogin').setAttribute('aria-expanded','false');}
   $('cloudAdmin').classList.toggle('hidden',!user||user.ruolo!=='admin');
-  $('cloudLoginArea').classList.toggle('hidden',!!user);
+  if(user)$('cloudLoginArea').classList.add('hidden');
   $('cloudUserArea').classList.toggle('hidden',!user);
   $('cloudEditor').classList.toggle('hidden',!user);
   $('cloudUser').textContent=user?user.nome+' · '+user.ruolo:'';
@@ -31,7 +31,7 @@ function renderUser(){
     const edit=document.createElement('button');edit.textContent='Modifica';edit.className='secondary';edit.style.marginLeft='8px';
     edit.onclick=()=>{const r=ROWS.find(x=>String(x.id)===el.dataset.id);if(!r)return;
       $('cloudId').value=r.id;$('cloudRipiano').value=r.RIPIANO;$('cloudTipo').value=r.TIPO;$('cloudPosizione').value=r.POSIZIONE;
-      $('cloudForm').scrollIntoView({behavior:'smooth',block:'center'});};
+      $('cloudEditor').open=true;$('cloudForm').scrollIntoView({behavior:'smooth',block:'center'});};
     const del=document.createElement('button');del.textContent='Elimina';del.className='secondary';del.style.marginLeft='4px';
     del.onclick=async()=>{const r=ROWS.find(x=>String(x.id)===el.dataset.id);if(!r||!confirm('Eliminare '+r.TIPO+' dal ripiano '+r.RIPIANO+'?'))return;
       try{await request('/api/componenti/'+encodeURIComponent(r.id),'DELETE');message('Componente eliminato');await refresh();}

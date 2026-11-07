@@ -4,10 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Kardex Viewer</title>
-  <link rel="manifest" href="manifest.webmanifest?v=22" />
+  <link rel="manifest" href="manifest.webmanifest?v=23" />
   <meta name="theme-color" content="#0e4ead" />
-  <link rel="apple-touch-icon" href="assets/icon-512.png?v=22" />
-  <link rel="icon" href="favicon.ico?v=22" type="image/x-icon">
+  <link rel="apple-touch-icon" href="assets/icon-512.png?v=23" />
+  <link rel="icon" href="favicon.ico?v=23" type="image/x-icon">
   <style>
     :root{
       --bg:#f6f7fb; --card:#fff; --text:#0f172a; --muted:#6b7280;
@@ -84,16 +84,50 @@
     .side-title{font-weight:800;margin-bottom:8px}
     .side-list{list-style:none;margin:0;padding:0}
     .side-list li{padding:6px 8px;border:1px solid var(--border);border-radius:10px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center}
+
+    .mobile-tools{margin-top:10px}
+    .mobile-tools summary,#cloudEditor summary,#cloudAdminDetails summary{cursor:pointer;padding:12px;border-radius:12px;background:var(--primary-weak);font-weight:650}
+    button,summary{touch-action:manipulation}
+    button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid #f59e0b;outline-offset:2px}
+    @media(max-width:700px){
+      header{position:static;padding:10px 12px}
+      .wrap{flex-direction:column;align-items:stretch;gap:10px}
+      .brand .logo{width:36px;height:36px}
+      .brand .muted{display:none}
+      .toolbar{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+      .toggle{font-size:13px;padding:11px 6px;min-height:44px}
+      main{display:flex;flex-direction:column;gap:10px;margin:10px auto;padding:0 10px}
+      #dataView,#consoleView{order:1}
+      #cloudPanel{order:2;margin-bottom:0!important}
+      main>p{order:3}
+      .card,.console-card{padding:12px;border-radius:14px}
+      #dataView>.row:first-child{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
+      #q{grid-column:1/-1;width:100%;font-size:16px;min-height:52px}
+      #campo{grid-column:1;min-width:0;min-height:44px}
+      #clear{grid-column:2;min-height:44px}
+      #count{grid-column:1/-1;margin:0;text-align:right;font-weight:650}
+      .filters .grid input,#cloudLoginArea input,#cloudForm input:not([type=hidden]),#cloudForm select,#cloudOperatorForm input,#cloudOperatorForm select{width:100%;min-width:0;font-size:16px}
+      #cloudForm,#cloudOperatorForm{display:grid;grid-template-columns:1fr 1fr}
+      #cloudForm input:not([type=hidden]),#cloudForm select,#cloudOperatorForm input,#cloudOperatorForm select,#cloudOperatorForm button{grid-column:1/-1}
+      #cloudForm button{min-height:44px}
+      #cloudForm #cloudSave,#cloudForm #cloudCancel{grid-column:1/-1}
+      #cloudUserArea{justify-content:space-between}
+      td{grid-template-columns:82px minmax(0,1fr);padding:9px 8px;align-items:center;overflow-wrap:anywhere}
+      td[data-label="RIPIANO"]{font-size:18px;font-weight:750}
+      td[data-label="TIPO"]{font-size:17px;font-weight:700}
+      td[data-label="POSIZIONE"] .cloudActions{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+      td[data-label="POSIZIONE"] .cloudActions button{margin:0!important;min-height:40px}
+    }
   </style>
   <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script defer src="app.js?v=22"></script>
-  <script defer src="cloud.js?v=22"></script>
+  <script defer src="app.js?v=23"></script>
+  <script defer src="cloud.js?v=23"></script>
 </head>
 <body>
   <header>
     <div class="wrap">
       <div class="brand">
-        <div class="logo"><img src="assets/icon-512.png?v=22" alt="SKF"></div>
+        <div class="logo"><img src="assets/icon-512.png?v=23" alt="SKF"></div>
         <div>
           <div style="font-weight:800">Kardex Viewer</div>
           <div class="muted">Ricerca • Filtri • Import/Export • Offline</div>
@@ -111,7 +145,7 @@
   <main>
     <section class="card" id="cloudPanel" style="margin-bottom:14px">
       <div class="row" style="justify-content:space-between">
-        <strong>☁️ Inventario condiviso · Cloudflare D1</strong>
+        <strong>☁️ Inventario condiviso</strong>
         <span id="cloudStatus" class="muted" role="status">Connessione in corso…</span>
       </div>
       <button id="cloudToggleLogin" class="secondary" style="margin-top:10px" aria-expanded="false" aria-controls="cloudLoginArea">🔐 Accesso operatori</button>
@@ -123,8 +157,8 @@
       <div id="cloudUserArea" class="row hidden" style="margin-top:12px">
         <span id="cloudUser"></span><button id="cloudLogout" class="secondary">Esci</button>
       </div>
-      <div id="cloudEditor" class="hidden" style="margin-top:12px">
-        <strong>Gestione componenti</strong>
+      <details id="cloudEditor" class="hidden" style="margin-top:12px">
+        <summary>➕ Aggiungi / modifica componente</summary>
         <form id="cloudForm" class="row" style="margin-top:8px">
           <input id="cloudId" type="hidden">
           <input id="cloudRipiano" placeholder="Ripiano / vassoio" required maxlength="50">
@@ -134,7 +168,7 @@
           <button type="button" class="secondary" id="cloudCancel">Annulla</button>
         </form>
         <p class="muted">Per modificare o eliminare, usa i comandi accanto alle righe della tabella. Le modifiche vengono salvate nel database condiviso.</p>
-      </div>
+      </details>
       <section id="cloudAdmin" class="hidden" style="margin-top:18px;border-top:1px solid var(--border);padding-top:12px">
         <details id="cloudAdminDetails">
           <summary style="cursor:pointer;font-weight:700">👥 Gestione operatori (amministratore)</summary>
@@ -164,12 +198,14 @@
           <option value="POSIZIONE">Posizione</option>
         </select>
         <button id="clear" class="secondary">Pulisci</button>
+        <span id="count" class="count">0 risultati</span>
+      </div>
+      <details class="mobile-tools"><summary>⚙️ Altre funzioni</summary><div class="row" style="margin-top:10px">
         <button id="export">Export CSV</button>
         <button id="exportPresets" class="secondary">Export Preset</button>
         <input id="importPresets" type="file" accept="application/json" style="display:none">
         <button id="importPresetsBtn" class="secondary">Import Preset</button>
-        <span id="count" class="count">0 risultati</span>
-      </div>
+        </div></details>
 
       <details class="filters" open>
         <summary>Filtri avanzati (AND)</summary>
@@ -263,11 +299,11 @@
     <p class="muted" style="margin-top:10px">Dopo il primo caricamento, il sito funziona anche offline (Aggiungi a schermata Home).</p>
   </main>
 
-  <footer style="text-align:center;margin:16px 0" class="muted">Versione UI: <b>v22</b></footer>
+  <footer style="text-align:center;margin:16px 0" class="muted">Versione UI: <b>v23</b></footer>
 
   <script>
     if('serviceWorker' in navigator){
-      window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=22'));
+      window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=23'));
     }
   </script>
 </body>

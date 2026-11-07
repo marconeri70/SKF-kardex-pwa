@@ -1,8 +1,8 @@
 <!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#005195"><title>SKF · Ripiano Kardex</title><style>
 :root{font:16px system-ui,Arial,sans-serif;color:#152e4e;background:#e8f1fb}*{box-sizing:border-box}body{margin:0;background:linear-gradient(140deg,#f7fbff,#dce9f7);min-height:100vh}header{background:#005195;color:#fff;border-bottom:5px solid #df402d;padding:17px}header>div,main{max-width:900px;margin:auto}header strong{font-size:20px}header small{display:block;color:#d9e8f8}main{padding:18px}.card{background:#fff;border:1px solid #c9d8e9;border-radius:15px;padding:18px;margin:14px 0;box-shadow:0 5px 16px #0c3b6920}h1{color:#005195;margin:0;font-size:27px}h2{font-size:18px;color:#005195}.muted{color:#526780}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}.pos{background:#f2f7ff;border:1px solid #c5d8ee;border-radius:12px;padding:15px}.pos h2{margin:0 0 10px}.item{display:block;background:#fff;border-radius:8px;border:1px solid #d6e2f0;padding:10px;margin:7px 0;overflow-wrap:anywhere}.unknown{border-left:4px solid #df402d}button,a.btn{background:#005195;color:white;border:0;border-radius:10px;padding:12px 15px;display:inline-block;text-decoration:none;cursor:pointer;font:inherit;margin:4px}#qr img{width:210px;height:210px;max-width:100%}#qr{text-align:center}#qr small{display:block;overflow-wrap:anywhere}#error{color:#a3232a}#updated{font-size:13px}.tools{display:flex;flex-wrap:wrap;align-items:center;gap:8px}@media print{header,.tools,#updated,.noprint{display:none!important}body{background:white}.card{box-shadow:none;break-inside:avoid}main{padding:0}#qr img{width:160px;height:160px}.pos{break-inside:avoid}}
-</style></head><body><header><div><strong>SKF · FlexiChannel</strong><small>Cassino Factory · Officina 2 · Inventario condiviso</small></div></header><main>
+body.print-qr #contents,body.print-qr .card:first-child,body.print-qr #error{display:none!important}#adminQr{max-width:390px;margin:16px auto;text-align:center}#adminQr img{width:220px;height:220px;max-width:100%}#adminQr .qr-title{font-weight:900;color:#005195;font-size:24px}#adminQr .qr-brand{font-weight:800;color:#005195}#adminQr small{display:block;overflow-wrap:anywhere;font-size:11px;margin:8px 0}@media print{body.print-qr #adminQr{display:block!important;box-shadow:none;border:2px solid #005195;margin:12mm auto;padding:12mm}body.print-qr #adminQr button{display:none}body:not(.print-qr) #adminQr{display:none!important}}</style></head><body><header><div><strong>SKF · FlexiChannel</strong><small>Cassino Factory · Officina 2 · Inventario condiviso</small></div></header><main>
 <div class="card"><h1 id="title">Caricamento ripiano…</h1><p id="status" role="status" class="muted">Lettura dei dati in tempo reale…</p><div class="tools"><a class="btn" href="./catalogo.html">Catalogo generale</a><button type="button" id="reload">↻ Aggiorna</button></div><p id="updated" class="muted"></p></div>
-<div id="contents" class="grid"></div>
+<div id="contents" class="grid"></div><section class="card" id="adminQr" hidden><div class="qr-brand">SKF · FLEXICHANNEL</div><div class="qr-title" id="qrTitle"></div><img id="qrImage" alt="QR permanente del ripiano"><small id="qrUrl"></small><p class="muted">Scansiona per vedere componenti e posizioni aggiornati.</p><button type="button" id="printQr">🖨️ Stampa QR singolo</button></section>
 
 <p id="error" role="alert"></p>
 </main><script>
@@ -15,6 +15,8 @@ const ripiano=new URLSearchParams(location.search).get('ripiano')?.trim()||'';
 if(!ripiano||ripiano.length>50){$('title').textContent='Ripiano non specificato';$('status').textContent='Apri questa pagina dal catalogo ripiani.';return;}
 $('title').textContent='Ripiano '+ripiano;document.title='SKF Kardex · Ripiano '+ripiano;
 
+async function showAdminQr(){const token=sessionStorage.getItem('kardex_token');if(!token)return;try{const res=await fetch(API+'/api/me',{headers:{Authorization:'Bearer '+token},cache:'no-store'});if(!res.ok)return;const data=await res.json();if((data.operatore||data.user||data)?.ruolo!=='admin')return;const url=new URL('./ripiano.html',location.href);url.search='';url.hash='';url.searchParams.set('ripiano',ripiano);$('qrTitle').textContent='RIPIANO '+ripiano;$('qrUrl').textContent=url.href;$('qrImage').src='https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=8&data='+encodeURIComponent(url.href);$('adminQr').hidden=false;}catch{}}
+$('printQr').addEventListener('click',()=>{document.body.classList.add('print-qr');window.print();});window.addEventListener('afterprint',()=>document.body.classList.remove('print-qr'));
 async function refresh(){
  $('error').textContent='';$('status').textContent='Aggiornamento inventario…';
  try{
@@ -37,6 +39,6 @@ async function refresh(){
  $('updated').textContent='Aggiornato: '+new Date().toLocaleString('it-IT');
  }catch(e){$('status').textContent='Impossibile aggiornare';$('error').textContent=e.message;}
 }
-$('reload').onclick=refresh;refresh();
+$('reload').onclick=refresh;refresh();showAdminQr();
 })();
 </script></body></html>

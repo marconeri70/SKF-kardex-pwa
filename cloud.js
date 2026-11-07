@@ -44,6 +44,7 @@ async function refresh(){
   renderUser();status('Online · '+ROWS.length+' componenti');
 }
 function resetForm(){$('cloudForm').reset();$('cloudId').value='';}
+window.addEventListener('kardex:render',renderUser);
 $('cloudLogin').addEventListener('click',async()=>{
   message('');
   try{

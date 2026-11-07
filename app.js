@@ -131,6 +131,7 @@ function render(){
   renderQuickLocation(rows);
   renderTrayMap();
   updateUndefinedCounter();
+  window.dispatchEvent(new Event('kardex:stats'));
   if(!tbody) return;
   tbody.innerHTML = rows.map(r=>`
     <tr>
@@ -171,7 +172,11 @@ function renderQuickLocation(rows){
     tray.textContent='Ripiano '+(r.RIPIANO||'—');
     const side=document.createElement('span');side.className='quick-location-side';
     side.textContent=r.POSIZIONE||'Posizione non indicata';
-    meta.append(tray,side);item.append(type,meta,buildTrayVisual(r.POSIZIONE));panel.append(item);
+    meta.append(tray,side);item.append(type,meta,buildTrayVisual(r.POSIZIONE));
+    const actions=document.createElement('div');actions.className='v32-quick';
+    const edit=document.createElement('button');edit.type='button';edit.className='secondary';edit.textContent='✏️ Modifica posizione';
+    edit.addEventListener('click',()=>window.dispatchEvent(new CustomEvent('kardex:quick-edit',{detail:{id:r.id}})));
+    actions.append(edit);item.append(actions);panel.append(item);
   }
   if(rows.length>max){
     const more=document.createElement('p');more.className='muted';
@@ -241,16 +246,9 @@ function renderTrayMap(){
     toggle.onclick=()=>{body.hidden=!body.hidden;toggle.setAttribute('aria-expanded',String(!body.hidden));};
     const trayLabel=document.createElement('p');trayLabel.className='muted';trayLabel.textContent='Ripiano '+r.RIPIANO;
     body.append(trayLabel,buildTrayVisual(r.POSIZIONE));
-    if(norm(r.POSIZIONE)==='da definire'&&r.id){
-      const btn=document.createElement('button');btn.className='secondary';btn.textContent='Imposta posizione';btn.type='button';
-      btn.onclick=()=>{
-        const edit=Array.from(document.querySelectorAll('.cloudActions')).find(el=>String(el.dataset.id)===String(r.id))?.querySelector('button');
-        if(edit){edit.click();return;}
-        const clear=document.getElementById('clear');if(clear)clear.click();
-        const action=Array.from(document.querySelectorAll('.cloudActions')).find(el=>String(el.dataset.id)===String(r.id))?.querySelector('button');
-        if(action)action.click();
-        else alert('Accedi come operatore per modificare la posizione.');
-      };
+    if(r.id){
+      const btn=document.createElement('button');btn.className='secondary';btn.textContent='✏️ Modifica posizione';btn.type='button';
+      btn.onclick=()=>window.dispatchEvent(new CustomEvent('kardex:quick-edit',{detail:{id:r.id}}));
       body.append(btn);
     }
     entry.append(body);content.append(entry);

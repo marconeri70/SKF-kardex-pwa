@@ -1,12 +1,12 @@
-const CACHE_NAME = 'kardex-cache-v22';
+const CACHE_NAME = 'kardex-cache-v23';
 const ASSETS = [
-  './manifest.webmanifest?v=22',
-  './assets/icon-192.png?v=22',
-  './assets/icon-512.png?v=22',
+  './manifest.webmanifest?v=23',
+  './assets/icon-192.png?v=23',
+  './assets/icon-512.png?v=23',
   './data/kardex.json',
-  './app.js?v=21',
-  './cloud.js?v=21',
-  'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js'
+  './app.js?v=23',
+  './cloud.js?v=23',
+  './index.html'
 ];
 
 self.addEventListener('install', e=>{

@@ -4,10 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Kardex Viewer</title>
-  <link rel="manifest" href="manifest.webmanifest?v=23" />
+  <link rel="manifest" href="manifest.webmanifest?v=24" />
   <meta name="theme-color" content="#0e4ead" />
-  <link rel="apple-touch-icon" href="assets/icon-512.png?v=23" />
-  <link rel="icon" href="favicon.ico?v=23" type="image/x-icon">
+  <link rel="apple-touch-icon" href="assets/icon-512.png?v=24" />
+  <link rel="icon" href="favicon.ico?v=24" type="image/x-icon">
   <style>
     :root{
       --bg:#f6f7fb; --card:#fff; --text:#0f172a; --muted:#6b7280;
@@ -118,16 +118,26 @@
       td[data-label="POSIZIONE"] .cloudActions{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
       td[data-label="POSIZIONE"] .cloudActions button{margin:0!important;min-height:40px}
     }
+
+    .quick-location{margin-top:12px;padding:14px;border:1px solid var(--border);border-radius:14px;background:var(--primary-weak)}
+    .quick-location[hidden]{display:none!important}
+    .quick-location-title{font-size:12px;font-weight:750;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+    .quick-location-item{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;margin-top:8px}
+    .quick-location-type{font-size:18px;font-weight:800;overflow-wrap:anywhere}
+    .quick-location-tray{font-size:24px;font-weight:850;color:var(--primary)}
+    .quick-location-side{display:inline-flex;padding:5px 12px;border-radius:999px;background:var(--pill-bg);color:var(--pill-text);font-weight:750}
+    .quick-location-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:10px;flex-wrap:wrap}
+    .quick-location-empty{font-size:14px;color:var(--muted)}
   </style>
   <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script defer src="app.js?v=23"></script>
-  <script defer src="cloud.js?v=23"></script>
+  <script defer src="app.js?v=24"></script>
+  <script defer src="cloud.js?v=24"></script>
 </head>
 <body>
   <header>
     <div class="wrap">
       <div class="brand">
-        <div class="logo"><img src="assets/icon-512.png?v=23" alt="SKF"></div>
+        <div class="logo"><img src="assets/icon-512.png?v=24" alt="SKF"></div>
         <div>
           <div style="font-weight:800">Kardex Viewer</div>
           <div class="muted">Ricerca • Filtri • Import/Export • Offline</div>
@@ -200,6 +210,7 @@
         <button id="clear" class="secondary">Pulisci</button>
         <span id="count" class="count">0 risultati</span>
       </div>
+      <section id="quickLocation" class="quick-location" aria-live="polite" hidden></section>
       <details class="mobile-tools"><summary>⚙️ Altre funzioni</summary><div class="row" style="margin-top:10px">
         <button id="export">Export CSV</button>
         <button id="exportPresets" class="secondary">Export Preset</button>
@@ -299,11 +310,11 @@
     <p class="muted" style="margin-top:10px">Dopo il primo caricamento, il sito funziona anche offline (Aggiungi a schermata Home).</p>
   </main>
 
-  <footer style="text-align:center;margin:16px 0" class="muted">Versione UI: <b>v23</b></footer>
+  <footer style="text-align:center;margin:16px 0" class="muted">Versione UI: <b>v24</b></footer>
 
   <script>
     if('serviceWorker' in navigator){
-      window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=23'));
+      window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=24'));
     }
   </script>
 </body>

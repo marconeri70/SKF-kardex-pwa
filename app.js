@@ -135,6 +135,7 @@ function render(){
       <td data-label="TIPO">${escapeHtml(r.TIPO??'')}</td>
       <td data-label="POSIZIONE"><span class="chip">${escapeHtml(r.POSIZIONE??'')}</span><span class="cloudActions" data-id="${escapeHtml(r.id??'')}"></span></td>
     </tr>`).join('');
+  window.dispatchEvent(new Event('kardex:render'));
 }
 
 /* ======= Export / Import ======= */

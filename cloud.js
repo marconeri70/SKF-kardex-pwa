@@ -26,7 +26,7 @@ function renderUser(){
   $('cloudUserArea').classList.toggle('hidden',!user);
   $('cloudEditor').classList.toggle('hidden',!user);
   $('cloudUser').textContent=user?user.nome+' · '+user.ruolo:'';
-  window.dispatchEvent(new CustomEvent('kardex:auth',{detail:{logged:!!user}}));
+  window.dispatchEvent(new CustomEvent('kardex:auth',{detail:{logged:!!user,admin:user?.ruolo==='admin'}}));
   document.querySelectorAll('.cloudActions').forEach(el=>{
     el.replaceChildren();
     if(!user||!el.dataset.id)return;

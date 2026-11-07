@@ -128,6 +128,7 @@ function escapeHtml(x){return String(x).replace(/[&<>"]/g,s=>({'&':'&amp;','<':'
 function render(){
   let rows=sortRows(filtered());
   count && (count.textContent=rows.length+' risultati');
+  renderQuickLocation(rows);
   if(!tbody) return;
   tbody.innerHTML = rows.map(r=>`
     <tr>
@@ -136,6 +137,45 @@ function render(){
       <td data-label="POSIZIONE"><span class="chip">${escapeHtml(r.POSIZIONE??'')}</span><span class="cloudActions" data-id="${escapeHtml(r.id??'')}"></span></td>
     </tr>`).join('');
   window.dispatchEvent(new Event('kardex:render'));
+}
+
+
+/* Ricerca immediata della posizione: sola lettura, usa i risultati filtrati. */
+function renderQuickLocation(rows){
+  const panel=document.getElementById('quickLocation');
+  if(!panel)return;
+  const term=(q?.value||'').trim();
+  panel.replaceChildren();
+  panel.hidden=!term;
+  if(!term)return;
+  const heading=document.createElement('div');
+  heading.className='quick-location-title';
+  heading.textContent=rows.length?'📍 Posizione dei componenti trovati':'📍 Nessun componente trovato';
+  panel.append(heading);
+  if(!rows.length){
+    const empty=document.createElement('div');
+    empty.className='quick-location-empty';
+    empty.textContent='Controlla il codice oppure modifica i filtri.';
+    panel.append(empty);
+    return;
+  }
+  const max=8;
+  for(const r of rows.slice(0,max)){
+    const item=document.createElement('div');item.className='quick-location-item';
+    const type=document.createElement('div');type.className='quick-location-type';
+    type.textContent=r.TIPO||'Componente senza tipo';
+    const meta=document.createElement('div');meta.className='quick-location-meta';
+    const tray=document.createElement('div');tray.className='quick-location-tray';
+    tray.textContent='Ripiano '+(r.RIPIANO||'—');
+    const side=document.createElement('span');side.className='quick-location-side';
+    side.textContent=r.POSIZIONE||'Posizione non indicata';
+    meta.append(tray,side);item.append(type,meta);panel.append(item);
+  }
+  if(rows.length>max){
+    const more=document.createElement('p');more.className='muted';
+    more.textContent='Altri '+(rows.length-max)+' risultati nella tabella sottostante.';
+    panel.append(more);
+  }
 }
 
 /* ======= Export / Import ======= */

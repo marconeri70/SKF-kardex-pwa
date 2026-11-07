@@ -190,8 +190,10 @@ function renderQuickLocation(rows){
 function buildTrayVisual(position){
   const wrap=document.createElement('div');wrap.className='tray-visual';
   const selected=norm(position);
-  const known=['sinistra','centrale','destra'].includes(selected);
-  for(const side of ['Sinistra','Centrale','Destra']){
+  const sides=(window.KARDEX_POSITIONS||['Sinistra','Centrale','Destra']).filter(x=>norm(x)!=='da definire');
+  const known=sides.some(x=>norm(x)===selected);
+  wrap.style.gridTemplateColumns='repeat('+Math.min(sides.length||1,3)+',minmax(0,1fr))';
+  for(const side of sides){
     const cell=document.createElement('div');
     cell.className='tray-slot '+(known?(selected===norm(side)?'active':'inactive'):'unknown');
     cell.textContent=side;

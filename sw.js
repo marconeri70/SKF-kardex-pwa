@@ -1,8 +1,8 @@
-const CACHE_NAME = 'kardex-cache-v21';
+const CACHE_NAME = 'kardex-cache-v22';
 const ASSETS = [
-  './manifest.webmanifest?v=19',
-  './assets/icon-192.png?v=19',
-  './assets/icon-512.png?v=19',
+  './manifest.webmanifest?v=22',
+  './assets/icon-192.png?v=22',
+  './assets/icon-512.png?v=22',
   './data/kardex.json',
   './app.js?v=21',
   './cloud.js?v=21',
@@ -19,7 +19,7 @@ self.addEventListener('fetch', e=>{
   const req=e.request, url=new URL(req.url);
   if(url.origin!==self.location.origin) return;
   const isHTML = req.mode==='navigate' || req.destination==='document';
-  if (isHTML || url.pathname.endsWith('/app.js')) {
+  if (isHTML || url.pathname.endsWith('/app.js') || url.pathname.endsWith('/cloud.js')) {
     e.respondWith(fetch(req).then(r=>{caches.open(CACHE_NAME).then(c=>c.put(req,r.clone())); return r;}).catch(()=>caches.match(req)));
     return;
   }

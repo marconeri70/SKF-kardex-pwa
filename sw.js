@@ -1,12 +1,12 @@
-const CACHE_NAME = 'kardex-cache-v27.1';
+const CACHE_NAME = 'kardex-cache-v28';
 const ASSETS = [
-  './manifest.webmanifest?v=26',
-  './assets/icon-192.png?v=26',
-  './assets/icon-512.png?v=26',
+  './manifest.webmanifest?v=28',
+  './assets/icon-192.png?v=28',
+  './assets/icon-512.png?v=28',
   './data/kardex.json',
   './data/warehouse-index-2026.json',
-  './app.js?v=26',
-  './cloud.js?v=26',
+  './app.js?v=28',
+  './cloud.js?v=28',
   './index.html'
 ];
 

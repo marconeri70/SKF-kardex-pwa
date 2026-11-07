@@ -2,7 +2,7 @@
 (()=>{'use strict';
 const $=id=>document.getElementById(id);
 let authorized=false,editing=null,selected=null,busy=false;
-const choices=['Sinistra','Centrale','Destra','Da definire'];
+const choices=()=>window.KARDEX_POSITIONS||['Sinistra','Centrale','Destra','Da definire'];
 function stats(){
  const host=$('kardexStats');if(!host||typeof ROWS==='undefined')return;
  const total=ROWS.length,unknown=ROWS.filter(r=>String(r.POSIZIONE).trim().toLowerCase()==='da definire').length;
@@ -29,7 +29,7 @@ function draw(r){
  const hint=document.createElement('p');hint.className='muted';hint.textContent='Seleziona la posizione verificata sul Kardex e premi Salva. Nessuna modifica avviene prima della conferma.';
  const grid=document.createElement('div');grid.className='v32-position-editor';
  const status=document.createElement('p');status.id='v32EditStatus';status.setAttribute('role','status');
- for(const pos of choices){
+ for(const pos of choices()){
   const btn=document.createElement('button');btn.type='button';btn.textContent=pos;
   btn.setAttribute('aria-pressed',String(selected===pos));
   btn.onclick=()=>{selected=pos;grid.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.textContent===pos)));};

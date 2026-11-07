@@ -4,10 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Kardex Viewer</title>
-  <link rel="manifest" href="manifest.webmanifest?v=21" />
+  <link rel="manifest" href="manifest.webmanifest?v=22" />
   <meta name="theme-color" content="#0e4ead" />
-  <link rel="apple-touch-icon" href="assets/icon-512.png?v=21" />
-  <link rel="icon" href="favicon.ico?v=21" type="image/x-icon">
+  <link rel="apple-touch-icon" href="assets/icon-512.png?v=22" />
+  <link rel="icon" href="favicon.ico?v=22" type="image/x-icon">
   <style>
     :root{
       --bg:#f6f7fb; --card:#fff; --text:#0f172a; --muted:#6b7280;
@@ -86,14 +86,14 @@
     .side-list li{padding:6px 8px;border:1px solid var(--border);border-radius:10px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center}
   </style>
   <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script defer src="app.js?v=21"></script>
-  <script defer src="cloud.js?v=21"></script>
+  <script defer src="app.js?v=22"></script>
+  <script defer src="cloud.js?v=22"></script>
 </head>
 <body>
   <header>
     <div class="wrap">
       <div class="brand">
-        <div class="logo"><img src="assets/icon-512.png?v=21" alt="SKF"></div>
+        <div class="logo"><img src="assets/icon-512.png?v=22" alt="SKF"></div>
         <div>
           <div style="font-weight:800">Kardex Viewer</div>
           <div class="muted">Ricerca • Filtri • Import/Export • Offline</div>
@@ -114,7 +114,8 @@
         <strong>☁️ Inventario condiviso · Cloudflare D1</strong>
         <span id="cloudStatus" class="muted" role="status">Connessione in corso…</span>
       </div>
-      <div class="row" style="margin-top:12px" id="cloudLoginArea">
+      <button id="cloudToggleLogin" class="secondary" style="margin-top:10px" aria-expanded="false" aria-controls="cloudLoginArea">🔐 Accesso operatori</button>
+      <div class="row hidden" style="margin-top:12px" id="cloudLoginArea">
         <input id="cloudEmail" type="email" autocomplete="username" placeholder="Email operatore" aria-label="Email operatore">
         <input id="cloudPassword" type="password" autocomplete="current-password" placeholder="Password" aria-label="Password">
         <button id="cloudLogin">Accedi</button>
@@ -134,6 +135,22 @@
         </form>
         <p class="muted">Per modificare o eliminare, usa i comandi accanto alle righe della tabella. Le modifiche vengono salvate nel database condiviso.</p>
       </div>
+      <section id="cloudAdmin" class="hidden" style="margin-top:18px;border-top:1px solid var(--border);padding-top:12px">
+        <details id="cloudAdminDetails">
+          <summary style="cursor:pointer;font-weight:700">👥 Gestione operatori (amministratore)</summary>
+          <p class="muted">Crea un account con password provvisoria (minimo 12 caratteri). Consegna la password al collega attraverso un canale privato.</p>
+          <form id="cloudOperatorForm" class="row">
+            <input id="operatorName" placeholder="Nome e cognome" required maxlength="100">
+            <input id="operatorEmail" type="email" placeholder="Email operatore" required>
+            <input id="operatorPassword" type="password" placeholder="Password provvisoria (12+)" minlength="12" required autocomplete="new-password">
+            <select id="operatorRole"><option value="operatore">Operatore</option><option value="admin">Amministratore</option></select>
+            <button type="submit">Crea operatore</button>
+          </form>
+          <p id="operatorMessage" class="muted" role="status"></p>
+          <button id="operatorRefresh" class="secondary" type="button">Aggiorna elenco operatori</button>
+          <div id="operatorList" style="margin-top:10px"></div>
+        </details>
+      </section>
       <p id="cloudMessage" class="muted" role="status" style="margin-bottom:0"></p>
     </section>
     <!-- ====== DATI ====== -->
@@ -246,11 +263,11 @@
     <p class="muted" style="margin-top:10px">Dopo il primo caricamento, il sito funziona anche offline (Aggiungi a schermata Home).</p>
   </main>
 
-  <footer style="text-align:center;margin:16px 0" class="muted">Versione UI: <b>v21</b></footer>
+  <footer style="text-align:center;margin:16px 0" class="muted">Versione UI: <b>v22</b></footer>
 
   <script>
     if('serviceWorker' in navigator){
-      window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=21'));
+      window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=22'));
     }
   </script>
 </body>

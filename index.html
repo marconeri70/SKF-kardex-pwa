@@ -4,10 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>SKF · FlexiChannel Warehouse</title>
-  <link rel="manifest" href="manifest.webmanifest?v=30.1" />
+  <link rel="manifest" href="manifest.webmanifest?v=32" />
   <meta name="theme-color" content="#0e4ead" />
-  <link rel="apple-touch-icon" href="assets/icon-512.png?v=30.1" />
-  <link rel="icon" href="favicon.ico?v=30.1" type="image/x-icon">
+  <link rel="apple-touch-icon" href="assets/icon-512.png?v=32" />
+  <link rel="icon" href="favicon.ico?v=32" type="image/x-icon">
   <style>
     :root{
       --bg:#f6f7fb; --card:#fff; --text:#0f172a; --muted:#6b7280;
@@ -218,16 +218,34 @@
       .card,.console-card{background:var(--card)}
       #dataView tbody tr:nth-child(even){background:var(--row-alt)}
     }
-  </style>
+  
+/* v32: consultazione immediata e statistiche */
+#kardexStats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:0 0 14px}
+.kstat{border:1px solid #c7d9ed;background:#f4f8ff;border-radius:13px;padding:12px 8px;text-align:center}
+.kstat strong{display:block;font-size:24px;color:#005195;line-height:1.2}
+.kstat span{display:block;font-size:11px;color:#50637a;margin-top:4px}
+#q{flex:1;min-width:180px;font-size:18px;padding:13px}
+.v32-quick{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:10px}
+.v32-quick button{min-height:44px}
+.v32-position-editor{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:12px 0}
+.v32-position-editor button{min-height:54px;border:2px solid #c4d5e8;border-radius:12px;background:#f4f8fe;color:#0a396e;font-weight:700}
+.v32-position-editor button[aria-pressed="true"]{background:#d7f2e6;border-color:#168458;color:#075f39}
+.v32-edit-panel{margin-top:12px;padding:12px;border:1px solid #a9c6e6;border-radius:12px;background:#f8fbff}
+.v32-edit-actions{display:flex;gap:8px;flex-wrap:wrap}
+.v32-edit-actions button{min-height:44px}
+#v32EditStatus{font-size:13px}
+@media(max-width:700px){#kardexStats{gap:5px}.kstat{padding:9px 4px}.kstat strong{font-size:22px}#q{width:100%;min-width:0;font-size:18px}.v32-position-editor button{font-size:12px;padding:8px 3px}}
+</style>
   <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script defer src="app.js?v=30.1"></script>
-  <script defer src="cloud.js?v=30.1"></script>
+  <script defer src="app.js?v=32"></script>
+  <script defer src="cloud.js?v=32"></script>
+  <script defer src="v32.js?v=32"></script>
 </head>
 <body>
   <header>
     <div class="wrap">
       <div class="brand">
-        <div class="logo"><img src="assets/icon-512.png?v=30.1" alt="SKF"></div>
+        <div class="logo"><img src="assets/icon-512.png?v=32" alt="SKF"></div>
         <div>
           <div style="font-weight:800">SKF · FlexiChannel</div>
           <div class="muted">Cassino Factory · Officina 2</div>
@@ -289,9 +307,9 @@
       <p id="cloudMessage" class="muted" role="status" style="margin-bottom:0"></p>
     </section>
     <!-- ====== DATI ====== -->
-    <section class="card" id="dataView">
+    <section class="card" id="dataView"><div id="kardexStats" aria-live="polite"></div>
       <div class="row">
-        <input id="q" type="text" placeholder="Cerca veloce…">
+        <input id="q" type="search" inputmode="search" autocomplete="off" aria-label="Cerca codice, tipologia o ripiano" placeholder="🔎 Cerca codice, tipologia o ripiano…">
         <select id="campo">
           <option value="ALL">Campo: Tutti</option>
           <option value="RIPIANO">Ripiano</option>
@@ -301,7 +319,7 @@
         <button id="clear" class="secondary">Pulisci</button>
         <span id="count" class="count">0 risultati</span>
       </div>
-      <section id="quickLocation" class="quick-location" aria-live="polite" hidden></section>
+      <section id="quickLocation" class="quick-location" aria-live="polite" hidden></section><section id="v32QuickEdit" hidden aria-live="polite"></section>
       <details id="trayMap" class="tray-map"><summary>🗂️ Mappa ripiani Kardex</summary><p class="muted">Seleziona un ripiano e tocca un componente per aprire la mappa del vassoio. Le posizioni sconosciute restano «Da definire».</p><div id="trayMapButtons" class="tray-map-buttons"></div><div id="trayMapContent" aria-live="polite"></div></details>
       <div class="row" style="margin-top:10px"><button type="button" class="secondary" id="showUndefined">📍 Mostra posizioni da definire</button><button type="button" class="secondary hidden" id="clearUndefined">Mostra tutti</button><span id="undefinedCount" class="muted"></span></div>
       <details class="mobile-tools" id="advancedTools">
@@ -411,11 +429,11 @@
     <p class="muted" style="margin-top:10px">Dopo il primo caricamento, il sito funziona anche offline (Aggiungi a schermata Home).</p>
   </main>
 
-  <footer style="text-align:center;margin:16px 0" class="muted">Versione UI: <b>v30.1</b></footer>
+  <footer style="text-align:center;margin:16px 0" class="muted">Versione UI: <b>v32</b></footer>
 
   <script>
     if('serviceWorker' in navigator){
-      window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=30.1'));
+      window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=32'));
     }
   </script>
 </body>

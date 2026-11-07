@@ -21,6 +21,7 @@ function renderUser(){
   $('cloudToggleLogin').classList.toggle('hidden',logged);
   if(logged){$('cloudLoginArea').classList.add('hidden');$('cloudToggleLogin').setAttribute('aria-expanded','false');}
   $('cloudAdmin').classList.toggle('hidden',!user||user.ruolo!=='admin');
+  $('cloudImport').classList.toggle('hidden',!user||user.ruolo!=='admin');
   if(user)$('cloudLoginArea').classList.add('hidden');
   $('cloudUserArea').classList.toggle('hidden',!user);
   $('cloudEditor').classList.toggle('hidden',!user);
@@ -53,6 +54,56 @@ $('cloudToggleLogin').addEventListener('click',()=>{
   const open=$('cloudLoginArea').classList.toggle('hidden')===false;
   $('cloudToggleLogin').setAttribute('aria-expanded',String(open));
 });
+
+let importPending=[];
+const importStatus=t=>{$('cloudImportMessage').textContent=t;};
+const importKey=x=>String(x.ripiano??'').trim().toLocaleUpperCase('it')+'|'+String(x.tipo??'').trim().toLocaleUpperCase('it');
+async function previewWarehouseImport(){
+  importPending=[];$('cloudImportConfirm').disabled=true;$('cloudImportList').replaceChildren();
+  if(!user||user.ruolo!=='admin')return importStatus('Accesso amministratore richiesto.');
+  try{
+    const [res,inventory]=await Promise.all([fetch('./data/warehouse-index-2026.json',{cache:'no-store'}),request('/api/componenti')]);
+    if(!res.ok)throw new Error('File indice non disponibile');
+    const doc=await res.json();
+    if(!Array.isArray(doc.items)||doc.items.length!==27)throw new Error('Indice incompleto: importazione annullata');
+    if(!Array.isArray(inventory.componenti))throw new Error('Inventario non disponibile');
+    const existing=new Set(inventory.componenti.map(importKey));
+    const seen=new Set();let duplicates=0;
+    for(const item of doc.items){
+      const key=importKey(item);
+      const already=existing.has(key)||seen.has(key);
+      if(already)duplicates++;else importPending.push(item);
+      seen.add(key);
+      const line=document.createElement('div');
+      line.textContent=(already?'✓ Già presente · ':'+ Da inserire · ')+item.ripiano+' · '+item.tipo;
+      $('cloudImportList').append(line);
+    }
+    importStatus(doc.items.length+' righe verificate · '+duplicates+' già presenti · '+importPending.length+' da aggiungere.');
+    $('cloudImportConfirm').disabled=!importPending.length;
+  }catch(e){importStatus('Verifica non riuscita: '+e.message);}
+}
+$('cloudImportPreview').addEventListener('click',previewWarehouseImport);
+$('cloudImportConfirm').addEventListener('click',async()=>{
+  if(!user||user.ruolo!=='admin'||!importPending.length)return;
+  if(!confirm('Importare '+importPending.length+' componenti mancanti nel database condiviso?'))return;
+  const btn=$('cloudImportConfirm');btn.disabled=true;
+  let inserted=0;
+  try{
+    // Ricontrollo immediato: evita duplicati anche se il database è cambiato dopo l'anteprima.
+    const data=await request('/api/componenti');
+    if(!Array.isArray(data.componenti))throw new Error('Inventario non disponibile');
+    const existing=new Set(data.componenti.map(importKey));
+    const toAdd=importPending.filter(x=>!existing.has(importKey(x)));
+    for(const item of toAdd){
+      await request('/api/componenti','POST',{ripiano:item.ripiano,tipo:item.tipo,posizione:'Da definire'});
+      existing.add(importKey(item));inserted++;
+      importStatus('Importazione: '+inserted+' di '+toAdd.length+'...');
+    }
+    importStatus('Importazione completata: '+inserted+' componenti aggiunti. Nessun dato esistente sovrascritto.');
+    importPending=[];await refresh();
+  }catch(e){importStatus('Importazione interrotta dopo '+inserted+' inserimenti: '+e.message+'. Ripeti la verifica per riprendere senza duplicati.');try{await refresh();}catch{}}
+});
+
 const opMessage=t=>{$('operatorMessage').textContent=t||'';};
 async function loadOperators(){
   if(!user||user.ruolo!=='admin')return;

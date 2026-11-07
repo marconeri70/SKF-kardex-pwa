@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Kardex Viewer</title>
-  <link rel="manifest" href="manifest.webmanifest?v=24" />
+  <title>SKF · FlexiChannel Warehouse</title>
+  <link rel="manifest" href="manifest.webmanifest?v=25" />
   <meta name="theme-color" content="#0e4ead" />
-  <link rel="apple-touch-icon" href="assets/icon-512.png?v=24" />
-  <link rel="icon" href="favicon.ico?v=24" type="image/x-icon">
+  <link rel="apple-touch-icon" href="assets/icon-512.png?v=25" />
+  <link rel="icon" href="favicon.ico?v=25" type="image/x-icon">
   <style>
     :root{
       --bg:#f6f7fb; --card:#fff; --text:#0f172a; --muted:#6b7280;
@@ -128,19 +128,36 @@
     .quick-location-side{display:inline-flex;padding:5px 12px;border-radius:999px;background:var(--pill-bg);color:var(--pill-text);font-weight:750}
     .quick-location-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:10px;flex-wrap:wrap}
     .quick-location-empty{font-size:14px;color:var(--muted)}
+
+    /* SKF / FlexiChannel: stile ispirato alla scheda indice, senza usare foto non ottimizzate */
+    :root{--bg:#edf3fa;--primary:#005195;--primary-weak:#e7f0fc;--shadow:0 8px 24px rgba(0,53,112,.09);--border:#d8e2ef;--table-head:#e6effc;--row-alt:#f4f8fd}
+    body{background:linear-gradient(145deg,rgba(0,81,149,.09),transparent 38%),repeating-linear-gradient(135deg,rgba(0,81,149,.025) 0px,rgba(0,81,149,.025) 1px,transparent 1px,transparent 32px),var(--bg)}
+    html[data-theme="dark"]{--bg:#0b1020;--primary:#60a5fa;--primary-weak:#0b1b38;--border:#1f2937;--table-head:#0b1b38;--row-alt:#0b1426}
+    header{background:linear-gradient(112deg,#003b79 0%,#005195 58%,#2c70c2 100%);border-bottom:4px solid #e2462d}
+    .brand>div:last-child>div:first-child{font-size:18px;letter-spacing:.015em}
+    .card,.console-card{border-top:3px solid #005195}
+    #dataView{position:relative}
+    #dataView:before{content:"FLEXICHANNEL SMALL LOTS · WAREHOUSE INDEX";display:block;color:var(--muted);font-size:11px;font-weight:800;letter-spacing:.12em;margin-bottom:12px}
+    .quick-location{border-left:5px solid #e2462d}
+    .import-summary{cursor:pointer;background:var(--primary-weak);padding:12px;border-radius:12px;font-weight:750}
+    .import-list{max-height:280px;overflow:auto;margin-top:10px}
+    .import-list>div{padding:7px 9px;border-bottom:1px solid var(--border);font-size:13px}
+    #cloudImportConfirm:disabled{opacity:.45;cursor:not-allowed}
+    #cloudImport button{margin:5px 6px 5px 0}
+    @media(max-width:700px){.brand>div:last-child>div:first-child{font-size:16px}#dataView:before{font-size:10px;line-height:1.5}}
   </style>
   <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script defer src="app.js?v=24"></script>
-  <script defer src="cloud.js?v=24"></script>
+  <script defer src="app.js?v=25"></script>
+  <script defer src="cloud.js?v=25"></script>
 </head>
 <body>
   <header>
     <div class="wrap">
       <div class="brand">
-        <div class="logo"><img src="assets/icon-512.png?v=24" alt="SKF"></div>
+        <div class="logo"><img src="assets/icon-512.png?v=25" alt="SKF"></div>
         <div>
-          <div style="font-weight:800">Kardex Viewer</div>
-          <div class="muted">Ricerca • Filtri • Import/Export • Offline</div>
+          <div style="font-weight:800">SKF · FlexiChannel</div>
+          <div class="muted">Cassino Factory · Officina 2</div>
         </div>
       </div>
       <div class="toolbar">
@@ -173,12 +190,13 @@
           <input id="cloudId" type="hidden">
           <input id="cloudRipiano" placeholder="Ripiano / vassoio" required maxlength="50">
           <input id="cloudTipo" placeholder="Tipo componente" required maxlength="150">
-          <select id="cloudPosizione" required><option value="Sinistra">Sinistra</option><option value="Centrale">Centrale</option><option value="Destra">Destra</option></select>
+          <select id="cloudPosizione" required><option value="Sinistra">Sinistra</option><option value="Centrale">Centrale</option><option value="Destra">Destra</option><option value="Da definire">Da definire</option></select>
           <button type="submit" id="cloudSave">Salva componente</button>
           <button type="button" class="secondary" id="cloudCancel">Annulla</button>
         </form>
         <p class="muted">Per modificare o eliminare, usa i comandi accanto alle righe della tabella. Le modifiche vengono salvate nel database condiviso.</p>
       </details>
+      <section id="cloudImport" class="hidden" style="margin-top:14px"><details><summary class="import-summary">📦 Importa indice SKF · 12/10/2026</summary><p class="muted">27 righe leggibili dalla foto. L’importazione aggiunge solo le voci mancanti e conserva le posizioni già assegnate, incluso RL55.</p><button id="cloudImportPreview" type="button" class="secondary">Verifica righe e duplicati</button><button id="cloudImportConfirm" type="button" disabled>Importa componenti mancanti</button><p id="cloudImportMessage" class="muted" role="status"></p><div id="cloudImportList" class="import-list"></div></details></section>
       <section id="cloudAdmin" class="hidden" style="margin-top:18px;border-top:1px solid var(--border);padding-top:12px">
         <details id="cloudAdminDetails">
           <summary style="cursor:pointer;font-weight:700">👥 Gestione operatori (amministratore)</summary>
@@ -310,11 +328,11 @@
     <p class="muted" style="margin-top:10px">Dopo il primo caricamento, il sito funziona anche offline (Aggiungi a schermata Home).</p>
   </main>
 
-  <footer style="text-align:center;margin:16px 0" class="muted">Versione UI: <b>v24</b></footer>
+  <footer style="text-align:center;margin:16px 0" class="muted">Versione UI: <b>v25</b></footer>
 
   <script>
     if('serviceWorker' in navigator){
-      window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=24'));
+      window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=25'));
     }
   </script>
 </body>

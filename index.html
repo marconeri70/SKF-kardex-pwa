@@ -4,10 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>SKF · FlexiChannel Warehouse</title>
-  <link rel="manifest" href="manifest.webmanifest?v=25.1" />
+  <link rel="manifest" href="manifest.webmanifest?v=25.2" />
   <meta name="theme-color" content="#0e4ead" />
-  <link rel="apple-touch-icon" href="assets/icon-512.png?v=25.1" />
-  <link rel="icon" href="favicon.ico?v=25.1" type="image/x-icon">
+  <link rel="apple-touch-icon" href="assets/icon-512.png?v=25.2" />
+  <link rel="icon" href="favicon.ico?v=25.2" type="image/x-icon">
   <style>
     :root{
       --bg:#f6f7fb; --card:#fff; --text:#0f172a; --muted:#6b7280;
@@ -147,14 +147,14 @@
     @media(max-width:700px){.brand>div:last-child>div:first-child{font-size:16px}#dataView:before{font-size:10px;line-height:1.5}}
   </style>
   <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script defer src="app.js?v=25.1"></script>
-  <script defer src="cloud.js?v=25.1"></script>
+  <script defer src="app.js?v=25.2"></script>
+  <script defer src="cloud.js?v=25.2"></script>
 </head>
 <body>
   <header>
     <div class="wrap">
       <div class="brand">
-        <div class="logo"><img src="assets/icon-512.png?v=25.1" alt="SKF"></div>
+        <div class="logo"><img src="assets/icon-512.png?v=25.2" alt="SKF"></div>
         <div>
           <div style="font-weight:800">SKF · FlexiChannel</div>
           <div class="muted">Cassino Factory · Officina 2</div>
@@ -196,7 +196,7 @@
         </form>
         <p class="muted">Per modificare o eliminare, usa i comandi accanto alle righe della tabella. Le modifiche vengono salvate nel database condiviso.</p>
       </details>
-      <section id="cloudImport" class="hidden" style="margin-top:14px"><details><summary class="import-summary">📦 Importa indice SKF · 12/10/2026</summary><p class="muted">27 righe leggibili dalla foto. Consulta e confronta le voci. L’importazione nel database è sospesa finché il Worker non accetterà «Da definire»; nessuna posizione sarà inventata.</p><button id="cloudImportPreview" type="button" class="secondary">Verifica righe e duplicati</button><button id="cloudImportConfirm" type="button" disabled title="Richiede aggiornamento del Worker Cloudflare">Importazione in attesa del Worker</button><p id="cloudImportMessage" class="muted" role="status"></p><div id="cloudImportList" class="import-list"></div></details></section>
+      <section id="cloudImport" class="hidden" style="margin-top:14px"><details><summary class="import-summary">📦 Importa indice SKF · 12/10/2026</summary><p class="muted">27 righe leggibili dalla foto. Verifica le 27 voci dell’indice e importa soltanto quelle mancanti. Le posizioni già assegnate vengono conservate; per le altre viene usato «Da definire».</p><button id="cloudImportPreview" type="button" class="secondary">Verifica righe e duplicati</button><button id="cloudImportConfirm" type="button" disabled >Importa componenti mancanti</button><p id="cloudImportMessage" class="muted" role="status"></p><div id="cloudImportList" class="import-list"></div></details></section>
       <section id="cloudAdmin" class="hidden" style="margin-top:18px;border-top:1px solid var(--border);padding-top:12px">
         <details id="cloudAdminDetails">
           <summary style="cursor:pointer;font-weight:700">👥 Gestione operatori (amministratore)</summary>
@@ -328,11 +328,11 @@
     <p class="muted" style="margin-top:10px">Dopo il primo caricamento, il sito funziona anche offline (Aggiungi a schermata Home).</p>
   </main>
 
-  <footer style="text-align:center;margin:16px 0" class="muted">Versione UI: <b>v25.1</b></footer>
+  <footer style="text-align:center;margin:16px 0" class="muted">Versione UI: <b>v25.2</b></footer>
 
   <script>
     if('serviceWorker' in navigator){
-      window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=25.1'));
+      window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=25.2'));
     }
   </script>
 </body>

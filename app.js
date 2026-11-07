@@ -129,6 +129,8 @@ function render(){
   let rows=sortRows(filtered());
   count && (count.textContent=rows.length+' risultati');
   renderQuickLocation(rows);
+  renderTrayMap();
+  updateUndefinedCounter();
   if(!tbody) return;
   tbody.innerHTML = rows.map(r=>`
     <tr>
@@ -169,7 +171,7 @@ function renderQuickLocation(rows){
     tray.textContent='Ripiano '+(r.RIPIANO||'—');
     const side=document.createElement('span');side.className='quick-location-side';
     side.textContent=r.POSIZIONE||'Posizione non indicata';
-    meta.append(tray,side);item.append(type,meta);panel.append(item);
+    meta.append(tray,side);item.append(type,meta,buildTrayVisual(r.POSIZIONE));panel.append(item);
   }
   if(rows.length>max){
     const more=document.createElement('p');more.className='muted';
@@ -177,6 +179,95 @@ function renderQuickLocation(rows){
     panel.append(more);
   }
 }
+
+
+/* v26: mappa e indicazione visiva, senza modificare dati o assegnare posizioni. */
+function buildTrayVisual(position){
+  const wrap=document.createElement('div');wrap.className='tray-visual';
+  const selected=norm(position);
+  const known=['sinistra','centrale','destra'].includes(selected);
+  for(const side of ['Sinistra','Centrale','Destra']){
+    const cell=document.createElement('div');
+    cell.className='tray-slot '+(known?(selected===norm(side)?'active':'inactive'):'unknown');
+    cell.textContent=side;
+    const small=document.createElement('small');
+    small.textContent=known?(selected===norm(side)?'● POSIZIONE':'—'):'?';
+    cell.append(small);wrap.append(cell);
+  }
+  if(!known){
+    const note=document.createElement('div');note.className='muted';note.style.cssText='grid-column:1/-1;text-align:center;margin-top:2px';
+    note.textContent='Posizione da definire: nessun lato evidenziato';wrap.append(note);
+  }
+  return wrap;
+}
+let selectedTray='';
+let undefinedOnly=false;
+function updateUndefinedCounter(){
+  const el=document.getElementById('undefinedCount');
+  if(!el)return;
+  const n=ROWS.filter(r=>norm(r.POSIZIONE)==='da definire').length;
+  el.textContent=n+' posizioni da definire';
+}
+function renderTrayMap(){
+  const buttons=document.getElementById('trayMapButtons'), content=document.getElementById('trayMapContent');
+  if(!buttons||!content)return;
+  const trays=[...new Set(ROWS.map(r=>String(r.RIPIANO||'').trim()).filter(Boolean))]
+    .sort((x,y)=>x.localeCompare(y,'it',{numeric:true}));
+  if(selectedTray&&!trays.includes(selectedTray))selectedTray='';
+  buttons.replaceChildren();content.replaceChildren();
+  for(const tray of trays){
+    const b=document.createElement('button');b.type='button';
+    b.className=selectedTray===tray?'selected':'secondary';
+    b.textContent=tray;
+    b.setAttribute('aria-pressed',String(selectedTray===tray));
+    b.onclick=()=>{selectedTray=tray;renderTrayMap();};
+    buttons.append(b);
+  }
+  if(!selectedTray){
+    const p=document.createElement('p');p.className='muted';p.textContent='Seleziona un ripiano per vedere i componenti.';content.append(p);return;
+  }
+  const matches=ROWS.filter(r=>String(r.RIPIANO).trim()===selectedTray);
+  const title=document.createElement('strong');title.textContent='Ripiano '+selectedTray+' · '+matches.length+' componenti';
+  content.append(title);
+  for(const r of matches){
+    const entry=document.createElement('div');entry.className='tray-map-entry';
+    const label=document.createElement('strong');label.textContent=r.TIPO||'Senza tipo';
+    const pos=document.createElement('span');pos.className='chip';pos.style.marginLeft='8px';pos.textContent=r.POSIZIONE||'Da definire';
+    entry.append(label,pos,buildTrayVisual(r.POSIZIONE));
+    if(norm(r.POSIZIONE)==='da definire'&&r.id){
+      const btn=document.createElement('button');btn.className='secondary';btn.textContent='Imposta posizione';btn.type='button';
+      btn.onclick=()=>{
+        const editor=document.getElementById('cloudEditor');
+        const edit=Array.from(document.querySelectorAll('.cloudActions')).find(el=>String(el.dataset.id)===String(r.id))?.querySelector('button');
+        if(edit){edit.click();return;}
+        // Se il componente non è visibile per filtri, ripristina la ricerca e trova il pulsante Modifica.
+        const clear=document.getElementById('clear');if(clear)clear.click();
+        const action=Array.from(document.querySelectorAll('.cloudActions')).find(el=>String(el.dataset.id)===String(r.id))?.querySelector('button');
+        if(action)action.click();
+        else alert('Accedi come operatore per modificare la posizione.');
+      };
+      entry.append(btn);
+    }
+    content.append(entry);
+  }
+}
+document.getElementById('showUndefined')?.addEventListener('click',()=>{
+  undefinedOnly=true;
+  if(q)q.value='';
+  if(selCampo)selCampo.value='ALL';
+  if(fRip)fRip.value='';
+  if(fTip)fTip.value='';
+  if(fPos)fPos.value='=Da definire';
+  document.querySelector('.filters')?.setAttribute('open','');
+  document.getElementById('clearUndefined')?.classList.remove('hidden');
+  render();saveState();
+});
+document.getElementById('clearUndefined')?.addEventListener('click',()=>{
+  undefinedOnly=false;
+  if(fPos)fPos.value='';
+  document.getElementById('clearUndefined')?.classList.add('hidden');
+  render();saveState();
+});
 
 /* ======= Export / Import ======= */
 exportBtn?.addEventListener('click',()=>{

@@ -230,13 +230,15 @@ function renderTrayMap(){
   const title=document.createElement('strong');title.textContent='Ripiano '+selectedTray+' · '+matches.length+' componenti';
   content.append(title);
   for(const r of matches){
-    const entry=document.createElement('details');entry.className='tray-entry-detail';
-    const summary=document.createElement('summary');
+    const entry=document.createElement('div');entry.className='tray-entry-detail';
+    const toggle=document.createElement('button');toggle.type='button';toggle.className='tray-entry-toggle';
     const name=document.createElement('span');name.className='tray-entry-name';name.textContent=r.TIPO||'Senza tipo';
     const side=document.createElement('span');side.className='tray-entry-side';
     const pos=document.createElement('span');pos.className='chip';pos.textContent=r.POSIZIONE||'Da definire';
-    side.append(pos);summary.append(name,side);entry.append(summary);
-    const body=document.createElement('div');body.className='tray-detail-body';
+    side.append(pos);toggle.append(name,side);entry.append(toggle);
+    const body=document.createElement('div');body.className='tray-detail-body';body.hidden=true;
+    toggle.setAttribute('aria-expanded','false');
+    toggle.onclick=()=>{body.hidden=!body.hidden;toggle.setAttribute('aria-expanded',String(!body.hidden));};
     const trayLabel=document.createElement('p');trayLabel.className='muted';trayLabel.textContent='Ripiano '+r.RIPIANO;
     body.append(trayLabel,buildTrayVisual(r.POSIZIONE));
     if(norm(r.POSIZIONE)==='da definire'&&r.id){

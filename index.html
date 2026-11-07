@@ -4,10 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>SKF · FlexiChannel Warehouse</title>
-  <link rel="manifest" href="manifest.webmanifest?v=33" />
+  <link rel="manifest" href="manifest.webmanifest?v=33.1" />
   <meta name="theme-color" content="#0e4ead" />
-  <link rel="apple-touch-icon" href="assets/icon-512.png?v=33" />
-  <link rel="icon" href="favicon.ico?v=33" type="image/x-icon">
+  <link rel="apple-touch-icon" href="assets/icon-512.png?v=33.1" />
+  <link rel="icon" href="favicon.ico?v=33.1" type="image/x-icon">
   <style>
     :root{
       --bg:#f6f7fb; --card:#fff; --text:#0f172a; --muted:#6b7280;
@@ -235,18 +235,18 @@
 .v32-edit-actions button{min-height:44px}
 #v32EditStatus{font-size:13px}
 @media(max-width:700px){#kardexStats{gap:5px}.kstat{padding:9px 4px}.kstat strong{font-size:22px}#q{width:100%;min-width:0;font-size:18px}.v32-position-editor button{font-size:12px;padding:8px 3px}}
-.v33-pos-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--border);padding:9px 0}.v33-pos-row strong{flex:1;min-width:100px}.v33-pos-row button{min-height:40px}.v33-disabled{opacity:.6;pointer-events:none}#cloudPositionsAdmin{margin-bottom:15px}#cloudPositionsAdmin summary{padding:7px 0}</style>
+.v33-pos-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--border);padding:9px 0}.v33-pos-row strong{flex:1;min-width:100px}.v33-pos-row button{min-height:40px}.v33-disabled{opacity:.6;pointer-events:none}#cloudPositionsAdmin{margin-bottom:15px}#cloudPositionsAdmin summary{padding:7px 0}.v33-count{font-size:12px;min-width:105px;text-align:right}@media(max-width:600px){.v33-count{min-width:80px}}</style>
   <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script defer src="app.js?v=33"></script>
-  <script defer src="cloud.js?v=33"></script>
-  <script defer src="v32.js?v=33"></script>
-  <script defer src="v33.js?v=33"></script>
+  <script defer src="app.js?v=33.1"></script>
+  <script defer src="cloud.js?v=33.1"></script>
+  <script defer src="v32.js?v=33.1"></script>
+  <script defer src="v33.js?v=33.1"></script>
 </head>
 <body>
   <header>
     <div class="wrap">
       <div class="brand">
-        <div class="logo"><img src="assets/icon-512.png?v=33" alt="SKF"></div>
+        <div class="logo"><img src="assets/icon-512.png?v=33.1" alt="SKF"></div>
         <div>
           <div style="font-weight:800">SKF · FlexiChannel</div>
           <div class="muted">Cassino Factory · Officina 2</div>
@@ -430,11 +430,11 @@
     <p class="muted" style="margin-top:10px">Dopo il primo caricamento, il sito funziona anche offline (Aggiungi a schermata Home).</p>
   </main>
 
-  <footer style="text-align:center;margin:16px 0" class="muted">Versione UI: <b>v33</b></footer>
+  <footer style="text-align:center;margin:16px 0" class="muted">Versione UI: <b>v33.1</b></footer>
 
   <script>
     if('serviceWorker' in navigator){
-      window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=33'));
+      window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=33.1'));
     }
   </script>
 </body>

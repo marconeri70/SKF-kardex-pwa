@@ -4,10 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>SKF · FlexiChannel Warehouse</title>
-  <link rel="manifest" href="manifest.webmanifest?v=25.2" />
+  <link rel="manifest" href="manifest.webmanifest?v=26" />
   <meta name="theme-color" content="#0e4ead" />
-  <link rel="apple-touch-icon" href="assets/icon-512.png?v=25.2" />
-  <link rel="icon" href="favicon.ico?v=25.2" type="image/x-icon">
+  <link rel="apple-touch-icon" href="assets/icon-512.png?v=26" />
+  <link rel="icon" href="favicon.ico?v=26" type="image/x-icon">
   <style>
     :root{
       --bg:#f6f7fb; --card:#fff; --text:#0f172a; --muted:#6b7280;
@@ -145,16 +145,33 @@
     #cloudImportConfirm:disabled{opacity:.45;cursor:not-allowed}
     #cloudImport button{margin:5px 6px 5px 0}
     @media(max-width:700px){.brand>div:last-child>div:first-child{font-size:16px}#dataView:before{font-size:10px;line-height:1.5}}
+
+    .tray-visual{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:10px}
+    .tray-slot{min-width:0;padding:12px 5px;text-align:center;border:2px solid var(--border);border-radius:12px;background:var(--card);font-size:12px;font-weight:750}
+    .tray-slot.active{background:#d9f4e6;border-color:#14804a;color:#075c35}
+    .tray-slot.inactive{opacity:.55}
+    .tray-slot.unknown{border-style:dashed;background:var(--table-head);color:var(--muted)}
+    .tray-slot small{display:block;font-size:11px;font-weight:500;margin-top:5px}
+    .tray-map{margin-top:12px;border:1px solid var(--border);border-radius:14px;padding:12px}
+    .tray-map summary{cursor:pointer;font-weight:750;padding:5px}
+    .tray-map-buttons{display:grid;grid-template-columns:repeat(auto-fit,minmax(68px,1fr));gap:7px;margin:12px 0}
+    .tray-map-buttons button{padding:11px 4px;min-height:44px}
+    .tray-map-buttons button.selected{background:#0b7554;color:#fff}
+    .tray-map-entry{border-top:1px solid var(--border);padding:9px 2px;font-size:14px}
+    .tray-map-entry strong{overflow-wrap:anywhere}
+    .tray-map-entry button{margin-left:8px}
+    .quick-location-item .tray-visual{margin-top:12px}
+    @media(max-width:700px){.tray-visual{gap:4px}.tray-slot{padding:10px 2px;font-size:11px}}
   </style>
   <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script defer src="app.js?v=25.2"></script>
-  <script defer src="cloud.js?v=25.2"></script>
+  <script defer src="app.js?v=26"></script>
+  <script defer src="cloud.js?v=26"></script>
 </head>
 <body>
   <header>
     <div class="wrap">
       <div class="brand">
-        <div class="logo"><img src="assets/icon-512.png?v=25.2" alt="SKF"></div>
+        <div class="logo"><img src="assets/icon-512.png?v=26" alt="SKF"></div>
         <div>
           <div style="font-weight:800">SKF · FlexiChannel</div>
           <div class="muted">Cassino Factory · Officina 2</div>
@@ -229,6 +246,8 @@
         <span id="count" class="count">0 risultati</span>
       </div>
       <section id="quickLocation" class="quick-location" aria-live="polite" hidden></section>
+      <details id="trayMap" class="tray-map"><summary>🗂️ Mappa ripiani Kardex</summary><p class="muted">Seleziona un ripiano per visualizzare i componenti. Le posizioni non assegnate restano «Da definire».</p><div id="trayMapButtons" class="tray-map-buttons"></div><div id="trayMapContent" aria-live="polite"></div></details>
+      <div class="row" style="margin-top:10px"><button type="button" class="secondary" id="showUndefined">📍 Mostra posizioni da definire</button><button type="button" class="secondary hidden" id="clearUndefined">Mostra tutti</button><span id="undefinedCount" class="muted"></span></div>
       <details class="mobile-tools"><summary>⚙️ Altre funzioni</summary><div class="row" style="margin-top:10px">
         <button id="export">Export CSV</button>
         <button id="exportPresets" class="secondary">Export Preset</button>
@@ -328,11 +347,11 @@
     <p class="muted" style="margin-top:10px">Dopo il primo caricamento, il sito funziona anche offline (Aggiungi a schermata Home).</p>
   </main>
 
-  <footer style="text-align:center;margin:16px 0" class="muted">Versione UI: <b>v25.2</b></footer>
+  <footer style="text-align:center;margin:16px 0" class="muted">Versione UI: <b>v26</b></footer>
 
   <script>
     if('serviceWorker' in navigator){
-      window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=25.2'));
+      window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=26'));
     }
   </script>
 </body>

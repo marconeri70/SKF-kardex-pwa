@@ -1,4 +1,4 @@
-const CACHE_NAME = 'kardex-cache-v33.1';
+const CACHE_NAME = 'kardex-cache-v34';
 const ASSETS = [
   './manifest.webmanifest?v=30.1',
   './assets/icon-192.png?v=30.1',
@@ -8,7 +8,8 @@ const ASSETS = [
   './app.js?v=30.1',
   './cloud.js?v=30.1',
   './index.html?v=30.1',
-  './catalogo.html?v=30.2'
+  './catalogo.html?v=34',
+  './ripiano.html'
 ];
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting()));

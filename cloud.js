@@ -79,14 +79,12 @@ async function previewWarehouseImport(){
       $('cloudImportList').append(line);
     }
     importStatus(doc.items.length+' righe verificate · '+duplicates+' già presenti · '+importPending.length+' da aggiungere.');
-    $('cloudImportConfirm').disabled=true;
-    importStatus(doc.items.length+' righe verificate · '+duplicates+' già presenti · '+importPending.length+' mancanti. Importazione sospesa: il Worker rifiuta «Da definire».');
+    $('cloudImportConfirm').disabled=!importPending.length;
   }catch(e){importStatus('Verifica non riuscita: '+e.message);}
 }
 $('cloudImportPreview').addEventListener('click',previewWarehouseImport);
 $('cloudImportConfirm').addEventListener('click',async()=>{
   if(!user||user.ruolo!=='admin'||!importPending.length)return;
-  importStatus('Importazione sospesa: occorre aggiornare la validazione del Worker Cloudflare.');return;
   if(!confirm('Importare '+importPending.length+' componenti mancanti nel database condiviso?'))return;
   const btn=$('cloudImportConfirm');btn.disabled=true;
   let inserted=0;

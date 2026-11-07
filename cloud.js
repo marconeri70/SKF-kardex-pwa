@@ -17,6 +17,10 @@ async function request(path,method='GET',data){
   return result;
 }
 function renderUser(){
+  const logged=!!user;
+  $('cloudToggleLogin').classList.toggle('hidden',logged);
+  if(logged){$('cloudLoginArea').classList.add('hidden');$('cloudToggleLogin').setAttribute('aria-expanded','false');}
+  $('cloudAdmin').classList.toggle('hidden',!user||user.ruolo!=='admin');
   $('cloudLoginArea').classList.toggle('hidden',!!user);
   $('cloudUserArea').classList.toggle('hidden',!user);
   $('cloudEditor').classList.toggle('hidden',!user);
@@ -45,6 +49,43 @@ async function refresh(){
 }
 function resetForm(){$('cloudForm').reset();$('cloudId').value='';}
 window.addEventListener('kardex:render',renderUser);
+$('cloudToggleLogin').addEventListener('click',()=>{
+  const open=$('cloudLoginArea').classList.toggle('hidden')===false;
+  $('cloudToggleLogin').setAttribute('aria-expanded',String(open));
+});
+const opMessage=t=>{$('operatorMessage').textContent=t||'';};
+async function loadOperators(){
+  if(!user||user.ruolo!=='admin')return;
+  opMessage('');
+  try{
+    const data=await request('/api/operatori');
+    const list=Array.isArray(data)?data:(data.operatori||[]);
+    const root=$('operatorList');root.replaceChildren();
+    if(!list.length){root.textContent='Nessun operatore nell’elenco';return;}
+    for(const op of list){
+      const row=document.createElement('div');row.className='row';row.style.cssText='padding:8px 0;border-bottom:1px solid var(--border)';
+      const label=document.createElement('span');label.style.flex='1';label.textContent=(op.nome||op.email)+' · '+op.email+' · '+op.ruolo+' · '+(op.attivo?'Attivo':'Disattivato');
+      row.append(label);
+      if(String(op.id)!==String(user.id)){
+        const btn=document.createElement('button');btn.className='secondary';btn.textContent=op.attivo?'Disattiva':'Riattiva';
+        btn.onclick=async()=>{
+          if(!confirm((op.attivo?'Disattivare':'Riattivare')+' '+op.email+'?'))return;
+          try{await request('/api/operatori/'+encodeURIComponent(op.id),'PATCH',{attivo:op.attivo?0:1});await loadOperators();}
+          catch(e){opMessage(e.message);}
+        };row.append(btn);
+      }
+      root.append(row);
+    }
+  }catch(e){opMessage('Impossibile leggere gli operatori: '+e.message);}
+}
+$('operatorRefresh').addEventListener('click',loadOperators);
+$('cloudAdminDetails').addEventListener('toggle',e=>{if(e.target.open)loadOperators();});
+$('cloudOperatorForm').addEventListener('submit',async e=>{
+  e.preventDefault();opMessage('');
+  const body={nome:$('operatorName').value.trim(),email:$('operatorEmail').value.trim(),password:$('operatorPassword').value,ruolo:$('operatorRole').value};
+  try{await request('/api/operatori','POST',body);$('cloudOperatorForm').reset();opMessage('Operatore creato');await loadOperators();}
+  catch(err){opMessage(err.message);}
+});
 $('cloudLogin').addEventListener('click',async()=>{
   message('');
   try{

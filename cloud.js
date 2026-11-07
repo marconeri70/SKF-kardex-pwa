@@ -57,7 +57,7 @@ $('cloudToggleLogin').addEventListener('click',()=>{
 
 let importPending=[];
 const importStatus=t=>{$('cloudImportMessage').textContent=t;};
-const importKey=x=>String(x.ripiano??'').trim().toLocaleUpperCase('it')+'|'+String(x.tipo??'').trim().toLocaleUpperCase('it');
+const importKey=x=>String(x.ripiano??x.RIPIANO??'').trim().toLocaleUpperCase('it')+'|'+String(x.tipo??x.TIPO??'').trim().toLocaleUpperCase('it');
 async function previewWarehouseImport(){
   importPending=[];$('cloudImportConfirm').disabled=true;$('cloudImportList').replaceChildren();
   if(!user||user.ruolo!=='admin')return importStatus('Accesso amministratore richiesto.');
@@ -79,12 +79,14 @@ async function previewWarehouseImport(){
       $('cloudImportList').append(line);
     }
     importStatus(doc.items.length+' righe verificate · '+duplicates+' già presenti · '+importPending.length+' da aggiungere.');
-    $('cloudImportConfirm').disabled=!importPending.length;
+    $('cloudImportConfirm').disabled=true;
+    importStatus(doc.items.length+' righe verificate · '+duplicates+' già presenti · '+importPending.length+' mancanti. Importazione sospesa: il Worker rifiuta «Da definire».');
   }catch(e){importStatus('Verifica non riuscita: '+e.message);}
 }
 $('cloudImportPreview').addEventListener('click',previewWarehouseImport);
 $('cloudImportConfirm').addEventListener('click',async()=>{
   if(!user||user.ruolo!=='admin'||!importPending.length)return;
+  importStatus('Importazione sospesa: occorre aggiornare la validazione del Worker Cloudflare.');return;
   if(!confirm('Importare '+importPending.length+' componenti mancanti nel database condiviso?'))return;
   const btn=$('cloudImportConfirm');btn.disabled=true;
   let inserted=0;

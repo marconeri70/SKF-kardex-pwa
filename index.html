@@ -4,10 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>SKF · FlexiChannel Warehouse</title>
-  <link rel="manifest" href="manifest.webmanifest?v=28" />
+  <link rel="manifest" href="manifest.webmanifest?v=29" />
   <meta name="theme-color" content="#0e4ead" />
-  <link rel="apple-touch-icon" href="assets/icon-512.png?v=28" />
-  <link rel="icon" href="favicon.ico?v=28" type="image/x-icon">
+  <link rel="apple-touch-icon" href="assets/icon-512.png?v=29" />
+  <link rel="icon" href="favicon.ico?v=29" type="image/x-icon">
   <style>
     :root{
       --bg:#f6f7fb; --card:#fff; --text:#0f172a; --muted:#6b7280;
@@ -184,14 +184,14 @@
     @media(max-width:700px){#advancedTools .advanced-tools-body{padding:10px 0}#advancedTools .filters input{width:100%;min-width:0;font-size:16px}}
   </style>
   <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script defer src="app.js?v=28"></script>
-  <script defer src="cloud.js?v=28"></script>
+  <script defer src="app.js?v=29"></script>
+  <script defer src="cloud.js?v=29"></script>
 </head>
 <body>
   <header>
     <div class="wrap">
       <div class="brand">
-        <div class="logo"><img src="assets/icon-512.png?v=28" alt="SKF"></div>
+        <div class="logo"><img src="assets/icon-512.png?v=29" alt="SKF"></div>
         <div>
           <div style="font-weight:800">SKF · FlexiChannel</div>
           <div class="muted">Cassino Factory · Officina 2</div>
@@ -199,7 +199,7 @@
       </div>
       <div class="toolbar">
         <button id="tabData" class="toggle">📋 Dati</button>
-        <button id="tabConsole" class="toggle">🖥️ Console</button>
+        <button id="tabConsole" class="toggle" hidden aria-label="Apri Console inventario">🖥️ Console</button>
         <button id="theme" class="toggle">🌙 Tema</button>
         <button id="reset" class="toggle">↺ Reset impostazioni</button>
       </div>
@@ -270,7 +270,7 @@
       <div class="row" style="margin-top:10px"><button type="button" class="secondary" id="showUndefined">📍 Mostra posizioni da definire</button><button type="button" class="secondary hidden" id="clearUndefined">Mostra tutti</button><span id="undefinedCount" class="muted"></span></div>
       <details class="mobile-tools" id="advancedTools">
         <summary>⚙️ Strumenti avanzati <span class="muted">· filtri, preset, import/export</span></summary>
-        <div class="advanced-tools-body">
+        <div class="advanced-tools-body"><button type="button" id="openConsoleAdvanced" class="secondary" style="width:100%;text-align:left;margin-bottom:8px">🖥️ Apri Console inventario <span class="muted">· funzione opzionale</span></button>
           <details class="filters">
             <summary>🔎 Filtri avanzati <span class="muted">· facoltativi</span></summary>
             <p class="muted">La ricerca in alto è sufficiente per trovare un componente. Usa questi filtri solo per ricerche particolari.</p>
@@ -318,7 +318,7 @@
     <!-- ====== CONSOLE ====== -->
     <section id="consoleView" class="console-card hidden">
       <div class="console-grid">
-        <div class="console-title">Console inventario</div>
+        <div class="console-title">Console inventario <button type="button" id="returnToInventory" class="secondary" style="margin-left:12px">← Torna alla ricerca</button></div>
 
         <!-- Preset per Console -->
         <div class="box" style="grid-column:1/13;background:var(--card)">
@@ -375,11 +375,11 @@
     <p class="muted" style="margin-top:10px">Dopo il primo caricamento, il sito funziona anche offline (Aggiungi a schermata Home).</p>
   </main>
 
-  <footer style="text-align:center;margin:16px 0" class="muted">Versione UI: <b>v28</b></footer>
+  <footer style="text-align:center;margin:16px 0" class="muted">Versione UI: <b>v29</b></footer>
 
   <script>
     if('serviceWorker' in navigator){
-      window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=28'));
+      window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=29'));
     }
   </script>
 </body>

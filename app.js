@@ -354,7 +354,9 @@ const dataCard=$('dataView'), consoleView=$('consoleView'), tabData=$('tabData')
 function showData(){ dataCard.classList.remove('hidden'); consoleView.classList.add('hidden'); localStorage.setItem('kardex-tab','data'); }
 function showConsole(){ dataCard.classList.add('hidden'); consoleView.classList.remove('hidden'); localStorage.setItem('kardex-tab','console'); }
 tabData?.addEventListener('click',showData); tabConsole?.addEventListener('click',showConsole);
-(function(){ (localStorage.getItem('kardex-tab')==='console')?showConsole():showData(); })();
+$('openConsoleAdvanced')?.addEventListener('click',showConsole);
+$('returnToInventory')?.addEventListener('click',showData);
+(function(){ showData(); })();
 
 /* ======= CONSOLE ======= */
 const c = {

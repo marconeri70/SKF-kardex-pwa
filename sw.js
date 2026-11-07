@@ -1,9 +1,11 @@
-const CACHE_NAME = 'kardex-cache-v19';
+const CACHE_NAME = 'kardex-cache-v21';
 const ASSETS = [
   './manifest.webmanifest?v=19',
   './assets/icon-192.png?v=19',
   './assets/icon-512.png?v=19',
   './data/kardex.json',
+  './app.js?v=21',
+  './cloud.js?v=21',
   'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js'
 ];
 
@@ -15,6 +17,7 @@ self.addEventListener('activate', e=>{
 });
 self.addEventListener('fetch', e=>{
   const req=e.request, url=new URL(req.url);
+  if(url.origin!==self.location.origin) return;
   const isHTML = req.mode==='navigate' || req.destination==='document';
   if (isHTML || url.pathname.endsWith('/app.js')) {
     e.respondWith(fetch(req).then(r=>{caches.open(CACHE_NAME).then(c=>c.put(req,r.clone())); return r;}).catch(()=>caches.match(req)));

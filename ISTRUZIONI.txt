@@ -1,0 +1,5 @@
+1. Carica catalogo.html nella cartella principale del repository marconeri70/SKF-kardex-pwa (ramo main).
+2. Non sostituire index.html o app.js: questa è una pagina aggiuntiva, in sola lettura.
+3. Attendi la pubblicazione GitHub Pages e apri https://marconeri70.github.io/SKF-kardex-pwa/catalogo.html
+4. Stampa o condividi QR_Kardex_Catalogo.png.
+5. Le informazioni arrivano dal file data/kardex.json pubblicato su GitHub, non dai file importati solo nel browser.

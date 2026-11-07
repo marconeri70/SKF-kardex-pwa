@@ -230,25 +230,28 @@ function renderTrayMap(){
   const title=document.createElement('strong');title.textContent='Ripiano '+selectedTray+' · '+matches.length+' componenti';
   content.append(title);
   for(const r of matches){
-    const entry=document.createElement('div');entry.className='tray-map-entry';
-    const label=document.createElement('strong');label.textContent=r.TIPO||'Senza tipo';
-    const pos=document.createElement('span');pos.className='chip';pos.style.marginLeft='8px';pos.textContent=r.POSIZIONE||'Da definire';
-    entry.append(label,pos,buildTrayVisual(r.POSIZIONE));
+    const entry=document.createElement('details');entry.className='tray-entry-detail';
+    const summary=document.createElement('summary');
+    const name=document.createElement('span');name.className='tray-entry-name';name.textContent=r.TIPO||'Senza tipo';
+    const side=document.createElement('span');side.className='tray-entry-side';
+    const pos=document.createElement('span');pos.className='chip';pos.textContent=r.POSIZIONE||'Da definire';
+    side.append(pos);summary.append(name,side);entry.append(summary);
+    const body=document.createElement('div');body.className='tray-detail-body';
+    const trayLabel=document.createElement('p');trayLabel.className='muted';trayLabel.textContent='Ripiano '+r.RIPIANO;
+    body.append(trayLabel,buildTrayVisual(r.POSIZIONE));
     if(norm(r.POSIZIONE)==='da definire'&&r.id){
       const btn=document.createElement('button');btn.className='secondary';btn.textContent='Imposta posizione';btn.type='button';
       btn.onclick=()=>{
-        const editor=document.getElementById('cloudEditor');
         const edit=Array.from(document.querySelectorAll('.cloudActions')).find(el=>String(el.dataset.id)===String(r.id))?.querySelector('button');
         if(edit){edit.click();return;}
-        // Se il componente non è visibile per filtri, ripristina la ricerca e trova il pulsante Modifica.
         const clear=document.getElementById('clear');if(clear)clear.click();
         const action=Array.from(document.querySelectorAll('.cloudActions')).find(el=>String(el.dataset.id)===String(r.id))?.querySelector('button');
         if(action)action.click();
         else alert('Accedi come operatore per modificare la posizione.');
       };
-      entry.append(btn);
+      body.append(btn);
     }
-    content.append(entry);
+    entry.append(body);content.append(entry);
   }
 }
 document.getElementById('showUndefined')?.addEventListener('click',()=>{

@@ -41,6 +41,23 @@ function renderUser(){
     el.append(edit,del);
   });
 }
+window.addEventListener('kardex:tray-action',async e=>{
+ const d=e.detail||{};
+ if(!user||user.ruolo!=='admin'||!token){window.dispatchEvent(new CustomEvent('kardex:tray-result',{detail:{error:'Accesso amministratore richiesto.'}}));return;}
+ const row=ROWS.find(r=>String(r.id)===String(d.id));
+ if(!row){window.dispatchEvent(new CustomEvent('kardex:tray-result',{detail:{error:'Componente non trovato. Aggiorna l’inventario.'}}));return;}
+ try{
+  if(d.action==='save'){
+   const tipo=String(d.tipo||'').trim(),posizione=String(d.posizione||'').trim();
+   if(!tipo||tipo.length>150||!posizione||!String(d.ripiano||'').trim())throw Error('Dati non validi');
+   await request('/api/componenti/'+encodeURIComponent(row.id),'PATCH',{ripiano:row.RIPIANO,tipo,posizione});
+  }else if(d.action==='delete'){
+   await request('/api/componenti/'+encodeURIComponent(row.id),'DELETE');
+  }else throw Error('Operazione non riconosciuta');
+  await refresh();
+  window.dispatchEvent(new CustomEvent('kardex:tray-result',{detail:{ok:true,message:'Inventario aggiornato nel database condiviso.'}}));
+ }catch(err){window.dispatchEvent(new CustomEvent('kardex:tray-result',{detail:{error:err.message}}));}
+});
 window.addEventListener('kardex:quick-save',async e=>{
   const d=e.detail||{};
   if(!user||!token){window.dispatchEvent(new CustomEvent('kardex:quick-result',{detail:{error:'Accedi come operatore per modificare la posizione.'}}));return;}
@@ -59,7 +76,7 @@ async function refresh(){
   window.KARDEX_CLOUD_ONLINE=true;
   render();if(typeof analyzeTray==='function'&&$('c_vassoio_target'))analyzeTray(+$('c_vassoio_target').value||0);
   renderUser();status('Online · '+ROWS.length+' componenti');
-  window.dispatchEvent(new CustomEvent('kardex:auth',{detail:{logged:!!user}}));
+  window.dispatchEvent(new CustomEvent('kardex:auth',{detail:{logged:!!user,admin:user?.ruolo==='admin'}}));
 }
 function resetForm(){$('cloudForm').reset();$('cloudId').value='';}
 window.addEventListener('kardex:render',renderUser);

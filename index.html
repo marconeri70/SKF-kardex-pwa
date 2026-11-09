@@ -247,7 +247,7 @@
 .v33-pos-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--border);padding:9px 0}.v33-pos-row strong{flex:1;min-width:100px}.v33-pos-row button{min-height:40px}.v33-disabled{opacity:.6;pointer-events:none}#cloudPositionsAdmin{margin-bottom:15px}#cloudPositionsAdmin summary{padding:7px 0}.v33-count{font-size:12px;min-width:105px;text-align:right}@media(max-width:600px){.v33-count{min-width:80px}}
 #trayDialog{border:1px solid var(--border);border-radius:18px;padding:18px;width:min(94vw,580px);max-height:86dvh;overflow:auto;background:var(--card);color:var(--text);box-shadow:0 18px 70px #001e4480}#trayDialog::backdrop{background:#071b36ad}.tray-dialog-head{display:flex;align-items:center;justify-content:space-between;gap:10px}.tray-dialog-head h2{margin:0}.tray-dialog-entry{border:1px solid var(--border);border-radius:12px;padding:12px;margin:10px 0}.tray-dialog-entry strong{display:block;overflow-wrap:anywhere}.tray-dialog-entry .row{margin-top:8px;gap:8px}.tray-dialog-entry input,.tray-dialog-entry select{min-width:0;width:100%;font:inherit;padding:10px;border-radius:8px;border:1px solid var(--border)}.tray-dialog-entry button{margin:4px 4px 0 0}.tray-dialog-entry label{display:block;margin-top:8px;font-size:13px}.tray-dialog-entry .muted{margin:5px 0}.tray-dialog-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}body:has(#trayDialog[open]){overflow:hidden}
 
-    /* v36.2: schede ripiani operative, regole prioritarie anche sui pulsanti secondary */
+    /* v36.3: schede ripiani operative, regole prioritarie anche sui pulsanti secondary */
     #trayMap #trayMapButtons{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;margin:14px 0}
     #trayMap #trayMapButtons>button,#trayMap #trayMapButtons>button.secondary,#trayMap #trayMapButtons>button.selected{display:flex;flex-direction:column;align-items:stretch;justify-content:space-between;gap:9px;text-align:left;min-width:0;width:100%;height:auto;min-height:128px;padding:13px;border:1px solid #c9d9e8;border-radius:16px;background:linear-gradient(145deg,#fff,#edf5fd);color:#064e87;box-shadow:0 3px 12px #003e7310;white-space:normal;font-size:14px;line-height:1.3}
     #trayMap #trayMapButtons>button.selected{background:linear-gradient(145deg,#effff9,#ddf5ed);border-color:#087457;color:#07583e}
@@ -258,6 +258,7 @@
     #trayMap .tray-map-card-types>span{display:block;width:100%;white-space:normal}
     #trayMap .tray-map-card-count{display:block;width:100%;font-size:12px;font-weight:650;color:#536f84;white-space:normal}
     @media(min-width:760px){#trayMap #trayMapButtons{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.inventory-full-list{margin-top:14px;border:1px solid #cbd9e6;border-radius:15px;padding:12px;background:#f6f9fd}.inventory-full-list>summary{cursor:pointer;font-weight:750;color:#07528d;padding:8px 4px}.inventory-full-list>table{margin-top:12px}
 </style>
   <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script defer src="app.js?v=36.2"></script>
@@ -383,6 +384,7 @@
         </div>
       </details>
 
+      <details id="inventoryFullList" class="inventory-full-list"><summary>📋 Mostra elenco completo dei componenti <span class="muted">· facoltativo</span></summary><p class="muted">Apri questa sezione solo per consultare o ordinare l'inventario completo.</p>
       <table>
         <thead><tr>
           <th class="sortable" data-key="RIPIANO">RIPIANO <span class="sort"></span></th>
@@ -390,7 +392,7 @@
           <th class="sortable" data-key="POSIZIONE">POSIZIONE <span class="sort"></span></th>
         </tr></thead>
         <tbody id="tbody"></tbody>
-      </table>
+      </table></details>
     </section>
 
     <!-- ====== CONSOLE ====== -->
@@ -453,7 +455,7 @@
     <p class="muted" style="margin-top:10px">Dopo il primo caricamento, il sito funziona anche offline (Aggiungi a schermata Home).</p>
   </main>
 
-  <footer style="text-align:center;margin:16px 0" class="muted">Versione UI: <b>v36.2</b></footer>
+  <footer style="text-align:center;margin:16px 0" class="muted">Versione UI: <b>v36.3</b></footer>
 
   <script>
     if('serviceWorker' in navigator){

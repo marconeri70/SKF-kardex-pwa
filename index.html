@@ -156,7 +156,16 @@
     .tray-map summary{cursor:pointer;font-weight:750;padding:5px}
     .tray-map-buttons{display:grid;grid-template-columns:repeat(auto-fit,minmax(68px,1fr));gap:7px;margin:12px 0}
     .tray-map-buttons button{padding:11px 4px;min-height:44px}
-    .tray-map-buttons button.selected{background:#0b7554;color:#fff}
+    .tray-map-buttons button.selected{border-color:#087457;box-shadow:0 0 0 2px #08745735}
+    .tray-map-buttons{grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+    .tray-map-buttons button{display:flex;flex-direction:column;align-items:stretch;justify-content:space-between;gap:9px;text-align:left;min-width:0;min-height:125px;padding:14px;border:1px solid #c9d9e8;border-radius:17px;background:linear-gradient(145deg,#fff,#edf5fd);color:#064e87;box-shadow:0 4px 12px #003e7310}
+    .tray-map-buttons button.selected{background:linear-gradient(145deg,#ecfff8,#ddf5ed);color:#07583e}
+    .tray-map-card-top{display:flex;align-items:center;justify-content:space-between;gap:6px}
+    .tray-map-card-top strong{font-size:clamp(21px,5vw,29px);font-weight:850;line-height:1.1;overflow-wrap:anywhere}
+    .tray-map-card-arrow{display:grid;place-items:center;border-radius:50%;width:28px;height:28px;flex-shrink:0;background:#dcecff;color:#005195;font-size:22px}
+    .tray-map-card-types{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:650;line-height:1.35;color:#285575;overflow-wrap:anywhere}
+    .tray-map-card-count{font-size:12px;font-weight:650;color:#536f84}
+    @media(min-width:760px){.tray-map-buttons{grid-template-columns:repeat(3,minmax(0,1fr))}}
     .tray-map-entry{border-top:1px solid var(--border);padding:9px 2px;font-size:14px}
     .tray-map-entry strong{overflow-wrap:anywhere}
     .tray-map-entry button{margin-left:8px}
@@ -239,7 +248,7 @@
 #trayDialog{border:1px solid var(--border);border-radius:18px;padding:18px;width:min(94vw,580px);max-height:86dvh;overflow:auto;background:var(--card);color:var(--text);box-shadow:0 18px 70px #001e4480}#trayDialog::backdrop{background:#071b36ad}.tray-dialog-head{display:flex;align-items:center;justify-content:space-between;gap:10px}.tray-dialog-head h2{margin:0}.tray-dialog-entry{border:1px solid var(--border);border-radius:12px;padding:12px;margin:10px 0}.tray-dialog-entry strong{display:block;overflow-wrap:anywhere}.tray-dialog-entry .row{margin-top:8px;gap:8px}.tray-dialog-entry input,.tray-dialog-entry select{min-width:0;width:100%;font:inherit;padding:10px;border-radius:8px;border:1px solid var(--border)}.tray-dialog-entry button{margin:4px 4px 0 0}.tray-dialog-entry label{display:block;margin-top:8px;font-size:13px}.tray-dialog-entry .muted{margin:5px 0}.tray-dialog-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}body:has(#trayDialog[open]){overflow:hidden}
 </style>
   <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script defer src="app.js?v=35"></script>
+  <script defer src="app.js?v=36.1"></script>
   <script defer src="cloud.js?v=35"></script>
   <script defer src="v32.js?v=33.1"></script>
   <script defer src="v33.js?v=33.1"></script>

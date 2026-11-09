@@ -261,7 +261,7 @@ function renderTrayMap(){
  buttons.replaceChildren();content.replaceChildren();
  for(const tray of trays){
   const b=document.createElement('button');b.type='button';b.className=selectedTray===tray?'selected':'secondary';
-  b.textContent=tray;b.setAttribute('aria-pressed',String(selectedTray===tray));
+  const items=ROWS.filter(r=>String(r.RIPIANO||'').trim()===tray);const heading=document.createElement('span');heading.className='tray-map-card-top';const number=document.createElement('strong');number.textContent=tray;const arrow=document.createElement('span');arrow.className='tray-map-card-arrow';arrow.textContent='›';heading.append(number,arrow);const types=document.createElement('span');types.className='tray-map-card-types';for(const type of [...new Set(items.map(r=>String(r.TIPO||'').trim()).filter(Boolean))]){const line=document.createElement('span');line.textContent=type;types.append(line);}const count=document.createElement('span');count.className='tray-map-card-count';count.textContent=items.length+' component'+(items.length===1?'e':'i')+' · Apri ripiano';b.append(heading,types,count);b.setAttribute('aria-label','Apri ripiano '+tray+', '+items.length+' componenti');b.setAttribute('aria-pressed',String(selectedTray===tray));
   b.onclick=()=>{selectedTray=tray;renderTrayMap();$('trayDialogMessage').textContent='';showTrayDialog();if(!trayDialog.open)trayDialog.showModal();};
   buttons.append(b);
  }

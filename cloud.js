@@ -91,14 +91,40 @@ window.addEventListener('kardex:quick-save',async e=>{
     window.dispatchEvent(new CustomEvent('kardex:quick-result',{detail:{ok:true,id:row.id}}));
   }catch(err){window.dispatchEvent(new CustomEvent('kardex:quick-result',{detail:{error:err.message}}));}
 });
+let groupCache=[];
+async function refreshGroups(){
+ const data=await request('/api/gruppi');
+ if(!Array.isArray(data.gruppi))throw Error('Elenco gruppi non valido');
+ groupCache=data.gruppi;
+ window.dispatchEvent(new CustomEvent('kardex:groups',{detail:{gruppi:groupCache}}));
+ return groupCache;
+}
+window.addEventListener('kardex:groups-refresh',()=>refreshGroups().catch(e=>message('Gruppi: '+e.message)));
+window.addEventListener('kardex:group-action',async e=>{
+ const d=e.detail||{},reply=x=>window.dispatchEvent(new CustomEvent('kardex:group-result',{detail:x}));
+ if(!user||!token)return reply({error:'Accesso operatore richiesto.'});
+ try{
+  const id=encodeURIComponent(d.groupId),itemId=encodeURIComponent(d.itemId),tipo=String(d.tipo||'').trim();
+  if(['add-group','rename-group','add-item','edit-item'].includes(d.action)&&(!tipo||tipo.length>150))throw Error('Inserisci un nome valido (massimo 150 caratteri).');
+  if(d.action==='add-group')await request('/api/gruppi','POST',{ripiano:d.ripiano,posizione:d.posizione,nome:tipo});
+  else if(d.action==='rename-group')await request('/api/gruppi/'+id,'PATCH',{nome:tipo});
+  else if(d.action==='delete-group')await request('/api/gruppi/'+id,'DELETE');
+  else if(d.action==='add-item')await request('/api/gruppi/'+id+'/componenti','POST',{tipo});
+  else if(d.action==='edit-item')await request('/api/gruppi/'+id+'/componenti/'+itemId,'PATCH',{tipo});
+  else if(d.action==='delete-item')await request('/api/gruppi/'+id+'/componenti/'+itemId,'DELETE');
+  else throw Error('Operazione sconosciuta');
+  await refresh();reply({ok:true});
+ }catch(err){reply({error:err.message});}
+});
 async function refresh(){
-  const data=await request('/api/componenti');
-  if(!Array.isArray(data.componenti))throw new Error('Risposta inventario non valida');
-  ROWS=data.componenti.map(x=>({id:x.id,RIPIANO:String(x.ripiano??''),TIPO:String(x.tipo??''),POSIZIONE:String(x.posizione??'')}));
-  window.KARDEX_CLOUD_ONLINE=true;
-  render();if(typeof analyzeTray==='function'&&$('c_vassoio_target'))analyzeTray(+$('c_vassoio_target').value||0);
-  renderUser();status('Online · '+ROWS.length+' componenti');
-  window.dispatchEvent(new CustomEvent('kardex:auth',{detail:{logged:!!user,admin:user?.ruolo==='admin'}}));
+ const [data,groups]=await Promise.all([request('/api/componenti'),refreshGroups()]);
+ if(!Array.isArray(data.componenti))throw new Error('Risposta inventario non valida');
+ const groupIds=new Set(groups.map(g=>String(g.legacy_componente_id)).filter(x=>x!=='null'&&x!=='undefined'));
+ ROWS=data.componenti.filter(x=>!groupIds.has(String(x.id))).map(x=>({id:x.id,RIPIANO:String(x.ripiano??''),TIPO:String(x.tipo??''),POSIZIONE:String(x.posizione??'')}));
+ window.KARDEX_CLOUD_ONLINE=true;
+ render();if(typeof analyzeTray==='function'&&$('c_vassoio_target'))analyzeTray(+$('c_vassoio_target').value||0);
+ renderUser();status('Online · '+ROWS.length+' voci generali · '+groups.length+' gruppi');
+ window.dispatchEvent(new CustomEvent('kardex:auth',{detail:{logged:!!user,admin:user?.ruolo==='admin'}}));
 }
 function resetForm(){$('cloudForm').reset();$('cloudId').value='';}
 window.addEventListener('kardex:render',renderUser);

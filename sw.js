@@ -1,14 +1,14 @@
-const CACHE_NAME = 'kardex-cache-v36.7';
+const CACHE_NAME = 'kardex-cache-v36.9';
 const ASSETS = [
   './manifest.webmanifest?v=30.1',
   './assets/icon-192.png?v=30.1',
   './assets/icon-512.png?v=30.1',
   './data/kardex.json',
   './data/warehouse-index-2026.json',
-  './app.js?v=36.7',
-  './cloud.js?v=36.7',
-  './index.html?v=36.7',
-  './catalogo.html?v=36.7',
+  './app.js?v=36.9',
+  './cloud.js?v=36.9',
+  './index.html?v=36.9',
+  './catalogo.html?v=36.9',
   './ripiano.html'
 ];
 self.addEventListener('install',event=>{

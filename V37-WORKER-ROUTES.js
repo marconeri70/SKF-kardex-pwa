@@ -27,7 +27,7 @@ if(path==='/api/gruppi-kardex'||gp){
  const groupId=Number(gp[1]);
  const group=await env.DB.prepare('SELECT * FROM gruppi_kardex WHERE id=?').bind(groupId).first();
  if(!group)return send({error:'Gruppo non trovato'},404);
- if(gp[2]){
+ if(path.includes('/componenti')){
   const itemId=gp[2]?Number(gp[2]):null;
   if(req.method==='POST'&&!itemId){
    if(!validName(body.tipo))return send({error:'Componente non valido'},400);

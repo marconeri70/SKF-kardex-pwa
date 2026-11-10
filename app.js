@@ -247,7 +247,10 @@ function showPositionDialog(){
  $('positionDialogTitle').textContent='Ripiano '+selectedTray+' · '+selectedPosition;
  $('positionDialogSummary').textContent=matches.length+' voci generali · '+groups.length+' gruppi';
  const root=$('positionDialogRows');root.replaceChildren();
- const header=document.createElement('h3');header.textContent='Gruppi / Zone';root.append(header);
+ const h=document.createElement('h3');h.textContent='Componenti dell’indice generale';root.append(h);
+ for(const r of matches){const entry=document.createElement('section');entry.className='tray-dialog-entry';const name=document.createElement('strong');name.textContent=r.TIPO;entry.append(name);root.append(entry);}
+ if(!matches.length){const p=document.createElement('p');p.className='muted';p.textContent='Nessuna voce generale in questa posizione.';root.append(p);}
+  const header=document.createElement('h3');header.textContent='Gruppi / Zone';root.append(header);
  for(const g of groups){const card=document.createElement('section');card.className='tray-dialog-entry position-group-card';const open=document.createElement('button');open.type='button';open.className='secondary position-group-open';open.textContent='📦 '+g.nome+' · '+g.numero_componenti+' componenti ›';open.onclick=()=>openGroup(g);card.append(open);
  const preview=document.createElement('p');preview.className='muted';preview.textContent='Caricamento riepilogo…';card.append(preview);
  fetch('https://skf-kardex-api.vocidicassino.workers.dev/api/gruppi/'+encodeURIComponent(g.id)+'/componenti',{cache:'no-store'})
@@ -257,9 +260,6 @@ function showPositionDialog(){
  if(trayLogged){const actions=document.createElement('div');actions.className='tray-dialog-actions';const rename=document.createElement('button');rename.type='button';rename.className='secondary';rename.textContent='Rinomina gruppo';rename.onclick=()=>{const name=prompt('Nuovo nome del gruppo',g.nome);if(name&&name.trim()&&name.trim()!==g.nome)groupAction('rename-group',g,null,name.trim());};const del=document.createElement('button');del.type='button';del.className='secondary';del.textContent='Elimina gruppo';del.disabled=Number(g.numero_componenti)>0;del.title=del.disabled?'Svuota prima il gruppo':'';del.onclick=()=>{if(confirm('Eliminare il gruppo '+g.nome+'?'))groupAction('delete-group',g);};actions.append(rename,del);card.append(actions);}root.append(card);}
  if(!groups.length){const p=document.createElement('p');p.className='muted';p.textContent='Nessun gruppo in questa posizione.';root.append(p);}
  if(trayLogged){const f=document.createElement('form');f.className='tray-dialog-form position-add-card';const input=document.createElement('input');input.placeholder='Nome nuovo gruppo / zona';input.required=true;input.maxLength=150;const btn=document.createElement('button');btn.type='submit';btn.textContent='＋ Crea gruppo';f.append(input,btn);f.onsubmit=e=>{e.preventDefault();groupAction('add-group',{ripiano:selectedTray,posizione:selectedPosition},null,input.value.trim());};root.append(f);}
- const h=document.createElement('h3');h.textContent='Componenti dell’indice generale';root.append(h);
- for(const r of matches){const entry=document.createElement('section');entry.className='tray-dialog-entry';const name=document.createElement('strong');name.textContent=r.TIPO;entry.append(name);root.append(entry);}
- if(!matches.length){const p=document.createElement('p');p.className='muted';p.textContent='Nessuna voce generale in questa posizione.';root.append(p);}
  $('positionDialogMessage').textContent='';
 }
 window.addEventListener('kardex:position-result',e=>{const m=$('positionDialogMessage');if(m)m.textContent=e.detail?.error||e.detail?.message||'';if(e.detail?.ok)showPositionDialog();});

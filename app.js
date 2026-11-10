@@ -248,7 +248,13 @@ function showPositionDialog(){
  $('positionDialogSummary').textContent=matches.length+' voci generali · '+groups.length+' gruppi';
  const root=$('positionDialogRows');root.replaceChildren();
  const header=document.createElement('h3');header.textContent='Gruppi / Zone';root.append(header);
- for(const g of groups){const card=document.createElement('section');card.className='tray-dialog-entry position-group-card';const open=document.createElement('button');open.type='button';open.className='secondary position-group-open';open.textContent='📦 '+g.nome+' · '+g.numero_componenti+' componenti ›';open.onclick=()=>openGroup(g);card.append(open);if(trayLogged){const actions=document.createElement('div');actions.className='tray-dialog-actions';const rename=document.createElement('button');rename.type='button';rename.className='secondary';rename.textContent='Rinomina gruppo';rename.onclick=()=>{const name=prompt('Nuovo nome del gruppo',g.nome);if(name&&name.trim()&&name.trim()!==g.nome)groupAction('rename-group',g,null,name.trim());};const del=document.createElement('button');del.type='button';del.className='secondary';del.textContent='Elimina gruppo';del.disabled=Number(g.numero_componenti)>0;del.title=del.disabled?'Svuota prima il gruppo':'';del.onclick=()=>{if(confirm('Eliminare il gruppo '+g.nome+'?'))groupAction('delete-group',g);};actions.append(rename,del);card.append(actions);}root.append(card);}
+ for(const g of groups){const card=document.createElement('section');card.className='tray-dialog-entry position-group-card';const open=document.createElement('button');open.type='button';open.className='secondary position-group-open';open.textContent='📦 '+g.nome+' · '+g.numero_componenti+' componenti ›';open.onclick=()=>openGroup(g);card.append(open);
+ const preview=document.createElement('p');preview.className='muted';preview.textContent='Caricamento riepilogo…';card.append(preview);
+ fetch('https://skf-kardex-api.vocidicassino.workers.dev/api/gruppi/'+encodeURIComponent(g.id)+'/componenti',{cache:'no-store'})
+ .then(async res=>{if(!res.ok)throw Error('HTTP '+res.status);return res.json();})
+ .then(data=>{if(!card.isConnected)return;const items=Array.isArray(data.componenti)?data.componenti:[];preview.textContent=items.length?items.map(x=>x.tipo).join(' · '):'Zona vuota';})
+ .catch(()=>{if(card.isConnected)preview.textContent='Riepilogo non disponibile';});
+ if(trayLogged){const actions=document.createElement('div');actions.className='tray-dialog-actions';const rename=document.createElement('button');rename.type='button';rename.className='secondary';rename.textContent='Rinomina gruppo';rename.onclick=()=>{const name=prompt('Nuovo nome del gruppo',g.nome);if(name&&name.trim()&&name.trim()!==g.nome)groupAction('rename-group',g,null,name.trim());};const del=document.createElement('button');del.type='button';del.className='secondary';del.textContent='Elimina gruppo';del.disabled=Number(g.numero_componenti)>0;del.title=del.disabled?'Svuota prima il gruppo':'';del.onclick=()=>{if(confirm('Eliminare il gruppo '+g.nome+'?'))groupAction('delete-group',g);};actions.append(rename,del);card.append(actions);}root.append(card);}
  if(!groups.length){const p=document.createElement('p');p.className='muted';p.textContent='Nessun gruppo in questa posizione.';root.append(p);}
  if(trayLogged){const f=document.createElement('form');f.className='tray-dialog-form position-add-card';const input=document.createElement('input');input.placeholder='Nome nuovo gruppo / zona';input.required=true;input.maxLength=150;const btn=document.createElement('button');btn.type='submit';btn.textContent='＋ Crea gruppo';f.append(input,btn);f.onsubmit=e=>{e.preventDefault();groupAction('add-group',{ripiano:selectedTray,posizione:selectedPosition},null,input.value.trim());};root.append(f);}
  const h=document.createElement('h3');h.textContent='Componenti dell’indice generale';root.append(h);
@@ -262,7 +268,8 @@ function showTrayDialog(){
  const matches=ROWS.filter(r=>String(r.RIPIANO||'').trim()===selectedTray);
  const groups=kardexGroups.filter(g=>String(g.ripiano)===selectedTray);
  $('trayDialogTitle').textContent='Ripiano '+selectedTray;
- $('trayDialogSummary').textContent='Seleziona una posizione per consultare i componenti e le zone';
+ const types=[...new Set([...groups.map(g=>g.nome),...matches.map(r=>r.TIPO)].filter(Boolean))];
+ $('trayDialogSummary').textContent=types.length?'Tipologie: '+types.join(' · '):'Nessuna tipologia presente';
  const root=$('trayDialogRows');root.replaceChildren();
  const section=document.createElement('section');section.className='position-nav';
  const heading=document.createElement('h3');heading.textContent='Posizioni del ripiano';section.append(heading);
@@ -275,28 +282,6 @@ function showTrayDialog(){
   btn.onclick=()=>{selectedPosition=p;trayDialog.close();showPositionDialog();positionDialog.showModal();};section.append(btn);
  }
  root.append(section);
- const summary=document.createElement('section');summary.className='position-nav';
- const summaryTitle=document.createElement('h3');summaryTitle.textContent='Tipologie presenti nel ripiano';summary.append(summaryTitle);
- const addLine=(title,description,action)=>{const wrap=document.createElement('div');wrap.className='tray-dialog-entry';const strong=document.createElement('strong');strong.textContent=title;wrap.append(strong);if(description){const p=document.createElement('p');p.className='muted';p.textContent=description;wrap.append(p);}if(action){wrap.style.cursor='pointer';wrap.setAttribute('role','button');wrap.tabIndex=0;wrap.onclick=action;wrap.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();action();}};}summary.append(wrap);};
- for(const p of positions){
-  const entries=matches.filter(r=>r.POSIZIONE===p);
-  const localGroups=groups.filter(g=>g.posizione===p);
-  if(!entries.length&&!localGroups.length)continue;
-  const h=document.createElement('h4');h.textContent=p;summary.append(h);
-  for(const item of entries)addLine(item.TIPO,'Componente generale');
-  for(const g of localGroups){
-   const groupRow=document.createElement('div');groupRow.className='tray-dialog-entry';
-   const name=document.createElement('strong');name.textContent='📦 '+g.nome;groupRow.append(name);
-   const list=document.createElement('p');list.className='muted';list.textContent='Caricamento tipologie…';groupRow.append(list);
-   const open=document.createElement('button');open.type='button';open.className='secondary';open.textContent='Apri zona ›';open.onclick=()=>{selectedPosition=g.posizione;trayDialog.close();openGroup(g);};groupRow.append(open);summary.append(groupRow);
-   fetch('https://skf-kardex-api.vocidicassino.workers.dev/api/gruppi/'+encodeURIComponent(g.id)+'/componenti',{cache:'no-store'})
-    .then(async res=>{if(!res.ok)throw Error('HTTP '+res.status);return res.json();})
-    .then(data=>{if(!groupRow.isConnected)return;const items=Array.isArray(data.componenti)?data.componenti:[];list.textContent=items.length?items.map(x=>x.tipo).join(' · '):'Nessun componente nella zona';})
-    .catch(()=>{if(groupRow.isConnected)list.textContent='Tipologie non disponibili: apri la zona';});
-  }
- }
- if(!matches.length&&!groups.length){const empty=document.createElement('p');empty.className='muted';empty.textContent='Nessuna tipologia presente.';summary.append(empty);}
- root.append(summary);
  $('trayDialogMessage').textContent='';
 }
 function renderTrayMap(){

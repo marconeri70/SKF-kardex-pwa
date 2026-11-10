@@ -248,7 +248,21 @@ function showPositionDialog(){
  $('positionDialogSummary').textContent=matches.length+' voci generali · '+groups.length+' gruppi';
  const root=$('positionDialogRows');root.replaceChildren();
  const h=document.createElement('h3');h.textContent='Componenti dell’indice generale';root.append(h);
- for(const r of matches){const entry=document.createElement('section');entry.className='tray-dialog-entry';const name=document.createElement('strong');name.textContent=r.TIPO;entry.append(name);root.append(entry);}
+ for(const r of matches){
+ const entry=document.createElement('section');entry.className='tray-dialog-entry';
+ const name=document.createElement('strong');name.textContent=r.TIPO;entry.append(name);
+ if(trayLogged){
+  const form=document.createElement('form');form.className='tray-dialog-form';form.hidden=true;
+  const typeLabel=document.createElement('label');typeLabel.textContent='Nome componente';const typeInput=document.createElement('input');typeInput.value=r.TIPO;typeInput.maxLength=150;typeInput.required=true;typeLabel.append(typeInput);
+  const positionLabel=document.createElement('label');positionLabel.textContent='Posizione nel ripiano';const posSelect=document.createElement('select');
+  const positions=[...new Set([...(window.KARDEX_POSITIONS||['Sinistra','Centrale','Destra','Da definire']),r.POSIZIONE])];
+  for(const p of positions){const option=document.createElement('option');option.value=p;option.textContent=p;option.selected=p===r.POSIZIONE;posSelect.append(option);}positionLabel.append(posSelect);
+  const save=document.createElement('button');save.type='submit';save.textContent='Salva modifica';form.append(typeLabel,positionLabel,save);
+  form.onsubmit=e=>{e.preventDefault();const tipo=typeInput.value.trim();if(!tipo)return;save.disabled=true;window.dispatchEvent(new CustomEvent('kardex:position-action',{detail:{action:'save',id:r.id,ripiano:r.RIPIANO,tipo,posizione:posSelect.value}}));};
+  const actions=document.createElement('div');actions.className='tray-dialog-actions';const edit=document.createElement('button');edit.type='button';edit.className='secondary';edit.textContent='Modifica nome / posizione';edit.onclick=()=>{form.hidden=!form.hidden;};actions.append(edit);entry.append(actions,form);
+ }
+ root.append(entry);
+}
  if(!matches.length){const p=document.createElement('p');p.className='muted';p.textContent='Nessuna voce generale in questa posizione.';root.append(p);}
   const header=document.createElement('h3');header.textContent='Gruppi / Zone';root.append(header);
  for(const g of groups){const card=document.createElement('section');card.className='tray-dialog-entry position-group-card';const open=document.createElement('button');open.type='button';open.className='secondary position-group-open';open.textContent='📦 '+g.nome+' · '+g.numero_componenti+' componenti ›';open.onclick=()=>openGroup(g);card.append(open);

@@ -260,10 +260,10 @@
     @media(min-width:760px){#trayMap #trayMapButtons{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .inventory-full-list{margin-top:14px;border:1px solid #cbd9e6;border-radius:15px;padding:12px;background:#f6f9fd}.inventory-full-list>summary{cursor:pointer;font-weight:750;color:#07528d;padding:8px 4px}.inventory-full-list>table{margin-top:12px}
 #positionDialog{border:2px solid #005195;border-radius:20px;padding:20px;max-width:min(94vw,620px);width:100%;max-height:88vh;overflow:auto;box-shadow:0 15px 55px #001d4066}#positionDialog::backdrop{background:#001d4088}.position-nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:16px}.position-nav h3{grid-column:1/-1;margin:8px 0}.position-nav button{white-space:normal;overflow-wrap:anywhere;min-height:54px;padding:10px}.position-edit-form{margin-top:10px}.position-edit-form button{margin-top:8px}
-</style>
+#positionDialog .position-edit-form[hidden]{display:none!important}#positionDialog .position-component-card{padding:14px;margin-bottom:10px}#positionDialog .position-component-card strong{overflow-wrap:anywhere}#positionDialog .position-add-card{border:1px solid #a9cde5;background:#f2f8fc;padding:14px;border-radius:14px}#positionDialog .tray-dialog-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}\n</style>
   <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script defer src="app.js?v=36.4"></script>
-  <script defer src="cloud.js?v=36.4"></script>
+  <script defer src="app.js?v=36.5"></script>
+  <script defer src="cloud.js?v=36.5"></script>
   <script defer src="v32.js?v=33.1"></script>
   <script defer src="v33.js?v=33.1"></script>
 </head>
@@ -457,7 +457,7 @@
     <p class="muted" style="margin-top:10px">Dopo il primo caricamento, il sito funziona anche offline (Aggiungi a schermata Home).</p>
   </main>
 
-  <footer style="text-align:center;margin:16px 0" class="muted">Versione UI: <b>v36.4</b></footer>
+  <footer style="text-align:center;margin:16px 0" class="muted">Versione UI: <b>v36.5</b></footer>
 
   <script>
     if('serviceWorker' in navigator){

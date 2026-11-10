@@ -70,7 +70,7 @@ window.addEventListener('kardex:position-action',async e=>{
    await request('/api/componenti','POST',{ripiano,tipo,posizione});
   }else if(d.action==='save'){
    const row=ROWS.find(x=>String(x.id)===String(d.id));
-   if(!row||row.RIPIANO!==ripiano||row.POSIZIONE!==posizione)throw Error('Componente non trovato nella posizione.');
+   if(!row||row.RIPIANO!==ripiano)throw Error('Componente non trovato nel ripiano.');
    await request('/api/componenti/'+encodeURIComponent(row.id),'PATCH',{ripiano,tipo,posizione});
   }else if(d.action==='delete'){
    const row=ROWS.find(x=>String(x.id)===String(d.id));

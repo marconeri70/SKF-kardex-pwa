@@ -72,8 +72,12 @@ window.addEventListener('kardex:position-action',async e=>{
    const row=ROWS.find(x=>String(x.id)===String(d.id));
    if(!row||row.RIPIANO!==ripiano||row.POSIZIONE!==posizione)throw Error('Componente non trovato nella posizione.');
    await request('/api/componenti/'+encodeURIComponent(row.id),'PATCH',{ripiano,tipo,posizione});
+  }else if(d.action==='delete'){
+   const row=ROWS.find(x=>String(x.id)===String(d.id));
+   if(!row||row.RIPIANO!==ripiano||row.POSIZIONE!==posizione)throw Error('Componente non trovato nella posizione.');
+   await request('/api/componenti/'+encodeURIComponent(row.id),'DELETE');
   }else throw Error('Operazione non consentita');
-  await refresh();respond({ok:true,message:'Componente salvato nel database condiviso.'});
+  await refresh();respond({ok:true,message:d.action==='delete'?'Componente eliminato dal database condiviso.':'Componente salvato nel database condiviso.'});
  }catch(err){respond({error:err.message});}
 });
 window.addEventListener('kardex:quick-save',async e=>{

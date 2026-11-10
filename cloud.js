@@ -69,7 +69,7 @@ window.addEventListener('kardex:position-action',async e=>{
   if(d.action==='add'){
    await request('/api/componenti','POST',{ripiano,tipo,posizione});
   }else if(d.action==='save'){
-   const row=ROWS.find(x=>String(x.id)===String(d.id));
+   const row=(window.KARDEX_TIPOLOGIE||ROWS).find(x=>String(x.id)===String(d.id));
    if(!row||row.RIPIANO!==ripiano)throw Error('Componente non trovato nel ripiano.');
    await request('/api/componenti/'+encodeURIComponent(row.id),'PATCH',{ripiano,tipo,posizione});
   }else if(d.action==='delete'){
@@ -105,8 +105,13 @@ window.addEventListener('kardex:group-action',async e=>{
  if(!user||!token)return reply({error:'Accesso operatore richiesto.'});
  try{
   const id=encodeURIComponent(d.groupId),itemId=encodeURIComponent(d.itemId),tipo=String(d.tipo||'').trim();
-  if(['add-group','rename-group','add-item','edit-item'].includes(d.action)&&(!tipo||tipo.length>150))throw Error('Inserisci un nome valido (massimo 150 caratteri).');
-  if(d.action==='add-group')await request('/api/gruppi','POST',{ripiano:d.ripiano,posizione:d.posizione,nome:tipo});
+  if(['add-type','add-group','rename-group','add-item','edit-item'].includes(d.action)&&(!tipo||tipo.length>150))throw Error('Inserisci un nome valido (massimo 150 caratteri).');
+  if(d.action==='add-type'){
+   if(user.ruolo!=='admin')throw Error('Accesso amministratore richiesto.');
+   await request('/api/componenti','POST',{ripiano:d.ripiano,posizione:d.posizione,tipo});
+  }else if(d.action==='assign-group'){
+   await request('/api/gruppi/'+id,'PATCH',{tipologia_id:d.tipologiaId});
+  }else if(d.action==='add-group')await request('/api/gruppi','POST',{ripiano:d.ripiano,posizione:d.posizione,nome:tipo,tipologia_id:d.tipologiaId});
   else if(d.action==='rename-group')await request('/api/gruppi/'+id,'PATCH',{nome:tipo});
   else if(d.action==='delete-group')await request('/api/gruppi/'+id,'DELETE');
   else if(d.action==='add-item')await request('/api/gruppi/'+id+'/componenti','POST',{tipo});
@@ -117,9 +122,10 @@ window.addEventListener('kardex:group-action',async e=>{
  }catch(err){reply({error:err.message});}
 });
 async function refresh(){
- const [data,groups]=await Promise.all([request('/api/componenti'),refreshGroups()]);
+ const [data,groups]=await Promise.all([request('/api/componenti?tutte=1'),refreshGroups()]);
  if(!Array.isArray(data.componenti))throw new Error('Risposta inventario non valida');
  const groupIds=new Set(groups.map(g=>String(g.legacy_componente_id)).filter(x=>x!=='null'&&x!=='undefined'));
+ window.KARDEX_TIPOLOGIE=data.componenti.map(x=>({id:x.id,RIPIANO:String(x.ripiano??''),TIPO:String(x.tipo??''),POSIZIONE:String(x.posizione??'')}));
  ROWS=data.componenti.filter(x=>!groupIds.has(String(x.id))).map(x=>({id:x.id,RIPIANO:String(x.ripiano??''),TIPO:String(x.tipo??''),POSIZIONE:String(x.posizione??'')}));
  window.KARDEX_CLOUD_ONLINE=true;
  render();if(typeof analyzeTray==='function'&&$('c_vassoio_target'))analyzeTray(+$('c_vassoio_target').value||0);
@@ -245,3 +251,4 @@ $('cloudForm').addEventListener('submit',async e=>{
   renderUser();
 })();
 })();
+

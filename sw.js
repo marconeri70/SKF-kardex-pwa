@@ -1,13 +1,13 @@
-const CACHE_NAME = 'kardex-cache-v37.2';
+const CACHE_NAME = 'kardex-cache-v38.0';
 const ASSETS = [
   './manifest.webmanifest?v=30.1',
   './assets/icon-192.png?v=30.1',
   './assets/icon-512.png?v=30.1',
   './data/kardex.json',
   './data/warehouse-index-2026.json',
-  './app.js?v=37.2',
-  './cloud.js?v=37.2',
-  './index.html?v=37.2',
+  './app.js?v=38.0',
+  './cloud.js?v=38.0',
+  './index.html?v=38.0',
   './catalogo.html?v=37.2',
   './ripiano.html'
 ];
@@ -42,3 +42,4 @@ self.addEventListener('fetch',event=>{
     return res;
   })));
 });
+

@@ -226,7 +226,7 @@ $('positionDialogClose')?.addEventListener('click',()=>{positionDialog.close();s
 let kardexGroups=[];let currentGroup=null;
 window.addEventListener('kardex:groups',e=>{kardexGroups=Array.isArray(e.detail?.gruppi)?e.detail.gruppi:[];if(positionDialog?.open)showPositionDialog();});
 function openGroup(g){currentGroup=g;positionDialog.close();renderGroupDialog();$('groupDialog').showModal();}
-function groupAction(action,g,item,tipo){window.dispatchEvent(new CustomEvent('kardex:group-action',{detail:{action,groupId:g.id,itemId:item?.id,tipo,ripiano:g.ripiano,posizione:g.posizione,nome:g.nome}}));}
+function groupAction(action,g,item,tipo){window.dispatchEvent(new CustomEvent('kardex:group-action',{detail:{action,groupId:g.id,itemId:item?.id,tipo,ripiano:g.ripiano,posizione:g.posizione,nome:g.nome,tipologiaId:g.tipologia_id}}));}
 async function renderGroupDialog(){
  const g=currentGroup,root=$('groupDialogRows');if(!g||!root)return;
  $('groupDialogTitle').textContent=g.nome;$('groupDialogSummary').textContent='Ripiano '+g.ripiano+' · '+g.posizione;
@@ -239,13 +239,14 @@ async function renderGroupDialog(){
  if(trayLogged){const section=document.createElement('section');section.className='tray-dialog-entry position-add-card';const h=document.createElement('strong');h.textContent='＋ Nuovo componente';section.append(h,makeForm(null));root.append(section);}
 }
 $('groupDialogBack')?.addEventListener('click',()=>{$('groupDialog').close();showPositionDialog();positionDialog.showModal();});
-window.addEventListener('kardex:group-result',e=>{const d=e.detail||{};if(d.ok){renderGroupDialog();window.dispatchEvent(new Event('kardex:groups-refresh'));}else $('groupDialogMessage').textContent=d.error||'Errore';});
+window.addEventListener('kardex:group-result',e=>{const d=e.detail||{};if(d.ok){renderGroupDialog();window.dispatchEvent(new Event('kardex:groups-refresh'));}else $(positionDialog.open?'positionDialogMessage':'groupDialogMessage').textContent=d.error||'Errore';});
 function showPositionDialog(){
  if(!positionDialog||!selectedTray||!selectedPosition)return;
- const matches=ROWS.filter(r=>String(r.RIPIANO||'').trim()===selectedTray&&String(r.POSIZIONE||'Da definire')===selectedPosition);
+ const matches=(window.KARDEX_TIPOLOGIE||ROWS).filter(r=>String(r.RIPIANO||'').trim()===selectedTray&&String(r.POSIZIONE||'Da definire')===selectedPosition);
  const groups=kardexGroups.filter(g=>String(g.ripiano)===selectedTray&&g.posizione===selectedPosition);
  $('positionDialogTitle').textContent='Ripiano '+selectedTray+' · '+selectedPosition;
  $('positionDialogSummary').textContent=matches.length+' voci generali · '+groups.length+' gruppi';
+ const typeZones=new Map();
  const root=$('positionDialogRows');root.replaceChildren();
  const h=document.createElement('h3');h.textContent='Componenti dell’indice generale';root.append(h);
  for(const r of matches){
@@ -261,28 +262,56 @@ function showPositionDialog(){
   form.onsubmit=e=>{e.preventDefault();const tipo=typeInput.value.trim();if(!tipo)return;save.disabled=true;window.dispatchEvent(new CustomEvent('kardex:position-action',{detail:{action:'save',id:r.id,ripiano:r.RIPIANO,tipo,posizione:posSelect.value}}));};
   const actions=document.createElement('div');actions.className='tray-dialog-actions';const edit=document.createElement('button');edit.type='button';edit.className='secondary';edit.textContent='Modifica nome / posizione';edit.onclick=()=>{form.hidden=!form.hidden;};actions.append(edit);entry.append(actions,form);
  }
+ const zones=document.createElement('details');
+ const summary=document.createElement('summary');
+ summary.textContent='Cartelle / Zone ('+groups.filter(g=>g.tipologia_id===r.id).length+')';
+ zones.append(summary);entry.append(zones);typeZones.set(r.id,zones);
  root.append(entry);
 }
  if(!matches.length){const p=document.createElement('p');p.className='muted';p.textContent='Nessuna voce generale in questa posizione.';root.append(p);}
-  const header=document.createElement('h3');header.textContent='Gruppi / Zone';root.append(header);
+ const addForm=(action,label,placeholder,tipologiaId)=>{
+  const form=document.createElement('form');form.className='tray-dialog-form position-add-card';
+  const input=document.createElement('input');input.placeholder=placeholder;input.required=true;input.maxLength=150;
+  const button=document.createElement('button');button.type='submit';button.textContent=label;
+  form.append(input,button);
+  form.onsubmit=e=>{e.preventDefault();const value=input.value.trim();if(value)groupAction(action,{ripiano:selectedTray,posizione:selectedPosition,tipologia_id:tipologiaId},null,value);};
+  return form;
+ };
+ if(trayAdmin)root.append(addForm('add-type','＋ Aggiungi tipologia','Nome nuova tipologia'));
+ const unassigned=document.createElement('section');
+ const header=document.createElement('h3');header.textContent='Tipologia da assegnare';unassigned.append(header);
  for(const g of groups){const card=document.createElement('section');card.className='tray-dialog-entry position-group-card';const open=document.createElement('button');open.type='button';open.className='secondary position-group-open';open.textContent='📦 '+g.nome+' · '+g.numero_componenti+' componenti ›';open.onclick=()=>openGroup(g);card.append(open);
  const preview=document.createElement('p');preview.className='muted';preview.textContent='Caricamento riepilogo…';card.append(preview);
  fetch('https://skf-kardex-api.vocidicassino.workers.dev/api/gruppi/'+encodeURIComponent(g.id)+'/componenti',{cache:'no-store'})
  .then(async res=>{if(!res.ok)throw Error('HTTP '+res.status);return res.json();})
  .then(data=>{if(!card.isConnected)return;const items=Array.isArray(data.componenti)?data.componenti:[];preview.textContent=items.length?items.map(x=>x.tipo).join(' · '):'Zona vuota';})
  .catch(()=>{if(card.isConnected)preview.textContent='Riepilogo non disponibile';});
- if(trayLogged){const actions=document.createElement('div');actions.className='tray-dialog-actions';const rename=document.createElement('button');rename.type='button';rename.className='secondary';rename.textContent='Rinomina gruppo';rename.onclick=()=>{const name=prompt('Nuovo nome del gruppo',g.nome);if(name&&name.trim()&&name.trim()!==g.nome)groupAction('rename-group',g,null,name.trim());};const del=document.createElement('button');del.type='button';del.className='secondary';del.textContent='Elimina gruppo';del.disabled=Number(g.numero_componenti)>0;del.title=del.disabled?'Svuota prima il gruppo':'';del.onclick=()=>{if(confirm('Eliminare il gruppo '+g.nome+'?'))groupAction('delete-group',g);};actions.append(rename,del);card.append(actions);}root.append(card);}
- if(!groups.length){const p=document.createElement('p');p.className='muted';p.textContent='Nessun gruppo in questa posizione.';root.append(p);}
- if(trayLogged){const f=document.createElement('form');f.className='tray-dialog-form position-add-card';const input=document.createElement('input');input.placeholder='Nome nuovo gruppo / zona';input.required=true;input.maxLength=150;const btn=document.createElement('button');btn.type='submit';btn.textContent='＋ Crea gruppo';f.append(input,btn);f.onsubmit=e=>{e.preventDefault();groupAction('add-group',{ripiano:selectedTray,posizione:selectedPosition},null,input.value.trim());};root.append(f);}
+ if(trayLogged){const actions=document.createElement('div');actions.className='tray-dialog-actions';const rename=document.createElement('button');rename.type='button';rename.className='secondary';rename.textContent='Rinomina gruppo';rename.onclick=()=>{const name=prompt('Nuovo nome del gruppo',g.nome);if(name&&name.trim()&&name.trim()!==g.nome)groupAction('rename-group',g,null,name.trim());};const del=document.createElement('button');del.type='button';del.className='secondary';del.textContent='Elimina gruppo';del.disabled=Number(g.numero_componenti)>0;del.title=del.disabled?'Svuota prima il gruppo':'';del.onclick=()=>{if(confirm('Eliminare il gruppo '+g.nome+'?'))groupAction('delete-group',g);};actions.append(rename,del);card.append(actions);}
+ if(trayAdmin&&matches.length){
+  const label=document.createElement('label');label.textContent='Tipologia ';
+  const select=document.createElement('select');
+  for(const [id,name] of [[null,'Da assegnare'],...matches.map(r=>[r.id,r.TIPO])]){
+   const option=new Option(name,id??'');option.selected=(g.tipologia_id??null)===id;select.add(option);
+  }
+  const assign=document.createElement('button');assign.type='button';assign.className='secondary';assign.textContent='Assegna';
+  assign.onclick=()=>groupAction('assign-group',{...g,tipologia_id:select.value?Number(select.value):null});
+  label.append(select);card.append(label,assign);
+ }
+ (typeZones.get(g.tipologia_id)||unassigned).append(card);
+ }
+ if(trayLogged){
+  for(const [id,zones] of typeZones)zones.append(addForm('add-group','＋ Crea zona','Nome nuova zona',id));
+ }
+ if(unassigned.children.length>1)root.append(unassigned);
  $('positionDialogMessage').textContent='';
 }
-window.addEventListener('kardex:position-result',e=>{const m=$('positionDialogMessage');if(m)m.textContent=e.detail?.error||e.detail?.message||'';if(e.detail?.ok)showPositionDialog();});
+window.addEventListener('kardex:position-result',e=>{if(e.detail?.ok)showPositionDialog();const m=$('positionDialogMessage');if(m)m.textContent=e.detail?.error||e.detail?.message||'';});
 function showTrayDialog(){
  if(!trayDialog||!selectedTray)return;
  const matches=ROWS.filter(r=>String(r.RIPIANO||'').trim()===selectedTray);
  const groups=kardexGroups.filter(g=>String(g.ripiano)===selectedTray);
  $('trayDialogTitle').textContent='Ripiano '+selectedTray;
- const types=[...new Set([...groups.map(g=>g.nome),...matches.map(r=>r.TIPO)].filter(Boolean))];
+ const types=[...new Set((window.KARDEX_TIPOLOGIE||ROWS).filter(r=>String(r.RIPIANO).trim()===selectedTray).map(r=>r.TIPO).filter(Boolean))];
  $('trayDialogSummary').textContent=types.length?'Tipologie: '+types.join(' · '):'Nessuna tipologia presente';
  const root=$('trayDialogRows');root.replaceChildren();
  const section=document.createElement('section');section.className='position-nav';
@@ -301,12 +330,12 @@ function showTrayDialog(){
 function renderTrayMap(){
  const buttons=$('trayMapButtons'),content=$('trayMapContent');
  if(!buttons||!content)return;
- const trays=[...new Set(ROWS.map(r=>String(r.RIPIANO||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'it',{numeric:true}));
+ const trays=[...new Set([...ROWS.map(r=>String(r.RIPIANO||'').trim()),...kardexGroups.map(g=>String(g.ripiano))].filter(Boolean))].sort((a,b)=>a.localeCompare(b,'it',{numeric:true}));
  if(selectedTray&&!trays.includes(selectedTray))selectedTray='';
  buttons.replaceChildren();content.replaceChildren();
  for(const tray of trays){
   const b=document.createElement('button');b.type='button';b.className=selectedTray===tray?'selected':'secondary';
-  const items=ROWS.filter(r=>String(r.RIPIANO||'').trim()===tray);const heading=document.createElement('span');heading.className='tray-map-card-top';const number=document.createElement('strong');number.textContent=tray;const arrow=document.createElement('span');arrow.className='tray-map-card-arrow';arrow.textContent='›';heading.append(number,arrow);const types=document.createElement('span');types.className='tray-map-card-types';for(const type of [...new Set(items.map(r=>String(r.TIPO||'').trim()).filter(Boolean))]){const line=document.createElement('span');line.textContent=type;types.append(line);}const count=document.createElement('span');count.className='tray-map-card-count';count.textContent=items.length+' component'+(items.length===1?'e':'i')+' · Apri ripiano';b.append(heading,types,count);b.setAttribute('aria-label','Apri ripiano '+tray+', '+items.length+' componenti');b.setAttribute('aria-pressed',String(selectedTray===tray));
+  const items=ROWS.filter(r=>String(r.RIPIANO||'').trim()===tray);const heading=document.createElement('span');heading.className='tray-map-card-top';const number=document.createElement('strong');number.textContent=tray;const arrow=document.createElement('span');arrow.className='tray-map-card-arrow';arrow.textContent='›';heading.append(number,arrow);const types=document.createElement('span');types.className='tray-map-card-types';const trayTypes=(window.KARDEX_TIPOLOGIE||ROWS).filter(r=>String(r.RIPIANO).trim()===tray);for(const type of [...new Set(trayTypes.map(r=>String(r.TIPO||'').trim()).filter(Boolean))]){const line=document.createElement('span');line.textContent=type;types.append(line);}const count=document.createElement('span');count.className='tray-map-card-count';count.textContent=items.length+' component'+(items.length===1?'e':'i')+' · Apri ripiano';b.append(heading,types,count);b.setAttribute('aria-label','Apri ripiano '+tray+', '+items.length+' componenti');b.setAttribute('aria-pressed',String(selectedTray===tray));
   b.onclick=()=>{selectedTray=tray;renderTrayMap();$('trayDialogMessage').textContent='';showTrayDialog();if(!trayDialog.open)trayDialog.showModal();};
   buttons.append(b);
  }
@@ -569,3 +598,4 @@ clearBtn?.addEventListener('click',()=>{ if(q) q.value=''; if(selCampo) selCampo
 resetBtn?.addEventListener('click',()=>{ localStorage.removeItem(STATE_KEY); sortOrder=[]; updateSortIndicators(); if(q) q.value=''; if(selCampo) selCampo.value='ALL'; if(fRip) fRip.value=''; if(fTip) fTip.value=''; if(fPos) fPos.value=''; render(); saveState(); });
 
 loadData();
+

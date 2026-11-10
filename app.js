@@ -231,16 +231,29 @@ function showPositionDialog(){
  const root=$('positionDialogRows');root.replaceChildren();
  const createForm=(r)=>{
   const form=document.createElement('form');form.className='tray-dialog-form position-edit-form';
-  const label=document.createElement('label');label.textContent=r?'Modifica componente':'Nuovo componente';
-  const input=document.createElement('input');input.required=true;input.maxLength=150;input.placeholder='Codice o tipologia';input.value=r?.TIPO||'';label.append(input);
-  const save=document.createElement('button');save.type='submit';save.textContent=r?'Salva modifica':'Aggiungi componente';
+  const label=document.createElement('label');label.textContent=r?'Nome componente':'Nuovo componente';
+  const input=document.createElement('input');input.required=true;input.maxLength=150;input.placeholder='Inserisci codice o tipologia';input.value=r?.TIPO||'';label.append(input);
+  const save=document.createElement('button');save.type='submit';save.textContent=r?'Salva modifica':'＋ Aggiungi componente';
   form.append(label,save);
   form.addEventListener('submit',e=>{e.preventDefault();const tipo=input.value.trim();if(!tipo||!trayLogged)return;save.disabled=true;window.dispatchEvent(new CustomEvent('kardex:position-action',{detail:{action:r?'save':'add',id:r?.id,ripiano:selectedTray,tipo,posizione:selectedPosition}}));setTimeout(()=>save.disabled=false,2500);});
   return form;
  };
- for(const r of matches){const entry=document.createElement('section');entry.className='tray-dialog-entry';const name=document.createElement('strong');name.textContent=r.TIPO;entry.append(name);if(trayLogged&&r.id!=null)entry.append(createForm(r));root.append(entry);}
+ for(const r of matches){
+  const entry=document.createElement('section');entry.className='tray-dialog-entry position-component-card';
+  const name=document.createElement('strong');name.textContent=r.TIPO;entry.append(name);
+  if(trayLogged&&r.id!=null){
+   const actions=document.createElement('div');actions.className='tray-dialog-actions';
+   const edit=document.createElement('button');edit.type='button';edit.className='secondary';edit.textContent='✎ Modifica';
+   const del=document.createElement('button');del.type='button';del.className='secondary';del.textContent='Elimina';
+   const form=createForm(r);form.hidden=true;
+   edit.onclick=()=>{form.hidden=!form.hidden;edit.textContent=form.hidden?'✎ Modifica':'Annulla modifica';};
+   del.onclick=()=>{if(confirm('Eliminare il componente «'+r.TIPO+'» dalla posizione '+selectedPosition+' del ripiano '+selectedTray+'?'))window.dispatchEvent(new CustomEvent('kardex:position-action',{detail:{action:'delete',id:r.id,ripiano:selectedTray,tipo:r.TIPO,posizione:selectedPosition}}));};
+   actions.append(edit,del);entry.append(actions,form);
+  }
+  root.append(entry);
+ }
  if(!matches.length){const p=document.createElement('p');p.className='muted';p.textContent='Nessun componente in questa posizione.';root.append(p);}
- if(trayLogged){const add=document.createElement('section');add.className='tray-dialog-entry';const title=document.createElement('strong');title.textContent='＋ Inserisci un componente';add.append(title,createForm(null));root.append(add);}
+ if(trayLogged){const add=document.createElement('section');add.className='tray-dialog-entry position-add-card';const title=document.createElement('strong');title.textContent='＋ Inserisci un componente in '+selectedPosition;add.append(title,createForm(null));root.append(add);}
  $('positionDialogMessage').textContent='';
 }
 window.addEventListener('kardex:position-result',e=>{const m=$('positionDialogMessage');if(m)m.textContent=e.detail?.error||e.detail?.message||'';if(e.detail?.ok)showPositionDialog();});

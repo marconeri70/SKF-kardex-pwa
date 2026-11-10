@@ -218,42 +218,42 @@ function updateUndefinedCounter(){
 let trayAdmin=false, trayLogged=false, selectedPosition='';
 const trayDialog=$('trayDialog');
 $('trayDialogClose')?.addEventListener('click',()=>trayDialog.close());
-window.addEventListener('kardex:auth',e=>{trayAdmin=!!e.detail?.admin;trayLogged=!!e.detail?.logged;if(trayDialog?.open)showTrayDialog();if($('positionDialog')?.open)showPositionDialog();});
+window.addEventListener('kardex:auth',e=>{trayAdmin=!!e.detail?.admin;trayLogged=!!e.detail?.logged;if(trayDialog?.open)showTrayDialog();if($('positionDialog')?.open)showPositionDialog();if($('groupDialog')?.open)renderGroupDialog();});
 window.addEventListener('kardex:tray-result',e=>{const m=$('trayDialogMessage');if(m)m.textContent=e.detail?.error||e.detail?.message||'';if(e.detail?.ok){if($('positionDialog')?.open)showPositionDialog();else showTrayDialog();}});
 
 const positionDialog=$('positionDialog');
 $('positionDialogClose')?.addEventListener('click',()=>{positionDialog.close();showTrayDialog();trayDialog.showModal();});
+let kardexGroups=[];let currentGroup=null;
+window.addEventListener('kardex:groups',e=>{kardexGroups=Array.isArray(e.detail?.gruppi)?e.detail.gruppi:[];if(positionDialog?.open)showPositionDialog();});
+function openGroup(g){currentGroup=g;positionDialog.close();renderGroupDialog();$('groupDialog').showModal();}
+function groupAction(action,g,item,tipo){window.dispatchEvent(new CustomEvent('kardex:group-action',{detail:{action,groupId:g.id,itemId:item?.id,tipo,ripiano:g.ripiano,posizione:g.posizione,nome:g.nome}}));}
+async function renderGroupDialog(){
+ const g=currentGroup,root=$('groupDialogRows');if(!g||!root)return;
+ $('groupDialogTitle').textContent=g.nome;$('groupDialogSummary').textContent='Ripiano '+g.ripiano+' · '+g.posizione;
+ root.replaceChildren();$('groupDialogMessage').textContent='Caricamento componenti…';
+ let data;try{const res=await fetch('https://skf-kardex-api.vocidicassino.workers.dev/api/gruppi/'+encodeURIComponent(g.id)+'/componenti',{cache:'no-store'});data=await res.json();if(!res.ok)throw Error(data.error||'Errore lettura');}catch(e){$('groupDialogMessage').textContent=e.message;return;}
+ const items=data.componenti||[];$('groupDialogMessage').textContent=items.length+' component'+(items.length===1?'e':'i');
+ const makeForm=(item)=>{const f=document.createElement('form');f.className='tray-dialog-form';const label=document.createElement('label');label.textContent='Codice / tipologia';const input=document.createElement('input');input.required=true;input.maxLength=150;input.value=item?.tipo||'';input.placeholder='Codice del componente';label.append(input);const btn=document.createElement('button');btn.type='submit';btn.textContent=item?'Salva modifica':'Aggiungi componente';f.append(label,btn);f.onsubmit=e=>{e.preventDefault();const tipo=input.value.trim();if(!tipo)return;btn.disabled=true;groupAction(item?'edit-item':'add-item',g,item,tipo);};return f;};
+ for(const item of items){const card=document.createElement('section');card.className='tray-dialog-entry position-component-card';const title=document.createElement('strong');title.textContent=item.tipo;card.append(title);if(trayLogged){const actions=document.createElement('div');actions.className='tray-dialog-actions';const edit=document.createElement('button');edit.type='button';edit.className='secondary';edit.textContent='Modifica';const del=document.createElement('button');del.type='button';del.className='secondary';del.textContent='Elimina';const f=makeForm(item);f.hidden=true;edit.onclick=()=>{f.hidden=!f.hidden;};del.onclick=()=>{if(confirm('Eliminare «'+item.tipo+'» dal gruppo '+g.nome+'?'))groupAction('delete-item',g,item);};actions.append(edit,del);card.append(actions,f);}root.append(card);}
+ if(!items.length){const p=document.createElement('p');p.className='muted';p.textContent='Questo gruppo non contiene ancora componenti.';root.append(p);}
+ if(trayLogged){const section=document.createElement('section');section.className='tray-dialog-entry position-add-card';const h=document.createElement('strong');h.textContent='＋ Nuovo componente';section.append(h,makeForm(null));root.append(section);}
+}
+$('groupDialogBack')?.addEventListener('click',()=>{$('groupDialog').close();showPositionDialog();positionDialog.showModal();});
+window.addEventListener('kardex:group-result',e=>{const d=e.detail||{};if(d.ok){renderGroupDialog();window.dispatchEvent(new Event('kardex:groups-refresh'));}else $('groupDialogMessage').textContent=d.error||'Errore';});
 function showPositionDialog(){
  if(!positionDialog||!selectedTray||!selectedPosition)return;
  const matches=ROWS.filter(r=>String(r.RIPIANO||'').trim()===selectedTray&&String(r.POSIZIONE||'Da definire')===selectedPosition);
+ const groups=kardexGroups.filter(g=>String(g.ripiano)===selectedTray&&g.posizione===selectedPosition);
  $('positionDialogTitle').textContent='Ripiano '+selectedTray+' · '+selectedPosition;
- $('positionDialogSummary').textContent=matches.length+' component'+(matches.length===1?'e':'i')+' in questa posizione';
+ $('positionDialogSummary').textContent=matches.length+' voci generali · '+groups.length+' gruppi';
  const root=$('positionDialogRows');root.replaceChildren();
- const createForm=(r)=>{
-  const form=document.createElement('form');form.className='tray-dialog-form position-edit-form';
-  const label=document.createElement('label');label.textContent=r?'Nome componente':'Nuovo componente';
-  const input=document.createElement('input');input.required=true;input.maxLength=150;input.placeholder='Inserisci codice o tipologia';input.value=r?.TIPO||'';label.append(input);
-  const save=document.createElement('button');save.type='submit';save.textContent=r?'Salva modifica':'＋ Aggiungi componente';
-  form.append(label,save);
-  form.addEventListener('submit',e=>{e.preventDefault();const tipo=input.value.trim();if(!tipo||!trayLogged)return;save.disabled=true;window.dispatchEvent(new CustomEvent('kardex:position-action',{detail:{action:r?'save':'add',id:r?.id,ripiano:selectedTray,tipo,posizione:selectedPosition}}));setTimeout(()=>save.disabled=false,2500);});
-  return form;
- };
- for(const r of matches){
-  const entry=document.createElement('section');entry.className='tray-dialog-entry position-component-card';
-  const name=document.createElement('strong');name.textContent=r.TIPO;entry.append(name);
-  if(trayLogged&&r.id!=null){
-   const actions=document.createElement('div');actions.className='tray-dialog-actions';
-   const edit=document.createElement('button');edit.type='button';edit.className='secondary';edit.textContent='✎ Modifica';
-   const del=document.createElement('button');del.type='button';del.className='secondary';del.textContent='Elimina';
-   const form=createForm(r);form.hidden=true;
-   edit.onclick=()=>{form.hidden=!form.hidden;edit.textContent=form.hidden?'✎ Modifica':'Annulla modifica';};
-   del.onclick=()=>{if(confirm('Eliminare il componente «'+r.TIPO+'» dalla posizione '+selectedPosition+' del ripiano '+selectedTray+'?'))window.dispatchEvent(new CustomEvent('kardex:position-action',{detail:{action:'delete',id:r.id,ripiano:selectedTray,tipo:r.TIPO,posizione:selectedPosition}}));};
-   actions.append(edit,del);entry.append(actions,form);
-  }
-  root.append(entry);
- }
- if(!matches.length){const p=document.createElement('p');p.className='muted';p.textContent='Nessun componente in questa posizione.';root.append(p);}
- if(trayLogged){const add=document.createElement('section');add.className='tray-dialog-entry position-add-card';const title=document.createElement('strong');title.textContent='＋ Inserisci un componente in '+selectedPosition;add.append(title,createForm(null));root.append(add);}
+ const header=document.createElement('h3');header.textContent='Gruppi / Zone';root.append(header);
+ for(const g of groups){const card=document.createElement('section');card.className='tray-dialog-entry position-group-card';const open=document.createElement('button');open.type='button';open.className='secondary position-group-open';open.textContent='📦 '+g.nome+' · '+g.numero_componenti+' componenti ›';open.onclick=()=>openGroup(g);card.append(open);if(trayLogged){const actions=document.createElement('div');actions.className='tray-dialog-actions';const rename=document.createElement('button');rename.type='button';rename.className='secondary';rename.textContent='Rinomina gruppo';rename.onclick=()=>{const name=prompt('Nuovo nome del gruppo',g.nome);if(name&&name.trim()&&name.trim()!==g.nome)groupAction('rename-group',g,null,name.trim());};const del=document.createElement('button');del.type='button';del.className='secondary';del.textContent='Elimina gruppo';del.disabled=Number(g.numero_componenti)>0;del.title=del.disabled?'Svuota prima il gruppo':'';del.onclick=()=>{if(confirm('Eliminare il gruppo '+g.nome+'?'))groupAction('delete-group',g);};actions.append(rename,del);card.append(actions);}root.append(card);}
+ if(!groups.length){const p=document.createElement('p');p.className='muted';p.textContent='Nessun gruppo in questa posizione.';root.append(p);}
+ if(trayLogged){const f=document.createElement('form');f.className='tray-dialog-form position-add-card';const input=document.createElement('input');input.placeholder='Nome nuovo gruppo / zona';input.required=true;input.maxLength=150;const btn=document.createElement('button');btn.type='submit';btn.textContent='＋ Crea gruppo';f.append(input,btn);f.onsubmit=e=>{e.preventDefault();groupAction('add-group',{ripiano:selectedTray,posizione:selectedPosition},null,input.value.trim());};root.append(f);}
+ const h=document.createElement('h3');h.textContent='Componenti dell’indice generale';root.append(h);
+ for(const r of matches){const entry=document.createElement('section');entry.className='tray-dialog-entry';const name=document.createElement('strong');name.textContent=r.TIPO;entry.append(name);root.append(entry);}
+ if(!matches.length){const p=document.createElement('p');p.className='muted';p.textContent='Nessuna voce generale in questa posizione.';root.append(p);}
  $('positionDialogMessage').textContent='';
 }
 window.addEventListener('kardex:position-result',e=>{const m=$('positionDialogMessage');if(m)m.textContent=e.detail?.error||e.detail?.message||'';if(e.detail?.ok)showPositionDialog();});

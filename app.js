@@ -275,7 +275,28 @@ function showTrayDialog(){
   btn.onclick=()=>{selectedPosition=p;trayDialog.close();showPositionDialog();positionDialog.showModal();};section.append(btn);
  }
  root.append(section);
- const note=document.createElement('p');note.className='muted';note.textContent='Le zone sono contenitori fissi: apri Destra per vedere Zona 1, Zona 2 e Zona 3 montaggio. I componenti delle zone si gestiscono soltanto al loro interno.';root.append(note);
+ const summary=document.createElement('section');summary.className='position-nav';
+ const summaryTitle=document.createElement('h3');summaryTitle.textContent='Tipologie presenti nel ripiano';summary.append(summaryTitle);
+ const addLine=(title,description,action)=>{const wrap=document.createElement('div');wrap.className='tray-dialog-entry';const strong=document.createElement('strong');strong.textContent=title;wrap.append(strong);if(description){const p=document.createElement('p');p.className='muted';p.textContent=description;wrap.append(p);}if(action){wrap.style.cursor='pointer';wrap.setAttribute('role','button');wrap.tabIndex=0;wrap.onclick=action;wrap.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();action();}};}summary.append(wrap);};
+ for(const p of positions){
+  const entries=matches.filter(r=>r.POSIZIONE===p);
+  const localGroups=groups.filter(g=>g.posizione===p);
+  if(!entries.length&&!localGroups.length)continue;
+  const h=document.createElement('h4');h.textContent=p;summary.append(h);
+  for(const item of entries)addLine(item.TIPO,'Componente generale');
+  for(const g of localGroups){
+   const groupRow=document.createElement('div');groupRow.className='tray-dialog-entry';
+   const name=document.createElement('strong');name.textContent='📦 '+g.nome;groupRow.append(name);
+   const list=document.createElement('p');list.className='muted';list.textContent='Caricamento tipologie…';groupRow.append(list);
+   const open=document.createElement('button');open.type='button';open.className='secondary';open.textContent='Apri zona ›';open.onclick=()=>{selectedPosition=g.posizione;trayDialog.close();openGroup(g);};groupRow.append(open);summary.append(groupRow);
+   fetch('https://skf-kardex-api.vocidicassino.workers.dev/api/gruppi/'+encodeURIComponent(g.id)+'/componenti',{cache:'no-store'})
+    .then(async res=>{if(!res.ok)throw Error('HTTP '+res.status);return res.json();})
+    .then(data=>{if(!groupRow.isConnected)return;const items=Array.isArray(data.componenti)?data.componenti:[];list.textContent=items.length?items.map(x=>x.tipo).join(' · '):'Nessun componente nella zona';})
+    .catch(()=>{if(groupRow.isConnected)list.textContent='Tipologie non disponibili: apri la zona';});
+  }
+ }
+ if(!matches.length&&!groups.length){const empty=document.createElement('p');empty.className='muted';empty.textContent='Nessuna tipologia presente.';summary.append(empty);}
+ root.append(summary);
  $('trayDialogMessage').textContent='';
 }
 function renderTrayMap(){

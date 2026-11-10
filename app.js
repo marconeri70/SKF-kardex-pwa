@@ -260,46 +260,23 @@ window.addEventListener('kardex:position-result',e=>{const m=$('positionDialogMe
 function showTrayDialog(){
  if(!trayDialog||!selectedTray)return;
  const matches=ROWS.filter(r=>String(r.RIPIANO||'').trim()===selectedTray);
+ const groups=kardexGroups.filter(g=>String(g.ripiano)===selectedTray);
  $('trayDialogTitle').textContent='Ripiano '+selectedTray;
- $('trayDialogSummary').textContent=matches.length+' component'+(matches.length===1?'e':'i')+' · '+(trayAdmin?'Modifica abilitata per amministratore':'Sola consultazione');
+ $('trayDialogSummary').textContent='Seleziona una posizione per consultare i componenti e le zone';
  const root=$('trayDialogRows');root.replaceChildren();
- const trayGroups=kardexGroups.filter(g=>String(g.ripiano)===selectedTray);
- if(trayGroups.length){
-  const section=document.createElement('section');section.className='position-nav';
-  const heading=document.createElement('h3');heading.textContent='📦 Gruppi di montaggio · apri per vedere i componenti';section.append(heading);
-  for(const g of trayGroups){const b=document.createElement('button');b.type='button';b.className='secondary position-group-open';b.textContent='📦 '+g.nome+' · '+g.numero_componenti+' componenti ›';b.onclick=()=>{selectedPosition=g.posizione;trayDialog.close();currentGroup=g;renderGroupDialog();$('groupDialog').showModal();};section.append(b);}
-  root.append(section);
+ const section=document.createElement('section');section.className='position-nav';
+ const heading=document.createElement('h3');heading.textContent='Posizioni del ripiano';section.append(heading);
+ const positions=[...new Set([...(window.KARDEX_POSITIONS||['Sinistra','Centrale','Destra','Da definire']),...matches.map(r=>r.POSIZIONE),...groups.map(g=>g.posizione)].filter(Boolean))];
+ for(const p of positions){
+  const items=matches.filter(r=>r.POSIZIONE===p).length;
+  const zoneCount=groups.filter(g=>g.posizione===p).length;
+  const btn=document.createElement('button');btn.type='button';btn.className='secondary position-group-open';
+  btn.textContent='📍 '+p+' · '+items+' componenti'+(zoneCount?' · '+zoneCount+' zone':'')+' ›';
+  btn.onclick=()=>{selectedPosition=p;trayDialog.close();showPositionDialog();positionDialog.showModal();};section.append(btn);
  }
- for(const r of matches){
-  const entry=document.createElement('section');entry.className='tray-dialog-entry';
-  const name=document.createElement('strong');name.textContent=r.TIPO||'Senza tipo';
-  const pos=document.createElement('p');pos.className='muted';pos.textContent='Posizione: '+(r.POSIZIONE||'Da definire');
-  entry.append(name,pos,buildTrayVisual(r.POSIZIONE));
-  if(trayAdmin&&r.id!=null){
-   const form=document.createElement('form');form.className='tray-dialog-form';
-   const typeLabel=document.createElement('label');typeLabel.textContent='Componente';
-   const type=document.createElement('input');type.value=r.TIPO||'';type.required=true;type.maxLength=150;typeLabel.append(type);
-   const positionLabel=document.createElement('label');positionLabel.textContent='Posizione';
-   const position=document.createElement('select');
-   const choices=[...new Set([...(window.KARDEX_POSITIONS||['Sinistra','Centrale','Destra','Da definire']),r.POSIZIONE].filter(Boolean))];
-   for(const p of choices){const opt=document.createElement('option');opt.value=p;opt.textContent=p;position.append(opt);}
-   position.value=r.POSIZIONE;
-   positionLabel.append(position);
-   const actions=document.createElement('div');actions.className='tray-dialog-actions';
-   const save=document.createElement('button');save.type='submit';save.textContent='Salva modifica';
-   const del=document.createElement('button');del.type='button';del.className='secondary';del.textContent='Elimina';
-   actions.append(save,del);form.append(typeLabel,positionLabel,actions);
-   form.addEventListener('submit',e=>{e.preventDefault();const newType=type.value.trim();if(!newType)return;save.disabled=true;window.dispatchEvent(new CustomEvent('kardex:tray-action',{detail:{action:'save',id:r.id,ripiano:r.RIPIANO,tipo:newType,posizione:position.value}}));setTimeout(()=>{save.disabled=false;},2500);});
-   del.addEventListener('click',()=>{if(confirm('Eliminare «'+r.TIPO+'» dal ripiano '+selectedTray+'?'))window.dispatchEvent(new CustomEvent('kardex:tray-action',{detail:{action:'delete',id:r.id}}));});
-   entry.append(form);
-  }
-  root.append(entry);
- }
- const positions=[...new Set([...(window.KARDEX_POSITIONS||['Sinistra','Centrale','Destra','Da definire']),...matches.map(r=>r.POSIZIONE)].filter(Boolean))];
- const section=document.createElement('section');section.className='position-nav';const heading=document.createElement('h3');heading.textContent='Apri una posizione';section.append(heading);
- for(const p of positions){const n=matches.filter(r=>r.POSIZIONE===p).length;const button=document.createElement('button');button.type='button';button.className='secondary';button.textContent=p+' · '+n+' component'+(n===1?'e':'i')+' ›';button.addEventListener('click',()=>{selectedPosition=p;trayDialog.close();showPositionDialog();positionDialog.showModal();});section.append(button);}
- root.prepend(section);
- if(!matches.length){const p=document.createElement('p');p.textContent='Nessun componente presente.';root.append(p);}
+ root.append(section);
+ const note=document.createElement('p');note.className='muted';note.textContent='Le zone sono contenitori fissi: apri Destra per vedere Zona 1, Zona 2 e Zona 3 montaggio. I componenti delle zone si gestiscono soltanto al loro interno.';root.append(note);
+ $('trayDialogMessage').textContent='';
 }
 function renderTrayMap(){
  const buttons=$('trayMapButtons'),content=$('trayMapContent');

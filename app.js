@@ -263,6 +263,13 @@ function showTrayDialog(){
  $('trayDialogTitle').textContent='Ripiano '+selectedTray;
  $('trayDialogSummary').textContent=matches.length+' component'+(matches.length===1?'e':'i')+' · '+(trayAdmin?'Modifica abilitata per amministratore':'Sola consultazione');
  const root=$('trayDialogRows');root.replaceChildren();
+ const trayGroups=kardexGroups.filter(g=>String(g.ripiano)===selectedTray);
+ if(trayGroups.length){
+  const section=document.createElement('section');section.className='position-nav';
+  const heading=document.createElement('h3');heading.textContent='📦 Gruppi di montaggio · apri per vedere i componenti';section.append(heading);
+  for(const g of trayGroups){const b=document.createElement('button');b.type='button';b.className='secondary position-group-open';b.textContent='📦 '+g.nome+' · '+g.numero_componenti+' componenti ›';b.onclick=()=>{selectedPosition=g.posizione;trayDialog.close();currentGroup=g;renderGroupDialog();$('groupDialog').showModal();};section.append(b);}
+  root.append(section);
+ }
  for(const r of matches){
   const entry=document.createElement('section');entry.className='tray-dialog-entry';
   const name=document.createElement('strong');name.textContent=r.TIPO||'Senza tipo';

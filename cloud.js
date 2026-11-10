@@ -58,6 +58,24 @@ window.addEventListener('kardex:tray-action',async e=>{
   window.dispatchEvent(new CustomEvent('kardex:tray-result',{detail:{ok:true,message:'Inventario aggiornato nel database condiviso.'}}));
  }catch(err){window.dispatchEvent(new CustomEvent('kardex:tray-result',{detail:{error:err.message}}));}
 });
+window.addEventListener('kardex:position-action',async e=>{
+ const d=e.detail||{};const respond=detail=>window.dispatchEvent(new CustomEvent('kardex:position-result',{detail}));
+ if(!user||!token)return respond({error:'Accedi come operatore o amministratore.'});
+ const tipo=String(d.tipo||'').trim(),ripiano=String(d.ripiano||'').trim(),posizione=String(d.posizione||'').trim();
+ if(!tipo||tipo.length>150||!ripiano||!posizione)return respond({error:'Controlla i dati inseriti.'});
+ const valid=window.KARDEX_POSITIONS||['Sinistra','Centrale','Destra','Da definire'];
+ if(!valid.includes(posizione))return respond({error:'Posizione non riconosciuta.'});
+ try{
+  if(d.action==='add'){
+   await request('/api/componenti','POST',{ripiano,tipo,posizione});
+  }else if(d.action==='save'){
+   const row=ROWS.find(x=>String(x.id)===String(d.id));
+   if(!row||row.RIPIANO!==ripiano||row.POSIZIONE!==posizione)throw Error('Componente non trovato nella posizione.');
+   await request('/api/componenti/'+encodeURIComponent(row.id),'PATCH',{ripiano,tipo,posizione});
+  }else throw Error('Operazione non consentita');
+  await refresh();respond({ok:true,message:'Componente salvato nel database condiviso.'});
+ }catch(err){respond({error:err.message});}
+});
 window.addEventListener('kardex:quick-save',async e=>{
   const d=e.detail||{};
   if(!user||!token){window.dispatchEvent(new CustomEvent('kardex:quick-result',{detail:{error:'Accedi come operatore per modificare la posizione.'}}));return;}

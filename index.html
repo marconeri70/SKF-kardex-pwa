@@ -260,7 +260,8 @@
     @media(min-width:760px){#trayMap #trayMapButtons{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .inventory-full-list{margin-top:14px;border:1px solid #cbd9e6;border-radius:15px;padding:12px;background:#f6f9fd}.inventory-full-list>summary{cursor:pointer;font-weight:750;color:#07528d;padding:8px 4px}.inventory-full-list>table{margin-top:12px}
 #positionDialog{border:2px solid #005195;border-radius:20px;padding:20px;max-width:min(94vw,620px);width:100%;max-height:88vh;overflow:auto;box-shadow:0 15px 55px #001d4066}#positionDialog::backdrop{background:#001d4088}.position-nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:16px}.position-nav h3{grid-column:1/-1;margin:8px 0}.position-nav button{white-space:normal;overflow-wrap:anywhere;min-height:54px;padding:10px}.position-edit-form{margin-top:10px}.position-edit-form button{margin-top:8px}
-#positionDialog .position-edit-form[hidden]{display:none!important}#positionDialog .position-component-card{padding:14px;margin-bottom:10px}#positionDialog .position-component-card strong{overflow-wrap:anywhere}#positionDialog .position-add-card{border:1px solid #a9cde5;background:#f2f8fc;padding:14px;border-radius:14px}#positionDialog .tray-dialog-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}\n#groupDialog{border:2px solid #005195;border-radius:20px;padding:20px;max-width:min(94vw,620px);width:100%;max-height:88vh;overflow:auto;box-shadow:0 15px 55px #001d4066}#groupDialog::backdrop{background:#001d4088}.position-group-open{width:100%;min-height:56px;text-align:left;white-space:normal;overflow-wrap:anywhere}.position-group-card{margin:10px 0}.position-group-card .tray-dialog-actions{margin-top:8px;display:flex;gap:8px;flex-wrap:wrap}#groupDialog .tray-dialog-form[hidden]{display:none!important}#groupDialog .tray-dialog-entry{margin:10px 0;padding:13px}#groupDialog .tray-dialog-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}
+#positionDialog .position-edit-form[hidden]{display:none!important}#positionDialog .position-component-card{padding:14px;margin-bottom:10px}#positionDialog .position-component-card strong{overflow-wrap:anywhere}#positionDialog .position-add-card{border:1px solid #a9cde5;background:#f2f8fc;padding:14px;border-radius:14px}#positionDialog .tray-dialog-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+#groupDialog{border:2px solid #005195;border-radius:20px;padding:20px;max-width:min(94vw,620px);width:100%;max-height:88vh;overflow:auto;box-shadow:0 15px 55px #001d4066}#groupDialog::backdrop{background:#001d4088}.position-group-open{width:100%;min-height:56px;text-align:left;white-space:normal;overflow-wrap:anywhere}.position-group-card{margin:10px 0}.position-group-card .tray-dialog-actions{margin-top:8px;display:flex;gap:8px;flex-wrap:wrap}#groupDialog .tray-dialog-form[hidden]{display:none!important}#groupDialog .tray-dialog-entry{margin:10px 0;padding:13px}#groupDialog .tray-dialog-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}
 /* Finestra della zona e comandi di giacenza */
 #groupDialog {
   box-sizing:border-box;
@@ -365,10 +366,109 @@
     to {opacity:1;transform:translateY(0)}
   }
 }
+/* Pannelli e cassetti della mappa */
+#trayMap {
+  padding:clamp(10px,3vw,18px);
+  border:1px solid #788da1;
+  border-radius:14px;
+  background:linear-gradient(155deg,#344a5e,#142638);
+  color:#f1f7fd;
+}
+#trayMap > summary, #trayMap > p {color:#e3edf7}
+#trayMap #trayMapButtons > button:is(.secondary,.selected) {
+  padding:10px;
+  border:1px solid #879dad;
+  border-bottom:4px solid #50687c;
+  border-radius:8px;
+  background:repeating-linear-gradient(0deg,#ffffff18 0 1px,transparent 1px 4px),linear-gradient(155deg,#f4f8fc,#b6c7d7);
+  color:#132d43;
+  box-shadow:inset 0 1px 0 #fff,0 4px 6px #0005;
+}
+#trayMap #trayMapButtons > button.selected {border-color:#53b6ef;background:linear-gradient(155deg,#ebf8ff,#9bcef0)}
+#trayMap .tray-map-card-top strong {
+  padding:5px 10px;
+  border-radius:5px;
+  background:linear-gradient(#234a68,#102839);
+  color:#fff;
+  box-shadow:inset 0 1px 3px #0009;
+}
+#trayMap .tray-map-card-arrow {
+  border-radius:5px;
+  color:#fff;
+  background:linear-gradient(#46718e,#1b3c56);
+  box-shadow:0 2px 0 #102638;
+}
+#trayMap .tray-map-card-types {
+  box-sizing:border-box;
+  padding:7px;
+  border:1px solid #8ca3b5;
+  border-radius:4px;
+  background:#f3f8fc;
+  color:#173b56;
+}
+#trayMap .tray-map-card-types:empty {display:none}
+#trayMap .tray-map-card-count {color:#203c54}
+:is(#trayDialog,#positionDialog) {
+  box-sizing:border-box;
+  width:min(calc(100% - 20px),620px);
+  max-width:none;
+  max-height:calc(100dvh - 24px);
+  padding:clamp(12px,4vw,20px);
+  border:1px solid #8193a4;
+  border-radius:16px;
+  background:repeating-linear-gradient(0deg,#ffffff06 0 1px,transparent 1px 4px),linear-gradient(145deg,#33485b,#152536 42%,#1f3447);
+  color:#f4f8fc;
+  box-shadow:inset 0 1px 0 #ffffff55,inset 0 -5px 0 #071624,0 20px 65px #000a;
+}
+:is(#trayDialog,#positionDialog)::backdrop {background:#071525b8}
+:is(#trayDialog,#positionDialog) .tray-dialog-head {
+  display:grid;
+  justify-items:start;
+  padding:12px;
+  border:1px solid #668298;
+  border-radius:9px;
+  background:linear-gradient(155deg,#173a59,#0d2438);
+}
+:is(#trayDialog,#positionDialog) .tray-dialog-head h2 {color:#fff;overflow-wrap:anywhere}
+:is(#trayDialogClose,#positionDialogClose) {
+  grid-row:1;
+  min-height:44px;
+  background:#ffffff12;
+  color:#eff7ff;
+  border:1px solid #8badc8;
+}
+:is(#trayDialogSummary,#positionDialogSummary,#trayDialogMessage,#positionDialogMessage) {color:#e3edf7}
+#trayDialog .position-nav button,#positionDialog .tray-dialog-entry {
+  background:linear-gradient(160deg,#f8fbfe,#dbe5ee);
+  color:#142a40;
+  border:1px solid #8596a6;
+  border-left:4px solid #3382b8;
+  border-radius:7px;
+  box-shadow:inset 0 1px 0 #fff,0 3px 5px #0006;
+}
+#positionDialog .tray-dialog-entry details > summary {
+  margin-top:6px;
+  padding:7px;
+  border-radius:4px;
+  background:#173751;
+  color:#f1f8ff;
+  cursor:pointer;
+  overflow-wrap:anywhere;
+}
+#positionDialog .tray-dialog-entry details[open] > summary {background:#07558d}
+#positionDialog .position-group-open {background:#e3effa;color:#173751}
+#positionDialogRows > .muted {color:#e3edf7}
+:is(#trayMap,#trayDialog,#positionDialog) :is(button,summary):focus-visible {
+  outline:3px solid #60b9fa;
+  outline-offset:2px;
+}
+@media (prefers-reduced-motion:no-preference) {
+  :is(#trayDialog,#positionDialog)[open] {animation:drawer-open 200ms ease-out}
+}
 </style>
   <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script defer src="app.js?v=39.2"></script>
-  <script defer src="cloud.js?v=39.2"></script>
+  <script defer src="app.js?v=39.3"></script>
+  <script defer src="cloud.js?v=39.3"></script>
   <script defer src="v32.js?v=33.1"></script>
   <script defer src="v33.js?v=33.1"></script>
 </head>
@@ -563,11 +663,11 @@
     <p class="muted" style="margin-top:10px">Dopo il primo caricamento, il sito funziona anche offline (Aggiungi a schermata Home).</p>
   </main>
 
-  <footer style="text-align:center;margin:16px 0" class="muted">Versione UI: <b>v39.2</b></footer>
+  <footer style="text-align:center;margin:16px 0" class="muted">Versione UI: <b>v39.3</b></footer>
 
   <script>
     if('serviceWorker' in navigator){
-      window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=39.2'));
+      window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=39.3'));
     }
   </script>
 <script>document.getElementById('openQrLabels')?.addEventListener('click',()=>window.location.assign('./etichette.html'));document.getElementById('openMainQr')?.addEventListener('click',()=>window.location.assign('./qr-principale.html'));</script></body>

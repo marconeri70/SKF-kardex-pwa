@@ -100,6 +100,9 @@ async function refreshGroups(){
  return groupCache;
 }
 window.addEventListener('kardex:groups-refresh',()=>refreshGroups().catch(e=>message('Gruppi: '+e.message)));
+window.KARDEX_MOVIMENTA = (groupId, itemId, azione, quantita) =>
+  request('/api/gruppi/'+encodeURIComponent(groupId)+'/componenti/'+encodeURIComponent(itemId)+'/giacenza',
+    'POST', {azione,quantita});
 window.addEventListener('kardex:group-action',async e=>{
  const d=e.detail||{},reply=x=>window.dispatchEvent(new CustomEvent('kardex:group-result',{detail:x}));
  if(!user||!token)return reply({error:'Accesso operatore richiesto.'});

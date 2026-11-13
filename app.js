@@ -227,6 +227,58 @@ let kardexGroups=[];let currentGroup=null;
 window.addEventListener('kardex:groups',e=>{kardexGroups=Array.isArray(e.detail?.gruppi)?e.detail.gruppi:[];if(positionDialog?.open)showPositionDialog();});
 function openGroup(g){currentGroup=g;positionDialog.close();renderGroupDialog();$('groupDialog').showModal();}
 function groupAction(action,g,item,tipo){window.dispatchEvent(new CustomEvent('kardex:group-action',{detail:{action,groupId:g.id,itemId:item?.id,tipo,ripiano:g.ripiano,posizione:g.posizione,nome:g.nome,tipologiaId:g.tipologia_id}}));}
+function renderStock(group, item) {
+ const section = document.createElement('div');
+ const stock = document.createElement('p');
+ stock.className = 'stock-availability';
+ const updateStock = () => {
+  stock.textContent = item.giacenza == null ? 'Giacenza da registrare' : 'Disponibili: '+item.giacenza;
+ };
+ updateStock();
+ section.append(stock);
+ if (!trayLogged) return section;
+
+ const form = document.createElement('form');
+ form.className = 'stock-form';
+ const label = document.createElement('label');
+ label.textContent = 'Quantità';
+ const quantity = document.createElement('input');
+ Object.assign(quantity,{type:'number',inputMode:'numeric',min:'1',max:'2147483647',step:'1',value:'1',required:true});
+ label.append(quantity);
+ const take = document.createElement('button');
+ const load = document.createElement('button');
+ const feedback = document.createElement('p');
+ feedback.className = 'stock-feedback';
+ feedback.setAttribute('role','status');
+ take.type = load.type = 'button';
+ take.textContent = 'Preleva';
+ load.textContent = 'Carica';
+ load.className = 'secondary';
+ take.disabled = !(item.giacenza > 0);
+
+ async function move(action) {
+  if (!quantity.reportValidity()) return;
+  take.disabled = load.disabled = true;
+  feedback.textContent = 'Salvataggio…';
+  try {
+   const result = await window.KARDEX_MOVIMENTA(group.id,item.id,action,quantity.valueAsNumber);
+   item.giacenza = result.giacenza;
+   updateStock();
+   feedback.textContent = action === 'preleva' ? 'Prelievo registrato' : 'Carico registrato';
+  } catch (error) {
+   feedback.textContent = error.message;
+  } finally {
+   load.disabled = false;
+   take.disabled = !(item.giacenza > 0);
+  }
+ }
+ form.onsubmit = event => event.preventDefault();
+ take.onclick = () => move('preleva');
+ load.onclick = () => move('carica');
+ form.append(label,take,load,feedback);
+ section.append(form);
+ return section;
+}
 async function renderGroupDialog(){
  const g=currentGroup,root=$('groupDialogRows');if(!g||!root)return;
  $('groupDialogTitle').textContent=g.nome;$('groupDialogSummary').textContent='Ripiano '+g.ripiano+' · '+g.posizione;
@@ -234,7 +286,7 @@ async function renderGroupDialog(){
  let data;try{const res=await fetch('https://skf-kardex-api.vocidicassino.workers.dev/api/gruppi/'+encodeURIComponent(g.id)+'/componenti',{cache:'no-store'});data=await res.json();if(!res.ok)throw Error(data.error||'Errore lettura');}catch(e){$('groupDialogMessage').textContent=e.message;return;}
  const items=data.componenti||[];$('groupDialogMessage').textContent=items.length+' component'+(items.length===1?'e':'i');
  const makeForm=(item)=>{const f=document.createElement('form');f.className='tray-dialog-form';const label=document.createElement('label');label.textContent='Codice / tipologia';const input=document.createElement('input');input.required=true;input.maxLength=150;input.value=item?.tipo||'';input.placeholder='Codice del componente';label.append(input);const btn=document.createElement('button');btn.type='submit';btn.textContent=item?'Salva modifica':'Aggiungi componente';f.append(label,btn);f.onsubmit=e=>{e.preventDefault();const tipo=input.value.trim();if(!tipo)return;btn.disabled=true;groupAction(item?'edit-item':'add-item',g,item,tipo);};return f;};
- for(const item of items){const card=document.createElement('section');card.className='tray-dialog-entry position-component-card';const title=document.createElement('strong');title.textContent=item.tipo;card.append(title);if(trayLogged){const actions=document.createElement('div');actions.className='tray-dialog-actions';const edit=document.createElement('button');edit.type='button';edit.className='secondary';edit.textContent='Modifica';const del=document.createElement('button');del.type='button';del.className='secondary';del.textContent='Elimina';const f=makeForm(item);f.hidden=true;edit.onclick=()=>{f.hidden=!f.hidden;};del.onclick=()=>{if(confirm('Eliminare «'+item.tipo+'» dal gruppo '+g.nome+'?'))groupAction('delete-item',g,item);};actions.append(edit,del);card.append(actions,f);}root.append(card);}
+ for(const item of items){const card=document.createElement('section');card.className='tray-dialog-entry position-component-card';const title=document.createElement('strong');title.textContent=item.tipo;card.append(title);if(Object.hasOwn(item,'giacenza'))card.append(renderStock(g,item));if(trayLogged){const actions=document.createElement('div');actions.className='tray-dialog-actions';const edit=document.createElement('button');edit.type='button';edit.className='secondary';edit.textContent='Modifica';const del=document.createElement('button');del.type='button';del.className='secondary';del.textContent='Elimina';const f=makeForm(item);f.hidden=true;edit.onclick=()=>{f.hidden=!f.hidden;};del.onclick=()=>{if(confirm('Eliminare «'+item.tipo+'» dal gruppo '+g.nome+'?'))groupAction('delete-item',g,item);};actions.append(edit,del);card.append(actions,f);}root.append(card);}
  if(!items.length){const p=document.createElement('p');p.className='muted';p.textContent='Questo gruppo non contiene ancora componenti.';root.append(p);}
  if(trayLogged){const section=document.createElement('section');section.className='tray-dialog-entry position-add-card';const h=document.createElement('strong');h.textContent='＋ Nuovo componente';section.append(h,makeForm(null));root.append(section);}
 }

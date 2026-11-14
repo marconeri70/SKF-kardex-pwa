@@ -360,11 +360,18 @@ function showPositionDialog(){
 window.addEventListener('kardex:position-result',e=>{if(e.detail?.ok)showPositionDialog();const m=$('positionDialogMessage');if(m)m.textContent=e.detail?.error||e.detail?.message||'';});
 function showTrayDialog(){
  if(!trayDialog||!selectedTray)return;
- const matches=ROWS.filter(r=>String(r.RIPIANO||'').trim()===selectedTray);
+ const matches=(window.KARDEX_TIPOLOGIE||ROWS).filter(r=>String(r.RIPIANO||'').trim()===selectedTray);
  const groups=kardexGroups.filter(g=>String(g.ripiano)===selectedTray);
  $('trayDialogTitle').textContent='Ripiano '+selectedTray;
- const types=[...new Set((window.KARDEX_TIPOLOGIE||ROWS).filter(r=>String(r.RIPIANO).trim()===selectedTray).map(r=>r.TIPO).filter(Boolean))];
- $('trayDialogSummary').textContent=types.length?'Tipologie: '+types.join(' · '):'Nessuna tipologia presente';
+ const types=[...new Set(matches.map(r=>r.TIPO).filter(Boolean))];
+ const summary=$('trayDialogSummary');
+ summary.replaceChildren();
+ const label=document.createElement('strong');label.textContent='Tipologie nel ripiano';
+ const list=document.createElement('ul');
+ for(const type of types){
+  const item=document.createElement('li');item.textContent=type;list.append(item);
+ }
+ summary.append(label,types.length?list:document.createTextNode('Nessuna tipologia presente'));
  const root=$('trayDialogRows');root.replaceChildren();
  const section=document.createElement('section');section.className='position-nav';
  const heading=document.createElement('h3');heading.textContent='Posizioni del ripiano';section.append(heading);
@@ -373,7 +380,12 @@ function showTrayDialog(){
   const items=matches.filter(r=>r.POSIZIONE===p).length;
   const zoneCount=groups.filter(g=>g.posizione===p).length;
   const btn=document.createElement('button');btn.type='button';btn.className='secondary position-group-open';
-  btn.textContent='📍 '+p+' · '+items+' componenti'+(zoneCount?' · '+zoneCount+' zone':'')+' ›';
+  const name=document.createElement('strong');name.textContent=p;
+  const count=document.createElement('span');count.className='tray-position-count';
+  const counts=[items&&items+(items===1?' tipologia':' tipologie'),zoneCount&&zoneCount+(zoneCount===1?' zona':' zone')].filter(Boolean);
+  count.textContent=counts.length?counts.join(' · '):'Vuota';
+  const arrow=document.createElement('span');arrow.className='tray-position-arrow';arrow.setAttribute('aria-hidden','true');arrow.textContent='›';
+  btn.append(name,count,arrow);
   btn.onclick=()=>{selectedPosition=p;trayDialog.close();showPositionDialog();positionDialog.showModal();};section.append(btn);
  }
  root.append(section);

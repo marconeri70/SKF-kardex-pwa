@@ -354,6 +354,7 @@ function showPositionDialog(){
  if(trayLogged){
   for(const [id,zones] of typeZones)zones.append(addForm('add-group','＋ Crea zona','Nome nuova zona',id));
  }
+ if(trayLogged)unassigned.append(addForm('add-group','＋ Crea zona','Nome nuova zona',null));
  if(unassigned.children.length>1)root.append(unassigned);
  $('positionDialogMessage').textContent='';
 }

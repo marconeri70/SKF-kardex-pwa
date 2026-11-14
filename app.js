@@ -377,13 +377,23 @@ function showTrayDialog(){
  const heading=document.createElement('h3');heading.textContent='Posizioni del ripiano';section.append(heading);
  const positions=[...new Set([...(window.KARDEX_POSITIONS||['Sinistra','Centrale','Destra','Da definire']),...matches.map(r=>r.POSIZIONE),...groups.map(g=>g.posizione)].filter(Boolean))];
  for(const p of positions){
-  const items=matches.filter(r=>r.POSIZIONE===p).length;
-  const zoneCount=groups.filter(g=>g.posizione===p).length;
+  const positionTypes=[...new Set(matches.filter(r=>r.POSIZIONE===p).map(r=>r.TIPO).filter(Boolean))];
+  const zones=groups.filter(g=>g.posizione===p);
+  const zoneCount=zones.length;
   const btn=document.createElement('button');btn.type='button';btn.className='secondary position-group-open';
   const name=document.createElement('strong');name.textContent=p;
   const count=document.createElement('span');count.className='tray-position-count';
-  const counts=[items&&items+(items===1?' tipologia':' tipologie'),zoneCount&&zoneCount+(zoneCount===1?' zona':' zone')].filter(Boolean);
-  count.textContent=counts.length?counts.join(' · '):'Vuota';
+  if(positionTypes.length){
+   const typesLine=document.createElement('span');
+   typesLine.textContent=(positionTypes.length===1?'Tipologia: ':'Tipologie: ')+positionTypes.join(' · ');
+   count.append(typesLine);
+  }
+  if(zoneCount){
+   const zonesLine=document.createElement('span');
+   zonesLine.textContent=zoneCount+(zoneCount===1?' zona: ':' zone: ')+zones.map(g=>g.nome).join(' · ');
+   count.append(zonesLine);
+  }
+  if(!positionTypes.length&&!zoneCount)count.textContent='Vuota';
   const arrow=document.createElement('span');arrow.className='tray-position-arrow';arrow.setAttribute('aria-hidden','true');arrow.textContent='›';
   btn.append(name,count,arrow);
   btn.onclick=()=>{selectedPosition=p;trayDialog.close();showPositionDialog();positionDialog.showModal();};section.append(btn);

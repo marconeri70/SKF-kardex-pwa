@@ -239,6 +239,7 @@ function openGroup(g){currentGroup=g;positionDialog.close();renderGroupDialog();
 function groupAction(action,g,item,tipo){window.dispatchEvent(new CustomEvent('kardex:group-action',{detail:{action,groupId:g.id,itemId:item?.id,tipo,ripiano:g.ripiano,posizione:g.posizione,nome:g.nome,tipologiaId:g.tipologia_id}}));}
 function renderStock(group, item) {
  const section = document.createElement('div');
+ section.className = 'component-stock';
  const stock = document.createElement('p');
  stock.className = 'stock-availability';
  const updateStock = () => {
@@ -267,7 +268,7 @@ function renderStock(group, item) {
  take.disabled = !(item.giacenza > 0);
 
  async function move(action) {
-  if (!quantity.reportValidity()) return;
+  if (load.disabled || !quantity.reportValidity()) return;
   take.disabled = load.disabled = true;
   feedback.textContent = 'Salvataggio…';
   try {
@@ -616,19 +617,51 @@ function analyzeTray(value) {
       const visibleZones=zones.filter(zone=>matchConsolePreset({RIPIANO:tray,POSIZIONE:position,TIPO:zone.nome})||visibleEntries.some(row=>String(row.id)===String(zone.tipologia_id)));
       if(consolePreset&&!visibleEntries.length&&!visibleZones.length)continue;
       const types=[...new Set(visibleEntries.filter(row=>!visibleZones.some(zone=>String(zone.tipologia_id)===String(row.id)&&norm(zone.nome)===norm(row.TIPO))).map(row=>row.TIPO).filter(Boolean))];
-      const button=document.createElement('button');
-      button.type='button';button.className='secondary side-card';
+      const card=document.createElement('section');
+      card.className='side-card';
       const title=document.createElement('strong');
+      title.className='side-title';
       title.textContent=trays.length>1?tray+' · '+position:position;
-      button.append(title);
-      for(const line of [types.length&&'Tipologie: '+types.join(' · '),visibleZones.length&&(visibleZones.length===1?'1 zona: ':visibleZones.length+' zone: ')+visibleZones.map(zone=>zone.nome).join(' · '),!types.length&&!visibleZones.length&&'Vuota'].filter(Boolean)){
-        const detail=document.createElement('span');detail.textContent=line;button.append(detail);
+      card.append(title);
+      if(types.length){
+        const detail=document.createElement('p');
+        detail.textContent=types.join(' · ');
+        card.append(detail);
       }
-      button.onclick=()=>{
-        selectedTray=tray;selectedPosition=position;
-        showPositionDialog();positionDialog.showModal();
-      };
-      c.list.append(button);
+      if(!types.length&&!visibleZones.length)card.append('Vuota');
+      for(const zone of visibleZones){
+        const details=document.createElement('details');
+        const summary=document.createElement('summary');
+        summary.textContent=zone.nome;
+        const items=document.createElement('div');
+        details.append(summary,items);
+        details.addEventListener('toggle',async()=>{
+          if(!details.open)return;
+          items.textContent='Caricamento componenti…';
+          try {
+            const response=await fetch('https://skf-kardex-api.vocidicassino.workers.dev/api/gruppi/'+encodeURIComponent(zone.id)+'/componenti',{cache:'no-store'});
+            if(!response.ok)throw Error('Impossibile leggere i componenti');
+            const {componenti}=await response.json();
+            if(!Array.isArray(componenti))throw Error('Elenco componenti non disponibile');
+            items.replaceChildren();
+            if(!componenti.length)items.textContent='Zona vuota';
+            if(componenti.length&&!trayLogged)items.append('Accedi dalla ricerca per movimentare i componenti.');
+            for(const item of componenti){
+              const row=document.createElement('div');
+              row.className='console-stock-row';
+              const name=document.createElement('strong');
+              name.textContent=item.tipo;
+              row.append(name);
+              if(Object.hasOwn(item,'giacenza'))row.append(renderStock(zone,item));
+              items.append(row);
+            }
+          } catch(error) {
+            items.textContent=error.message+'. Chiudi e riapri la zona per riprovare.';
+          }
+        });
+        card.append(details);
+      }
+      c.list.append(card);
     }
   }
   if(trays.length&&!c.list.children.length)c.title.textContent='Nessuna posizione corrisponde al preset';

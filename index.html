@@ -565,10 +565,20 @@
  .console-positions {margin-top:12px;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr))}
  .console-positions .side-card {text-align:left;color:var(--text);background:var(--card);border-left:4px solid #3382b8;white-space:normal;overflow-wrap:anywhere}
  .console-positions .side-card span {display:block;margin-top:5px}
+ .console-positions {grid-template-columns:1fr}
+ .console-positions details {margin-top:8px;border:1px solid var(--border);border-radius:8px;padding:8px}
+ .console-positions summary {cursor:pointer;font-weight:700;min-height:32px}
+ .console-stock-row {padding:9px 0;border-top:1px solid var(--border);overflow-wrap:anywhere}
+ .console-stock-row .stock-form {display:flex;gap:6px;align-items:end;flex-wrap:wrap}
+ .console-stock-row .stock-form label {display:grid;gap:3px;font-size:.8rem}
+ .console-stock-row .stock-form input {width:85px;min-height:44px;font-size:16px}
+ .console-stock-row .stock-form button {min-height:44px}
+ .console-stock-row .stock-feedback {flex-basis:100%;margin:0}
+ .console-stock-row .stock-feedback:empty {display:none}
 </style>
   <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script defer src="app.js?v=40.1"></script>
-  <script defer src="cloud.js?v=40.1"></script>
+  <script defer src="app.js?v=40.2"></script>
+  <script defer src="cloud.js?v=40.2"></script>
   <script defer src="v32.js?v=33.1"></script>
   <script defer src="v33.js?v=33.1"></script>
 </head>
@@ -749,11 +759,11 @@
     <p class="muted" style="margin-top:10px">Dopo il primo caricamento, il sito funziona anche offline (Aggiungi a schermata Home).</p>
   </main>
 
-  <footer style="text-align:center;margin:16px 0" class="muted">Versione UI: <b>v40.1</b></footer>
+  <footer style="text-align:center;margin:16px 0" class="muted">Versione UI: <b>v40.2</b></footer>
 
   <script>
     if('serviceWorker' in navigator){
-      window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=40.1'));
+      window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=40.2'));
     }
   </script>
 <script>document.getElementById('openQrLabels')?.addEventListener('click',()=>window.location.assign('./etichette.html'));document.getElementById('openMainQr')?.addEventListener('click',()=>window.location.assign('./qr-principale.html'));</script></body>

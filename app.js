@@ -234,7 +234,7 @@ window.addEventListener('kardex:tray-result',e=>{const m=$('trayDialogMessage');
 const positionDialog=$('positionDialog');
 $('positionDialogClose')?.addEventListener('click',()=>{positionDialog.close();showTrayDialog();trayDialog.showModal();});
 let kardexGroups=[];let currentGroup=null;
-window.addEventListener('kardex:groups',e=>{kardexGroups=Array.isArray(e.detail?.gruppi)?e.detail.gruppi:[];if(positionDialog?.open)showPositionDialog();});
+window.addEventListener('kardex:groups',e=>{kardexGroups=Array.isArray(e.detail?.gruppi)?e.detail.gruppi:[];if(positionDialog?.open)showPositionDialog();if(c.target?.value)analyzeTray(c.target.value);});
 function openGroup(g){currentGroup=g;positionDialog.close();renderGroupDialog();$('groupDialog').showModal();}
 function groupAction(action,g,item,tipo){window.dispatchEvent(new CustomEvent('kardex:group-action',{detail:{action,groupId:g.id,itemId:item?.id,tipo,ripiano:g.ripiano,posizione:g.posizione,nome:g.nome,tipologiaId:g.tipologia_id}}));}
 function renderStock(group, item) {
@@ -538,16 +538,8 @@ const c = {
   target: $('c_vassoio_target'),
   preleva: $('c_preleva'),
   svuota:  $('c_svuota'),
-  home:    $('c_home'),
   list:    $('c_cont_list'),
   title:   $('c_title'),
-  hint:    $('c_rows_hint'),
-  posSx:   $('pos_sx'),
-  posCt:   $('pos_ct'),
-  posDx:   $('pos_dx'),
-  posSxList: $('pos_sx_list'),
-  posCtList: $('pos_ct_list'),
-  posDxList: $('pos_dx_list'),
   pSel:    $('c_preset_select'),
   pApply:  $('c_preset_apply'),
   pClear:  $('c_preset_clear'),
@@ -555,14 +547,6 @@ const c = {
 };
 
 function headNumber(s){ return String(s||'').match(/^\d+/)?.[0] || ''; }
-function deriveSide(posText){
-  const t=norm(posText);
-  if (t.includes('sinist') || t.includes(' sx')) return 'Sx';   // 1
-  if (t.includes('centr')  || t.includes(' centro')) return 'Ct'; // 2
-  if (t.includes('destr')  || t.includes(' dx')) return 'Dx';   // 3
-  return null;
-}
-const sideIndex = { Sx:1, Ct:2, Dx:3 };
 
 /* Preset Console */
 let consolePreset = null;
@@ -591,10 +575,10 @@ c.pApply?.addEventListener('click',()=>{
   const idx = parseInt(c.pSel.value,10);
   consolePreset = isNaN(idx) ? null : presets[idx] || null;
   updateConsolePresetDesc();
-  analyzeTray(+c.target.value||0);
+  analyzeTray(c.target.value);
 });
 c.pClear?.addEventListener('click',()=>{
-  consolePreset=null; c.pSel.value=''; updateConsolePresetDesc(); analyzeTray(+c.target.value||0);
+  consolePreset=null; c.pSel.value=''; updateConsolePresetDesc(); analyzeTray(c.target.value);
 });
 function matchConsolePreset(r){
   if(!consolePreset) return true;
@@ -610,76 +594,47 @@ function matchConsolePreset(r){
   return okRip && okTip && okPos;
 }
 
-/* Analisi vassoio + riempimento carte laterali */
-function analyzeTray(tray){
-  const T = String(tray||'');
-  c.title.textContent = T ? `Contenuto vassoio ${T}` : 'Contenuto vassoio —';
-  if(!T){
-    c.list.innerHTML=''; c.hint.textContent='0 righe';
-    setSides('—','—','—'); fillSideLists([],[],[]); return;
+function analyzeTray(value) {
+  const query=String(value||'').trim();
+  c.list.replaceChildren();
+  c.title.textContent='Inserisci il numero del vassoio';
+  if(!query)return;
+  const matchesTray=name=>norm(name)===norm(query)||(/^\d+$/.test(query)&&headNumber(name)===query);
+  const rows=(window.KARDEX_TIPOLOGIE||ROWS).filter(row=>matchesTray(row.RIPIANO));
+  const groups=kardexGroups.filter(group=>matchesTray(group.ripiano));
+  const trays=[...new Set([...rows.map(row=>String(row.RIPIANO).trim()),...groups.map(group=>String(group.ripiano).trim())])];
+  c.title.textContent=trays.length?'Vassoio '+query:'Vassoio non trovato';
+  for(const tray of trays){
+    const trayRows=rows.filter(row=>String(row.RIPIANO).trim()===tray);
+    const trayGroups=groups.filter(group=>String(group.ripiano).trim()===tray);
+    const positions=new Set([...(window.KARDEX_POSITIONS||['Sinistra','Centrale','Destra','Da definire']),...trayRows.map(row=>row.POSIZIONE||'Da definire'),...trayGroups.map(group=>group.posizione)]);
+    for(const position of positions){
+      const entries=trayRows.filter(row=>(row.POSIZIONE||'Da definire')===position);
+      const zones=trayGroups.filter(group=>group.posizione===position);
+      const visibleEntries=entries.filter(matchConsolePreset);
+      const visibleZones=zones.filter(zone=>matchConsolePreset({RIPIANO:tray,POSIZIONE:position,TIPO:zone.nome})||visibleEntries.some(row=>String(row.id)===String(zone.tipologia_id)));
+      if(consolePreset&&!visibleEntries.length&&!visibleZones.length)continue;
+      const types=[...new Set(visibleEntries.filter(row=>!visibleZones.some(zone=>String(zone.tipologia_id)===String(row.id)&&norm(zone.nome)===norm(row.TIPO))).map(row=>row.TIPO).filter(Boolean))];
+      const button=document.createElement('button');
+      button.type='button';button.className='secondary side-card';
+      const title=document.createElement('strong');
+      title.textContent=trays.length>1?tray+' · '+position:position;
+      button.append(title);
+      for(const line of [types.length&&'Tipologie: '+types.join(' · '),visibleZones.length&&(visibleZones.length===1?'1 zona: ':visibleZones.length+' zone: ')+visibleZones.map(zone=>zone.nome).join(' · '),!types.length&&!visibleZones.length&&'Vuota'].filter(Boolean)){
+        const detail=document.createElement('span');detail.textContent=line;button.append(detail);
+      }
+      button.onclick=()=>{
+        selectedTray=tray;selectedPosition=position;
+        showPositionDialog();positionDialog.showModal();
+      };
+      c.list.append(button);
+    }
   }
-
-  const rows = ROWS.filter(r => headNumber(r.RIPIANO) === T).filter(matchConsolePreset);
-  c.hint.textContent = `${rows.length} righe`;
-
-  const byType = new Map(); // TIPO -> {sx,ct,dx,tot}
-  const sxList=[], ctList=[], dxList=[];
-  let sx=0, ct=0, dx=0;
-
-  for(const r of rows){
-    const t = (String(r.TIPO||'').trim() || '(Senza tipo)');
-    const side = deriveSide(r.POSIZIONE);
-    const o = byType.get(t) || {sx:0,ct:0,dx:0,tot:0};
-    o.tot++;
-    if(side==='Sx'){ o.sx++; sx++; sxList.push(t); }
-    else if(side==='Ct'){ o.ct++; ct++; ctList.push(t); }
-    else if(side==='Dx'){ o.dx++; dx++; dxList.push(t); }
-    byType.set(t,o);
-  }
-
-  // Lista principale con posizioni numeriche tra parentesi
-  const items = [...byType.entries()]
-    .sort((a,b)=> b[1].tot - a[1].tot)
-    .map(([label,o])=>{
-      const nums=[]; if(o.sx) nums.push(1); if(o.ct) nums.push(2); if(o.dx) nums.push(3);
-      const posTag = nums.length ? ` <span class="muted">(${nums.join(', ')})</span>` : '';
-      return `<li class="item">
-        <span>${escapeHtml(label)}${posTag}</span>
-        <span class="badges"><span class="badge">Tot ${o.tot}</span></span>
-      </li>`;
-    });
-  c.list.innerHTML = items.length ? items.join('') : `<li class="item"><span class="muted">Nessun dato</span></li>`;
-
-  // Schede grandi per lato (elenco tipi × count)
-  const toCountList = (arr) => {
-    const m=new Map(); arr.forEach(t=>m.set(t,(m.get(t)||0)+1));
-    return [...m.entries()].sort((a,b)=>b[1]-a[1]).map(([t,n])=>`<li><span>${escapeHtml(t)}</span><span class="badge">×${n}</span></li>`).join('') || `<li class="muted" style="border:none">—</li>`;
-  };
-  fillSideLists(
-    toCountList(sxList),
-    toCountList(ctList),
-    toCountList(dxList)
-  );
-
-  setSides(sx||'—', ct||'—', dx||'—');
+  if(trays.length&&!c.list.children.length)c.title.textContent='Nessuna posizione corrisponde al preset';
 }
-function setSides(sx,ct,dx){ c.posSx.textContent=String(sx); c.posCt.textContent=String(ct); c.posDx.textContent=String(dx); }
-function fillSideLists(htmlSx,htmlCt,htmlDx){
-  if (Array.isArray(htmlSx)) { // compat
-    $('pos_sx_list').innerHTML=htmlSx.join('');
-    $('pos_ct_list').innerHTML=htmlCt.join('');
-    $('pos_dx_list').innerHTML=htmlDx.join('');
-  } else {
-    $('pos_sx_list').innerHTML=htmlSx;
-    $('pos_ct_list').innerHTML=htmlCt;
-    $('pos_dx_list').innerHTML=htmlDx;
-  }
-}
-
-c.preleva?.addEventListener('click', ()=> analyzeTray(+c.target.value || 0));
-c.svuota?.addEventListener('click', ()=>{ c.target.value=0; analyzeTray(0); });
-c.home?.addEventListener('click', ()=> showData());
-c.target?.addEventListener('keydown', e=>{ if(e.key==='Enter') c.preleva.click(); });
+c.preleva?.addEventListener('click',()=>analyzeTray(c.target.value));
+c.svuota?.addEventListener('click',()=>{c.target.value='';analyzeTray('');c.target.focus();});
+c.target?.addEventListener('keydown',event=>{if(event.key==='Enter')c.preleva.click();});
 
 /* ===== Start ===== */
 [q, selCampo, fRip, fTip, fPos].forEach(el=> el&&el.addEventListener('input',()=>{render();saveState();}));

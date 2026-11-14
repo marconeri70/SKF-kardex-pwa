@@ -147,7 +147,7 @@ async function refresh(){
  window.KARDEX_TIPOLOGIE=data.componenti.map(x=>({id:x.id,RIPIANO:String(x.ripiano??''),TIPO:String(x.tipo??''),POSIZIONE:String(x.posizione??'')}));
  ROWS=data.componenti.filter(x=>!groupIds.has(String(x.id))).map(x=>({id:x.id,RIPIANO:String(x.ripiano??''),TIPO:String(x.tipo??''),POSIZIONE:String(x.posizione??'')}));
  window.KARDEX_CLOUD_ONLINE=true;
- render();if(typeof analyzeTray==='function'&&$('c_vassoio_target'))analyzeTray(+$('c_vassoio_target').value||0);
+ render();if(typeof analyzeTray==='function'&&$('c_vassoio_target'))analyzeTray($('c_vassoio_target').value);
  renderUser();status('Online · '+ROWS.length+' voci generali · '+groups.length+' gruppi');
  window.dispatchEvent(new CustomEvent('kardex:auth',{detail:{logged:!!user,admin:user?.ruolo==='admin'}}));
 }

@@ -562,10 +562,13 @@
  #inventoryFullList .index-type,#inventoryFullList .index-action-cell {grid-column:1/-1}
  #inventoryFullList td[data-label="RIPIANO"]::before {content:"Ripiano ";display:inline}
 }
+ .console-positions {margin-top:12px;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr))}
+ .console-positions .side-card {text-align:left;color:var(--text);background:var(--card);border-left:4px solid #3382b8;white-space:normal;overflow-wrap:anywhere}
+ .console-positions .side-card span {display:block;margin-top:5px}
 </style>
   <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script defer src="app.js?v=39.9"></script>
-  <script defer src="cloud.js?v=39.9"></script>
+  <script defer src="app.js?v=40.0"></script>
+  <script defer src="cloud.js?v=40.0"></script>
   <script defer src="v32.js?v=33.1"></script>
   <script defer src="v33.js?v=33.1"></script>
 </head>
@@ -708,68 +711,46 @@
     <!-- ====== CONSOLE ====== -->
     <section id="consoleView" class="console-card hidden">
       <div class="console-grid">
-        <div class="console-title">Console inventario <button type="button" id="returnToInventory" class="secondary" style="margin-left:12px">← Torna alla ricerca</button></div>
+        <div class="console-title">Console di prelievo <button type="button" id="returnToInventory" class="secondary" style="margin-left:12px">← Torna alla ricerca</button></div>
 
         <!-- Preset per Console -->
-        <div class="box" style="grid-column:1/13;background:var(--card)">
+        <details class="box" style="grid-column:1/13;background:var(--card)"><summary>Preset</summary>
           <div class="row" style="justify-content:space-between">
             <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-              <span class="muted">Preset Console:</span>
+              
               <select id="c_preset_select"></select>
               <button id="c_preset_apply" class="secondary">Applica</button>
               <button id="c_preset_clear" class="secondary">✖ Pulisci preset</button>
             </div>
             <div class="muted" id="c_preset_desc">Nessun preset attivo</div>
           </div>
-        </div>
+        </details>
 
         <!-- Vassoio target -->
         <div class="box" style="grid-column:1/13;background:var(--card)">
           <div class="row">
             <label class="muted" for="c_vassoio_target">Vassoio</label>
-            <input id="c_vassoio_target" type="number" class="num" min="0" value="0" style="max-width:220px">
-            <button id="c_preleva">⬇️ Preleva</button>
-            <button id="c_svuota" class="secondary">🗑️ Svuota</button>
-            <button id="c_home" class="secondary">🏠 Home</button>
+            <input id="c_vassoio_target" type="text" inputmode="text" class="num" placeholder="Es. 2" style="max-width:220px">
+            <button id="c_preleva">Apri vassoio</button>
+            <button id="c_svuota" class="secondary">Azzera vista</button>
           </div>
         </div>
 
-        <!-- Contenuto -->
-        <div class="box" style="grid-column:1/13;background:var(--card)">
-          <div class="row" style="justify-content:space-between">
-            <strong id="c_title">Contenuto vassoio —</strong>
-            <span class="muted" id="c_rows_hint">0 righe</span>
-          </div>
-          <ul id="c_cont_list" class="list"></ul>
-        </div>
-
-        <!-- Posizioni: carte grandi con elenco tipi -->
-        <div class="sides" style="grid-column:1/13">
-          <div class="side-card">
-            <div class="side-title">Sinistra: <b id="pos_sx">—</b></div>
-            <ul id="pos_sx_list" class="side-list"></ul>
-          </div>
-          <div class="side-card">
-            <div class="side-title">Centrale: <b id="pos_ct">—</b></div>
-            <ul id="pos_ct_list" class="side-list"></ul>
-          </div>
-          <div class="side-card">
-            <div class="side-title">Destra: <b id="pos_dx">—</b></div>
-            <ul id="pos_dx_list" class="side-list"></ul>
-          </div>
-        </div>
-
+        <section class="box" style="grid-column:1/13">
+          <strong id="c_title" role="status">Inserisci il numero del vassoio</strong>
+          <div id="c_cont_list" class="sides console-positions"></div>
+        </section>
       </div>
     </section>
 
     <p class="muted" style="margin-top:10px">Dopo il primo caricamento, il sito funziona anche offline (Aggiungi a schermata Home).</p>
   </main>
 
-  <footer style="text-align:center;margin:16px 0" class="muted">Versione UI: <b>v39.9</b></footer>
+  <footer style="text-align:center;margin:16px 0" class="muted">Versione UI: <b>v40.0</b></footer>
 
   <script>
     if('serviceWorker' in navigator){
-      window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=39.9'));
+      window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=40.0'));
     }
   </script>
 <script>document.getElementById('openQrLabels')?.addEventListener('click',()=>window.location.assign('./etichette.html'));document.getElementById('openMainQr')?.addEventListener('click',()=>window.location.assign('./qr-principale.html'));</script></body>

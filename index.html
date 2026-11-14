@@ -567,8 +567,8 @@
  .console-positions .side-card span {display:block;margin-top:5px}
 </style>
   <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script defer src="app.js?v=40.0"></script>
-  <script defer src="cloud.js?v=40.0"></script>
+  <script defer src="app.js?v=40.1"></script>
+  <script defer src="cloud.js?v=40.1"></script>
   <script defer src="v32.js?v=33.1"></script>
   <script defer src="v33.js?v=33.1"></script>
 </head>
@@ -655,9 +655,9 @@
   <div class="shuttle-panels" aria-hidden="true"></div>
   <div class="shuttle-fascia"><strong>Kardex</strong><span class="shuttle-terminal" aria-hidden="true"></span><span>Shuttle 700</span></div>
   <div class="shuttle-bay"><div id="trayMapButtons" class="tray-map-buttons"></div></div>
-</div><div id="trayMapContent" aria-live="polite"></div></details><dialog id="trayDialog" aria-labelledby="trayDialogTitle"><div class="tray-dialog-head"><h2 id="trayDialogTitle">Ripiano</h2><button type="button" class="secondary" id="trayDialogClose" aria-label="Chiudi scheda ripiano">✕ Chiudi</button></div><div id="trayDialogSummary"></div><div id="trayDialogRows"></div><p id="trayDialogMessage" role="status" class="muted"></p></dialog>
-      <dialog id="positionDialog" aria-labelledby="positionDialogTitle"><div class="tray-dialog-head"><h2 id="positionDialogTitle">Posizione</h2><button type="button" class="secondary" id="positionDialogClose">← Torna al ripiano</button></div><p id="positionDialogSummary" class="muted"></p><div id="positionDialogRows"></div><p id="positionDialogMessage" role="status" class="muted"></p></dialog>
-      <dialog id="groupDialog" aria-labelledby="groupDialogTitle"><div class="tray-dialog-head"><h2 id="groupDialogTitle">Gruppo</h2><button type="button" class="secondary" id="groupDialogBack">← Torna alla posizione</button></div><p id="groupDialogSummary" class="muted"></p><div id="groupDialogRows"></div><p id="groupDialogMessage" class="muted" role="status"></p></dialog>
+</div><div id="trayMapContent" aria-live="polite"></div></details>
+      
+      
       <div class="row" style="margin-top:10px"><button type="button" class="secondary" id="showUndefined">📍 Mostra posizioni da definire</button><button type="button" class="secondary hidden" id="clearUndefined">Mostra tutti</button><span id="undefinedCount" class="muted"></span></div>
       <details class="mobile-tools" id="advancedTools">
         <summary>⚙️ Strumenti avanzati <span class="muted">· filtri, preset, import/export</span></summary>
@@ -709,6 +709,9 @@
     </section>
 
     <!-- ====== CONSOLE ====== -->
+<dialog id="trayDialog" aria-labelledby="trayDialogTitle"><div class="tray-dialog-head"><h2 id="trayDialogTitle">Ripiano</h2><button type="button" class="secondary" id="trayDialogClose" aria-label="Chiudi scheda ripiano">✕ Chiudi</button></div><div id="trayDialogSummary"></div><div id="trayDialogRows"></div><p id="trayDialogMessage" role="status" class="muted"></p></dialog>
+<dialog id="positionDialog" aria-labelledby="positionDialogTitle"><div class="tray-dialog-head"><h2 id="positionDialogTitle">Posizione</h2><button type="button" class="secondary" id="positionDialogClose">← Torna al ripiano</button></div><p id="positionDialogSummary" class="muted"></p><div id="positionDialogRows"></div><p id="positionDialogMessage" role="status" class="muted"></p></dialog>
+<dialog id="groupDialog" aria-labelledby="groupDialogTitle"><div class="tray-dialog-head"><h2 id="groupDialogTitle">Gruppo</h2><button type="button" class="secondary" id="groupDialogBack">← Torna alla posizione</button></div><p id="groupDialogSummary" class="muted"></p><div id="groupDialogRows"></div><p id="groupDialogMessage" class="muted" role="status"></p></dialog>
     <section id="consoleView" class="console-card hidden">
       <div class="console-grid">
         <div class="console-title">Console di prelievo <button type="button" id="returnToInventory" class="secondary" style="margin-left:12px">← Torna alla ricerca</button></div>
@@ -746,11 +749,11 @@
     <p class="muted" style="margin-top:10px">Dopo il primo caricamento, il sito funziona anche offline (Aggiungi a schermata Home).</p>
   </main>
 
-  <footer style="text-align:center;margin:16px 0" class="muted">Versione UI: <b>v40.0</b></footer>
+  <footer style="text-align:center;margin:16px 0" class="muted">Versione UI: <b>v40.1</b></footer>
 
   <script>
     if('serviceWorker' in navigator){
-      window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=40.0'));
+      window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=40.1'));
     }
   </script>
 <script>document.getElementById('openQrLabels')?.addEventListener('click',()=>window.location.assign('./etichette.html'));document.getElementById('openMainQr')?.addEventListener('click',()=>window.location.assign('./qr-principale.html'));</script></body>

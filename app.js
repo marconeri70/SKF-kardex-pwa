@@ -232,7 +232,7 @@ window.addEventListener('kardex:auth',e=>{trayAdmin=!!e.detail?.admin;trayLogged
 window.addEventListener('kardex:tray-result',e=>{const m=$('trayDialogMessage');if(m)m.textContent=e.detail?.error||e.detail?.message||'';if(e.detail?.ok){if($('positionDialog')?.open)showPositionDialog();else showTrayDialog();}});
 
 const positionDialog=$('positionDialog');
-$('positionDialogClose')?.addEventListener('click',()=>{positionDialog.close();showTrayDialog();trayDialog.showModal();});
+$('positionDialogClose')?.addEventListener('click',()=>{positionDialog.close();if(!consoleView.classList.contains('hidden'))return;showTrayDialog();trayDialog.showModal();});
 let kardexGroups=[];let currentGroup=null;
 window.addEventListener('kardex:groups',e=>{kardexGroups=Array.isArray(e.detail?.gruppi)?e.detail.gruppi:[];if(positionDialog?.open)showPositionDialog();if(c.target?.value)analyzeTray(c.target.value);});
 function openGroup(g){currentGroup=g;positionDialog.close();renderGroupDialog();$('groupDialog').showModal();}
@@ -303,6 +303,7 @@ async function renderGroupDialog(){
 $('groupDialogBack')?.addEventListener('click',()=>{$('groupDialog').close();showPositionDialog();positionDialog.showModal();});
 window.addEventListener('kardex:group-result',e=>{const d=e.detail||{};if(d.ok){renderGroupDialog();window.dispatchEvent(new Event('kardex:groups-refresh'));}else $(positionDialog.open?'positionDialogMessage':'groupDialogMessage').textContent=d.error||'Errore';});
 function showPositionDialog(){
+ $('positionDialogClose').textContent=consoleView.classList.contains('hidden')?'← Torna al ripiano':'← Torna al vassoio';
  if(!positionDialog||!selectedTray||!selectedPosition)return;
  const matches=(window.KARDEX_TIPOLOGIE||ROWS).filter(r=>String(r.RIPIANO||'').trim()===selectedTray&&String(r.POSIZIONE||'Da definire')===selectedPosition);
  const groups=kardexGroups.filter(g=>String(g.ripiano)===selectedTray&&g.posizione===selectedPosition);

@@ -135,10 +135,20 @@ function render(){
   if(!tbody) return;
   tbody.innerHTML = rows.map(r=>`
     <tr>
+      <td data-label="TIPO" class="index-type">${escapeHtml(r.TIPO??'')}</td>
       <td data-label="RIPIANO">${escapeHtml(r.RIPIANO??'')}</td>
-      <td data-label="TIPO">${escapeHtml(r.TIPO??'')}</td>
-      <td data-label="POSIZIONE"><span class="chip">${escapeHtml(r.POSIZIONE??'')}</span><span class="cloudActions" data-id="${escapeHtml(r.id??'')}"></span></td>
+      <td data-label="POSIZIONE"><span class="chip ${norm(r.POSIZIONE)==='da definire'?'index-undefined':''}">${escapeHtml(r.POSIZIONE||'Da definire')}</span></td>
+      <td data-label="AZIONI" class="index-action-cell"><div class="index-actions"><button type="button" class="secondary index-open">Apri scheda</button><span class="cloudActions" data-id="${escapeHtml(r.id??'')}"></span></div></td>
     </tr>`).join('');
+  tbody.querySelectorAll('.index-open').forEach((button,index)=>{
+    button.onclick=()=>{
+      const row=rows[index];
+      selectedTray=String(row.RIPIANO??'').trim();
+      selectedPosition=row.POSIZIONE||'Da definire';
+      showPositionDialog();
+      positionDialog.showModal();
+    };
+  });
   window.dispatchEvent(new Event('kardex:render'));
 }
 

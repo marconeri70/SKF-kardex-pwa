@@ -30,15 +30,31 @@ function renderUser(){
   document.querySelectorAll('.cloudActions').forEach(el=>{
     el.replaceChildren();
     if(!user||!el.dataset.id)return;
-    const edit=document.createElement('button');edit.textContent='Modifica';edit.className='secondary';edit.style.marginLeft='8px';
+    const edit=document.createElement('button');edit.textContent='Modifica';edit.className='secondary';
     edit.onclick=()=>{const r=ROWS.find(x=>String(x.id)===el.dataset.id);if(!r)return;
       $('cloudId').value=r.id;$('cloudRipiano').value=r.RIPIANO;$('cloudTipo').value=r.TIPO;$('cloudPosizione').value=r.POSIZIONE;
       $('cloudEditor').open=true;$('cloudForm').scrollIntoView({behavior:'smooth',block:'center'});};
-    const del=document.createElement('button');del.textContent='Elimina';del.className='secondary';del.style.marginLeft='4px';
+    const del=document.createElement('button');del.textContent='Elimina';del.className='secondary';
     del.onclick=async()=>{const r=ROWS.find(x=>String(x.id)===el.dataset.id);if(!r||!confirm('Eliminare '+r.TIPO+' dal ripiano '+r.RIPIANO+'?'))return;
       try{await request('/api/componenti/'+encodeURIComponent(r.id),'DELETE');message('Componente eliminato');await refresh();}
       catch(e){message(e.message);}};
-    el.append(edit,del);
+    const row=ROWS.find(x=>String(x.id)===el.dataset.id);
+    const menu=document.createElement('details');
+    const summary=document.createElement('summary');
+    summary.textContent='⋯';
+    summary.setAttribute('aria-label','Azioni per '+(row?.TIPO||'la tipologia'));
+    menu.append(summary,edit,del);
+    if(String(row?.POSIZIONE||'Da definire').toLowerCase()==='da definire'){
+      const assign=document.createElement('button');
+      assign.type='button';assign.className='secondary';
+      assign.textContent='Assegna posizione';
+      assign.onclick=()=>{
+        edit.click();
+        $('cloudPosizione').focus();
+      };
+      el.append(assign);
+    }
+    el.append(menu);
   });
 }
 window.addEventListener('kardex:tray-action',async e=>{

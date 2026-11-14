@@ -363,7 +363,11 @@ function showTrayDialog(){
  const matches=(window.KARDEX_TIPOLOGIE||ROWS).filter(r=>String(r.RIPIANO||'').trim()===selectedTray);
  const groups=kardexGroups.filter(g=>String(g.ripiano)===selectedTray);
  $('trayDialogTitle').textContent='Ripiano '+selectedTray;
- const types=[...new Set(matches.map(r=>r.TIPO).filter(Boolean))];
+ // In this summary, a linked entry with the same name is already shown as a zone.
+ const visibleTypes=matches.filter(row=>!groups.some(group=>
+  group.tipologia_id!=null && String(group.tipologia_id)===String(row.id) &&
+  group.posizione===row.POSIZIONE && norm(group.nome)===norm(row.TIPO)));
+ const types=[...new Set(visibleTypes.map(r=>r.TIPO).filter(Boolean))];
  const summary=$('trayDialogSummary');
  summary.replaceChildren();
  const label=document.createElement('strong');label.textContent='Tipologie nel ripiano';
@@ -377,7 +381,7 @@ function showTrayDialog(){
  const heading=document.createElement('h3');heading.textContent='Posizioni del ripiano';section.append(heading);
  const positions=[...new Set([...(window.KARDEX_POSITIONS||['Sinistra','Centrale','Destra','Da definire']),...matches.map(r=>r.POSIZIONE),...groups.map(g=>g.posizione)].filter(Boolean))];
  for(const p of positions){
-  const positionTypes=[...new Set(matches.filter(r=>r.POSIZIONE===p).map(r=>r.TIPO).filter(Boolean))];
+  const positionTypes=[...new Set(visibleTypes.filter(r=>r.POSIZIONE===p).map(r=>r.TIPO).filter(Boolean))];
   const zones=groups.filter(g=>g.posizione===p);
   const zoneCount=zones.length;
   const btn=document.createElement('button');btn.type='button';btn.className='secondary position-group-open';

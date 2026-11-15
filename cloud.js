@@ -16,6 +16,7 @@ async function request(path,method='GET',data){
   if(!response.ok)throw new Error(result.error||'Errore HTTP '+response.status);
   return result;
 }
+window.KARDEX_GUIDATO_CONNECT?.(data=>request('/api/movimenti-guidati',data?'POST':'GET',data));
 function renderUser(){
   const logged=!!user;
   $('cloudToggleLogin').classList.toggle('hidden',logged);
@@ -270,4 +271,5 @@ $('cloudForm').addEventListener('submit',async e=>{
   renderUser();
 })();
 })();
+
 

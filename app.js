@@ -252,7 +252,7 @@ function renderStock(group, item) {
  const form = document.createElement('form');
  form.className = 'stock-form';
  const label = document.createElement('label');
- label.textContent = 'Quantità';
+ label.textContent = 'Quantità da movimentare';
  const quantity = document.createElement('input');
  Object.assign(quantity,{type:'number',inputMode:'numeric',min:'1',max:'2147483647',step:'1',value:'1',required:true});
  label.append(quantity);
@@ -316,7 +316,12 @@ function showPositionDialog(){
  $('positionDialogSummary').textContent=matches.length+' voci generali · '+groups.length+' gruppi';
  const typeZones=new Map();
  const root=$('positionDialogRows');root.replaceChildren();
- const h=document.createElement('h3');h.textContent='Componenti dell’indice generale';root.append(h);
+ if(groups.length){
+  const guide=document.createElement('p');
+  guide.textContent=trayLogged?'Apri una zona, scegli il componente e indica la quantità. Poi premi Preleva o Carica.':'Apri una zona per vedere i componenti e le disponibilità.';
+  root.append(guide);
+ }
+ const h=document.createElement('h3');h.textContent='Tipologie dell’indice generale';root.append(h);
  for(const r of matches){
  const entry=document.createElement('section');entry.className='tray-dialog-entry';
  const name=document.createElement('strong');name.textContent=r.TIPO;entry.append(name);
@@ -332,7 +337,9 @@ function showPositionDialog(){
  }
  const zones=document.createElement('details');
  const summary=document.createElement('summary');
- summary.textContent='Cartelle / Zone ('+groups.filter(g=>g.tipologia_id===r.id).length+')';
+ const count=groups.filter(g=>g.tipologia_id===r.id).length;
+ summary.textContent=count?'Mostra '+count+(count===1?' zona':' zone'):'Nessuna zona associata';
+ zones.hidden=!count&&!trayLogged;
  zones.append(summary);entry.append(zones);typeZones.set(r.id,zones);
  root.append(entry);
 }
@@ -347,8 +354,8 @@ function showPositionDialog(){
  };
  if(trayAdmin)root.append(addForm('add-type','＋ Aggiungi tipologia','Nome nuova tipologia'));
  const unassigned=document.createElement('section');
- const header=document.createElement('h3');header.textContent='Tipologia da assegnare';unassigned.append(header);
- for(const g of groups){const card=document.createElement('section');card.className='tray-dialog-entry position-group-card';const open=document.createElement('button');open.type='button';open.className='secondary position-group-open';open.textContent='📦 '+g.nome+' · '+g.numero_componenti+' componenti ›';open.onclick=()=>openGroup(g);card.append(open);
+ const header=document.createElement('h3');header.textContent='Zone della posizione';unassigned.append(header);
+ for(const g of groups){const card=document.createElement('section');card.className='tray-dialog-entry position-group-card';const open=document.createElement('button');open.type='button';open.className='position-group-open';open.textContent='Apri '+g.nome+' · '+g.numero_componenti+(Number(g.numero_componenti)===1?' componente':' componenti')+' ›';open.onclick=()=>openGroup(g);card.append(open);
  const preview=document.createElement('p');preview.className='muted';preview.textContent='Caricamento riepilogo…';card.append(preview);
  fetch('https://skf-kardex-api.vocidicassino.workers.dev/api/gruppi/'+encodeURIComponent(g.id)+'/componenti',{cache:'no-store'})
  .then(async res=>{if(!res.ok)throw Error('HTTP '+res.status);return res.json();})
@@ -371,7 +378,10 @@ function showPositionDialog(){
   for(const [id,zones] of typeZones)zones.append(addForm('add-group','＋ Crea zona','Nome nuova zona',id));
  }
  if(trayLogged)unassigned.append(addForm('add-group','＋ Crea zona','Nome nuova zona',null));
- if(unassigned.children.length>1)root.append(unassigned);
+ if(unassigned.children.length>1){
+  if(groups.some(g=>!typeZones.has(g.tipologia_id)))h.before(unassigned);
+  else root.append(unassigned);
+ }
  $('positionDialogMessage').textContent='';
 }
 window.addEventListener('kardex:position-result',e=>{if(e.detail?.ok)showPositionDialog();const m=$('positionDialogMessage');if(m)m.textContent=e.detail?.error||e.detail?.message||'';});

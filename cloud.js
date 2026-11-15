@@ -22,7 +22,7 @@ function renderUser(){
   $('cloudToggleLogin').classList.toggle('hidden',logged);
   if(logged){$('cloudLoginArea').classList.add('hidden');$('cloudToggleLogin').setAttribute('aria-expanded','false');}
   $('cloudAdmin').classList.toggle('hidden',!user||user.ruolo!=='admin');
-  $('cloudImport').classList.toggle('hidden',!user||user.ruolo!=='admin');
+  $('cloudImportAdmin').classList.toggle('hidden',!user||user.ruolo!=='admin');
   if(user)$('cloudLoginArea').classList.add('hidden');
   $('cloudUserArea').classList.toggle('hidden',!user);
   $('cloudEditor').classList.toggle('hidden',!user);

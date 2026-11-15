@@ -127,6 +127,11 @@ function sortRows(rows){
 function escapeHtml(x){return String(x).replace(/[&<>"]/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[s]))}
 function render(){
   let rows=sortRows(filtered());
+  const filters=[['Ricerca',q?.value],['Ripiano',fRip?.value],['Tipologia',fTip?.value],['Posizione',fPos?.value]]
+    .filter(([,value])=>value?.trim())
+    .map(([label,value])=>label+': '+value.trim().replace(/^=/,''));
+  $('indexFilters').hidden=!filters.length;
+  $('indexFilterSummary').textContent=filters.length?'Filtri attivi · '+filters.join(' · '):'';
   count && (count.textContent=rows.length+' risultati');
   renderQuickLocation(rows);
   renderTrayMap();
@@ -299,6 +304,20 @@ async function renderGroupDialog(){
  root.replaceChildren();$('groupDialogMessage').textContent='Caricamento componenti…';
  let data;try{const res=await fetch('https://skf-kardex-api.vocidicassino.workers.dev/api/gruppi/'+encodeURIComponent(g.id)+'/componenti',{cache:'no-store'});data=await res.json();if(!res.ok)throw Error(data.error||'Errore lettura');}catch(e){if(isCurrent())$('groupDialogMessage').textContent=e.message;return;}
  if(!isCurrent())return;
+ if(!trayLogged){
+  const login=document.createElement('button');
+  login.type='button';
+  login.textContent='Accedi per prelevare o caricare';
+  login.onclick=()=>{
+   $('groupDialog').close();
+   showData();
+   const toggle=$('cloudToggleLogin');
+   if(toggle.getAttribute('aria-expanded')!=='true')toggle.click();
+   toggle.scrollIntoView({block:'center'});
+   toggle.focus({preventScroll:true});
+  };
+  root.append(login);
+ }
  const items=data.componenti||[];$('groupDialogMessage').textContent=items.length+' component'+(items.length===1?'e':'i');
  const makeForm=(item)=>{const f=document.createElement('form');f.className='tray-dialog-form';const label=document.createElement('label');label.textContent='Codice / tipologia';const input=document.createElement('input');input.required=true;input.maxLength=150;input.value=item?.tipo||'';input.placeholder='Codice del componente';label.append(input);const btn=document.createElement('button');btn.type='submit';btn.textContent=item?'Salva modifica':'Aggiungi componente';f.append(label,btn);f.onsubmit=e=>{e.preventDefault();const tipo=input.value.trim();if(!tipo)return;btn.disabled=true;groupAction(item?'edit-item':'add-item',g,item,tipo);};return f;};
  for(const item of items){const card=document.createElement('section');card.className='tray-dialog-entry position-component-card';const title=document.createElement('strong');title.textContent=item.tipo;card.append(title);if(Object.hasOwn(item,'giacenza'))card.append(renderStock(g,item));if(trayLogged){const actions=document.createElement('div');actions.className='tray-dialog-actions';const edit=document.createElement('button');edit.type='button';edit.className='secondary';edit.textContent='Modifica';const del=document.createElement('button');del.type='button';del.className='secondary';del.textContent='Elimina';const f=makeForm(item);f.hidden=true;edit.onclick=()=>{f.hidden=!f.hidden;};del.onclick=()=>{if(confirm('Eliminare «'+item.tipo+'» dal gruppo '+g.nome+'?'))groupAction('delete-item',g,item);};actions.append(edit,del);card.append(actions,f);}root.append(card);}
@@ -689,6 +708,7 @@ c.target?.addEventListener('keydown',event=>{if(event.key==='Enter')c.preleva.cl
 
 /* ===== Start ===== */
 [q, selCampo, fRip, fTip, fPos].forEach(el=> el&&el.addEventListener('input',()=>{render();saveState();}));
+$('indexClearFilters')?.addEventListener('click',()=>clearBtn?.click());
 clearBtn?.addEventListener('click',()=>{ if(q) q.value=''; if(selCampo) selCampo.value='ALL'; if(fRip) fRip.value=''; if(fTip) fTip.value=''; if(fPos) fPos.value=''; render(); saveState(); });
 resetBtn?.addEventListener('click',()=>{ localStorage.removeItem(STATE_KEY); sortOrder=[]; updateSortIndicators(); if(q) q.value=''; if(selCampo) selCampo.value='ALL'; if(fRip) fRip.value=''; if(fTip) fTip.value=''; if(fPos) fPos.value=''; render(); saveState(); });
 

@@ -600,9 +600,9 @@
 #positionDialog .tray-dialog-entry details > summary{cursor:pointer;min-height:44px;align-content:center}
 </style>
   <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script defer src="app.js?v=40.11"></script>
-  <script defer src="guidato.js?v=40.11"></script>
-  <script defer src="cloud.js?v=40.11"></script>
+  <script defer src="app.js?v=40.12"></script>
+  <script defer src="guidato.js?v=40.12"></script>
+  <script defer src="cloud.js?v=40.12"></script>
   <script defer src="v32.js?v=33.1"></script>
   <script defer src="v33.js?v=33.1"></script>
 </head>
@@ -652,9 +652,9 @@
         </form>
         <p class="muted">Per modificare o eliminare, usa i comandi accanto alle righe della tabella. Le modifiche vengono salvate nel database condiviso.</p>
       </details>
-      <section id="cloudImport" class="hidden" style="margin-top:14px"><details><summary class="import-summary">📦 Importa indice SKF · 12/10/2026</summary><p class="muted">27 righe leggibili dalla foto. Verifica le 27 voci dell’indice e importa soltanto quelle mancanti. Le posizioni già assegnate vengono conservate; per le altre viene usato «Da definire».</p><button id="cloudImportPreview" type="button" class="secondary">Verifica righe e duplicati</button><button id="cloudImportConfirm" type="button" disabled >Importa componenti mancanti</button><p id="cloudImportMessage" class="muted" role="status"></p><div id="cloudImportList" class="import-list"></div></details></section>
+      <details id="cloudImportAdmin" class="hidden"><summary class="import-summary">Amministrazione · Importazioni</summary><section id="cloudImport" style="margin-top:14px"><details><summary class="import-summary">Importa da elenco storico SKF · 12/10/2026</summary><p class="muted">27 righe leggibili dalla foto. Verifica le 27 voci dell’indice e importa soltanto quelle mancanti. Le posizioni già assegnate vengono conservate; per le altre viene usato «Da definire».</p><button id="cloudImportPreview" type="button" class="secondary">Verifica righe e duplicati</button><button id="cloudImportConfirm" type="button" disabled >Importa componenti mancanti</button><p id="cloudImportMessage" class="muted" role="status"></p><div id="cloudImportList" class="import-list"></div></details></section></details>
       <section id="cloudAdmin" class="hidden" style="margin-top:18px;border-top:1px solid var(--border);padding-top:12px">
-        <details id="cloudQrAdmin"><summary style="cursor:pointer;font-weight:700">🖨️ Etichette QR dei ripiani (amministratore)</summary><p class="muted">Genera il QR principale del Kardex oppure le etichette A4 dei singoli ripiani. I QR già stampati restano invariati.</p><button type="button" id="openMainQr" class="secondary">🖨️ QR principale Kardex</button> <button type="button" id="openQrLabels" class="secondary">Etichette QR ripiani A4</button></details><details id="cloudPositionsAdmin"><summary style="cursor:pointer;font-weight:700">📍 Gestione posizioni (v33)</summary><p class="muted">Le posizioni sono condivise fra tutti i ripiani. Rinomina e rimozione richiedono la conferma del server per proteggere i componenti associati.</p><div id="positionAdminStatus" role="status" class="muted">Verifica servizio posizioni…</div><div id="positionAdminList"></div><form id="positionAddForm" class="row"><input id="positionNewName" maxlength="60" placeholder="Nuova posizione" required><button type="submit">Aggiungi posizione</button></form></details><details id="cloudAdminDetails">
+        <details id="cloudQrAdmin"><summary style="cursor:pointer;font-weight:700">🖨️ Etichette QR dei ripiani (amministratore)</summary><p class="muted">Genera il QR principale del Kardex oppure le etichette A4 dei singoli ripiani. I QR già stampati restano invariati.</p><button type="button" id="openMainQr" class="secondary">🖨️ QR principale Kardex</button> <button type="button" id="openQrLabels" class="secondary">Etichette QR ripiani A4</button></details><details id="cloudPositionsAdmin"><summary style="cursor:pointer;font-weight:700">📍 Gestione posizioni</summary><p class="muted">Le posizioni sono condivise fra tutti i ripiani. Rinomina e rimozione richiedono la conferma del server per proteggere i componenti associati.</p><div id="positionAdminStatus" role="status" class="muted">Verifica servizio posizioni…</div><div id="positionAdminList"></div><form id="positionAddForm" class="row"><input id="positionNewName" maxlength="60" placeholder="Nuova posizione" required><button type="submit">Aggiungi posizione</button></form></details><details id="cloudAdminDetails">
           <summary style="cursor:pointer;font-weight:700">👥 Gestione operatori (amministratore)</summary>
           <p class="muted">Crea un account con password provvisoria (minimo 12 caratteri). Consegna la password al collega attraverso un canale privato.</p>
           <form id="cloudOperatorForm" class="row">
@@ -672,7 +672,7 @@
       <p id="cloudMessage" class="muted" role="status" style="margin-bottom:0"></p>
     </section>
     <!-- ====== DATI ====== -->
-    <section class="card" id="dataView"><button type="button" id="openConsoleAdvanced" style="width:100%;min-height:48px;margin-bottom:12px;text-align:left;font-weight:750">Console di prelievo <span aria-hidden="true">→</span></button><div id="kardexStats" aria-live="polite"></div>
+    <section class="card" id="dataView"><button type="button" id="openConsoleAdvanced" style="width:100%;min-height:48px;margin-bottom:12px;text-align:left;font-weight:750">Prelievi e carichi <span aria-hidden="true">→</span></button><div id="kardexStats" aria-live="polite"></div>
       <div class="row">
         <input id="q" type="search" inputmode="search" autocomplete="off" aria-label="Cerca codice, tipologia o ripiano" placeholder="🔎 Cerca codice, tipologia o ripiano…">
         <select id="campo">
@@ -696,6 +696,17 @@
       <details class="mobile-tools" id="advancedTools">
         <summary>⚙️ Strumenti avanzati <span class="muted">· filtri, preset, import/export</span></summary>
         <div class="advanced-tools-body">
+          <details class="box" style="grid-column:1/13;background:var(--card)"><summary>Preset di prelievo e carico</summary>
+          <div class="row" style="justify-content:space-between">
+            <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+              
+              <select id="c_preset_select"></select>
+              <button id="c_preset_apply" class="secondary">Applica</button>
+              <button id="c_preset_clear" class="secondary">✖ Pulisci preset</button>
+            </div>
+            <div class="muted" id="c_preset_desc">Nessun preset attivo</div>
+          </div>
+        </details>
           <details class="filters">
             <summary>🔎 Filtri avanzati <span class="muted">· facoltativi</span></summary>
             <p class="muted">La ricerca in alto è sufficiente per trovare un componente. Usa questi filtri solo per ricerche particolari.</p>
@@ -730,7 +741,7 @@
         </div>
       </details>
 
-      <details id="inventoryFullList" class="inventory-full-list"><summary>📋 Indice generale</summary><p class="muted">Consulta le tipologie e apri la posizione nel ripiano.</p>
+      <details id="inventoryFullList" class="inventory-full-list"><summary>📋 Indice generale</summary><p class="muted">Consulta le tipologie e apri la posizione nel ripiano.</p><div id="indexFilters" hidden><span id="indexFilterSummary" role="status"></span> <button type="button" class="secondary" id="indexClearFilters">Mostra tutte le tipologie</button></div>
       <table>
         <thead><tr>
                     <th class="sortable" data-key="TIPO">TIPOLOGIA <span class="sort"></span></th>
@@ -748,7 +759,7 @@
 <dialog id="groupDialog" aria-labelledby="groupDialogTitle"><div class="tray-dialog-head"><h2 id="groupDialogTitle">Gruppo</h2><button type="button" class="secondary" id="groupDialogBack">← Torna alla posizione</button></div><p id="groupDialogSummary" class="muted"></p><div id="groupDialogRows"></div><p id="groupDialogMessage" class="muted" role="status"></p></dialog>
     <section id="consoleView" class="console-card hidden">
       <div class="console-grid">
-        <div class="console-title">Console di prelievo <button type="button" id="returnToInventory" class="secondary" style="margin-left:12px">← Torna alla ricerca</button></div>
+        <div class="console-title">Prelievi e carichi <button type="button" id="returnToInventory" class="secondary" style="margin-left:12px">← Torna alla ricerca</button></div>
 
         <details id="movimentiGuidati" class="box" style="grid-column:1/-1" hidden>
           <summary>Movimento guidato</summary>
@@ -757,15 +768,15 @@
             <div class="row" id="movimentoAvvio">
               <label>Operazione <select name="azione"><option value="preleva">Preleva</option><option value="carica">Carica</option></select></label>
               <label>Quantità <input name="quantita" type="number" min="1" max="2147483647" step="1" value="1" required></label>
-              <label>Codice componente <input id="codiceMovimentoPezzo" name="pezzo" required></label>
-              <button type="button" class="secondary" data-scan="codiceMovimentoPezzo">Scansiona componente</button>
+              <label>Inserisci codice componente <input id="codiceMovimentoPezzo" name="pezzo" required></label>
+              <button type="button" class="secondary" hidden data-scan="codiceMovimentoPezzo">Scansiona QR componente</button>
               <button type="submit">Avvia movimento</button>
             </div>
             <div id="movimentoConferma" hidden>
               <p id="movimentoDestinazione" class="guided-target"></p>
               <div class="row">
-                <label>Codice zona <input id="codiceMovimentoZona" name="zona"></label>
-                <button type="button" class="secondary" data-scan="codiceMovimentoZona">Scansiona zona</button>
+                <label>Inserisci codice zona <input id="codiceMovimentoZona" name="zona"></label>
+                <button type="button" class="secondary" hidden data-scan="codiceMovimentoZona">Scansiona QR zona</button>
                 <button type="button" data-command="conferma">Registra movimento</button>
                 <button type="button" class="secondary" data-command="annulla">Annulla</button>
               </div>
@@ -774,23 +785,13 @@
           <video playsinline muted hidden style="width:min(100%,360px)"></video>
           <p role="status"></p>
           <details id="etichetteMovimenti"><summary>Stampa QR di zona e componenti</summary><label>Zona <select id="zonaEtichette"></select></label><button type="button" id="stampaEtichette">Prepara etichette</button></details>
-          <h3>Movimenti da confermare</h3>
+          <h3 id="guidedPendingTitle">Movimenti da completare</h3>
           <ul id="movimentiAperti"></ul>
           <details><summary>Storico movimenti</summary>
           <ul id="movimentiRecenti"></ul></details>
         </details>
         <!-- Preset per Console -->
-        <details class="box" style="grid-column:1/13;background:var(--card)"><summary>Preset</summary>
-          <div class="row" style="justify-content:space-between">
-            <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-              
-              <select id="c_preset_select"></select>
-              <button id="c_preset_apply" class="secondary">Applica</button>
-              <button id="c_preset_clear" class="secondary">✖ Pulisci preset</button>
-            </div>
-            <div class="muted" id="c_preset_desc">Nessun preset attivo</div>
-          </div>
-        </details>
+
 
         <!-- Vassoio target -->
         <div class="box" style="grid-column:1/13;background:var(--card)">
@@ -809,14 +810,14 @@
       </div>
     </section>
 
-    <p class="muted" style="margin-top:10px">Dopo il primo caricamento, il sito funziona anche offline (Aggiungi a schermata Home).</p>
+    <p class="muted" style="margin-top:10px">Offline puoi consultare i dati locali. Per registrare prelievi e carichi serve una connessione.</p>
   </main>
 
-  <footer style="text-align:center;margin:16px 0" class="muted">Versione UI: <b>v40.11</b></footer>
+  <footer style="text-align:center;margin:16px 0" class="muted">Versione UI: <b>v40.12</b></footer>
 
   <script>
     if('serviceWorker' in navigator){
-      window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=40.11'));
+      window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=40.12'));
     }
   </script>
 <script>document.getElementById('openQrLabels')?.addEventListener('click',()=>window.location.assign('./etichette.html'));document.getElementById('openMainQr')?.addEventListener('click',()=>window.location.assign('./qr-principale.html'));</script></body>

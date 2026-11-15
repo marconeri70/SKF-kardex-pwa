@@ -8,6 +8,8 @@
  const step=panel.querySelector('#passaggioGuidato');
  let request, busy=false, selected;
  const scanButtons=panel.querySelectorAll('[data-scan]');
+ const canScan=!!window.BarcodeDetector&&!!navigator.mediaDevices?.getUserMedia;
+ scanButtons.forEach(button=>{button.hidden=!canScan;});
  let stream, scanVersion=0;
  const video=panel.querySelector('video');
  function stopScan(){
@@ -65,7 +67,8 @@
    }
    (movement.stato==='aperto'?pending:list).append(row);
   }
-  if(!pending.children.length){const empty=document.createElement('li');empty.textContent='Nessun movimento da confermare';pending.append(empty);}
+  panel.querySelector('#guidedPendingTitle').textContent=pending.children.length?'Movimenti da completare ('+pending.children.length+')':'Movimenti da completare';
+  if(!pending.children.length){const empty=document.createElement('li');empty.textContent='Nessun movimento da completare';pending.append(empty);}
  }
  function select(movement){
   selected=movement;

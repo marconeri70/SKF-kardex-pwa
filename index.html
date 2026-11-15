@@ -74,7 +74,7 @@
     .item{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-radius:10px;background:var(--card);border:1px solid var(--border);margin-bottom:8px}
     .badges{display:flex;gap:6px;flex-wrap:wrap}
     .badge{background:var(--badge);border:1px solid var(--border);border-radius:999px;padding:2px 8px;font-size:12px}
-    @media(max-width:860px){.console-grid{grid-template-columns:1fr}}
+    @media(max-width:860px){.console-grid{grid-template-columns:minmax(0,1fr)}.console-grid > *{grid-column:1/-1!important;min-width:0}}
     .hidden{display:none}
 
     /* Side cards grandi */
@@ -585,14 +585,17 @@
 #movimentiGuidati [role=status]:not(:empty) {padding:8px;background:var(--card);border-radius:6px}
 @media(max-width:600px){
  #movimentiGuidati .row {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
- #movimentiGuidati .row label:has([name=pezzo]),#movimentiGuidati .row label:has([name=zona]) {grid-column:1/-1}
+ #movimentiGuidati .row label:has([name=pezzo]),#movimentiGuidati .row label:has([name=zona]),#movimentiGuidati .row > button {grid-column:1/-1}
+ #movimentiGuidati label {min-width:0}
+ #movimentiGuidati .row > button {width:100%;white-space:normal;overflow-wrap:anywhere}
+ #movimentiGuidati ul {padding-inline-start:18px}
  #movimentiGuidati input,#movimentiGuidati select {width:100%;min-width:0;font-size:16px}
 }
 </style>
   <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script defer src="app.js?v=40.5"></script>
-  <script defer src="guidato.js?v=40.5"></script>
-  <script defer src="cloud.js?v=40.5"></script>
+  <script defer src="app.js?v=40.6"></script>
+  <script defer src="guidato.js?v=40.6"></script>
+  <script defer src="cloud.js?v=40.6"></script>
   <script defer src="v32.js?v=33.1"></script>
   <script defer src="v33.js?v=33.1"></script>
 </head>
@@ -801,11 +804,11 @@
     <p class="muted" style="margin-top:10px">Dopo il primo caricamento, il sito funziona anche offline (Aggiungi a schermata Home).</p>
   </main>
 
-  <footer style="text-align:center;margin:16px 0" class="muted">Versione UI: <b>v40.5</b></footer>
+  <footer style="text-align:center;margin:16px 0" class="muted">Versione UI: <b>v40.6</b></footer>
 
   <script>
     if('serviceWorker' in navigator){
-      window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=40.5'));
+      window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=40.6'));
     }
   </script>
 <script>document.getElementById('openQrLabels')?.addEventListener('click',()=>window.location.assign('./etichette.html'));document.getElementById('openMainQr')?.addEventListener('click',()=>window.location.assign('./qr-principale.html'));</script></body>

@@ -575,11 +575,24 @@
  .console-stock-row .stock-form button {min-height:44px}
  .console-stock-row .stock-feedback {flex-basis:100%;margin:0}
  .console-stock-row .stock-feedback:empty {display:none}
+
+#movimentiGuidati [hidden] {display:none!important}
+#movimentiGuidati summary {cursor:pointer;font-weight:750;padding-block:8px}
+#passaggioGuidato,.guided-target {padding:10px;border-left:4px solid #3382b8;background:var(--card);font-weight:700}
+#movimentiGuidati label {display:grid;gap:4px}
+#movimentiGuidati :is(button,input,select) {min-height:44px;max-width:100%}
+#movimentiGuidati li {margin-block:8px;overflow-wrap:anywhere}
+#movimentiGuidati [role=status]:not(:empty) {padding:8px;background:var(--card);border-radius:6px}
+@media(max-width:600px){
+ #movimentiGuidati .row {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+ #movimentiGuidati .row label:has([name=pezzo]),#movimentiGuidati .row label:has([name=zona]) {grid-column:1/-1}
+ #movimentiGuidati input,#movimentiGuidati select {width:100%;min-width:0;font-size:16px}
+}
 </style>
   <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script defer src="app.js?v=40.4"></script>
-  <script defer src="guidato.js?v=40.4"></script>
-  <script defer src="cloud.js?v=40.4"></script>
+  <script defer src="app.js?v=40.5"></script>
+  <script defer src="guidato.js?v=40.5"></script>
+  <script defer src="cloud.js?v=40.5"></script>
   <script defer src="v32.js?v=33.1"></script>
   <script defer src="v33.js?v=33.1"></script>
 </head>
@@ -729,8 +742,9 @@
 
         <details id="movimentiGuidati" class="box" style="grid-column:1/-1" hidden>
           <summary>Movimento guidato · Ripiano 2</summary>
+          <p id="passaggioGuidato">1 di 2 · Identifica il componente</p>
           <form>
-            <div class="row">
+            <div class="row" id="movimentoAvvio">
               <label>Operazione <select name="azione"><option value="preleva">Preleva</option><option value="carica">Carica</option></select></label>
               <label>Quantità <input name="quantita" type="number" min="1" max="2147483647" step="1" value="1" required></label>
               <label>Codice componente <input id="codiceMovimentoPezzo" name="pezzo" required></label>
@@ -738,19 +752,21 @@
               <button type="submit">Avvia movimento</button>
             </div>
             <div id="movimentoConferma" hidden>
-              <p id="movimentoDestinazione"></p>
+              <p id="movimentoDestinazione" class="guided-target"></p>
               <div class="row">
                 <label>Codice zona <input id="codiceMovimentoZona" name="zona"></label>
                 <button type="button" class="secondary" data-scan="codiceMovimentoZona">Scansiona zona</button>
-                <button type="button" data-command="conferma">Conferma</button>
+                <button type="button" data-command="conferma">Registra movimento</button>
                 <button type="button" class="secondary" data-command="annulla">Annulla</button>
               </div>
             </div>
           </form>
           <video playsinline muted hidden style="width:min(100%,360px)"></video>
           <p role="status"></p>
-          <h3>Movimenti recenti e da confermare</h3>
-          <ul id="movimentiRecenti"></ul>
+          <h3>Movimenti da confermare</h3>
+          <ul id="movimentiAperti"></ul>
+          <details><summary>Storico movimenti</summary>
+          <ul id="movimentiRecenti"></ul></details>
         </details>
         <!-- Preset per Console -->
         <details class="box" style="grid-column:1/13;background:var(--card)"><summary>Preset</summary>
@@ -785,11 +801,11 @@
     <p class="muted" style="margin-top:10px">Dopo il primo caricamento, il sito funziona anche offline (Aggiungi a schermata Home).</p>
   </main>
 
-  <footer style="text-align:center;margin:16px 0" class="muted">Versione UI: <b>v40.4</b></footer>
+  <footer style="text-align:center;margin:16px 0" class="muted">Versione UI: <b>v40.5</b></footer>
 
   <script>
     if('serviceWorker' in navigator){
-      window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=40.4'));
+      window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=40.5'));
     }
   </script>
 <script>document.getElementById('openQrLabels')?.addEventListener('click',()=>window.location.assign('./etichette.html'));document.getElementById('openMainQr')?.addEventListener('click',()=>window.location.assign('./qr-principale.html'));</script></body>

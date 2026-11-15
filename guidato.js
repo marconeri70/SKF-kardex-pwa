@@ -76,6 +76,59 @@
   panel.querySelector('#movimentoConferma').hidden=!movement;
   form.zona.value='';
  }
+ const labels=panel.querySelector('#etichetteMovimenti');
+ const zoneSelect=labels.querySelector('select');
+ const api='https://skf-kardex-api.vocidicassino.workers.dev/api/gruppi';
+ async function readLabels(url,key){
+  const response=await fetch(url,{cache:'no-store'});
+  if(!response.ok)throw Error('Impossibile caricare le etichette');
+  const rows=(await response.json())[key];
+  if(!Array.isArray(rows))throw Error('Elenco etichette non disponibile');
+  return rows;
+ }
+ labels.addEventListener('toggle',()=>{
+  if(!labels.open)return;
+  run(async()=>{
+   const zones=await readLabels(api,'gruppi');
+   zoneSelect.replaceChildren(...zones.map(zone=>new Option(
+    'Ripiano '+zone.ripiano+' · '+zone.posizione+' · '+zone.nome,zone.id)));
+  });
+ });
+ labels.querySelector('#stampaEtichette').onclick=()=>{
+  const option=zoneSelect.selectedOptions[0];
+  if(!option||busy)return;
+  const sheet=window.open('','_blank');
+  if(!sheet){status.textContent='Consenti l’apertura della pagina di stampa.';return;}
+  sheet.opener=null;
+  const doc=sheet.document;
+  doc.title='Etichette SKF Kardex';
+  doc.body.textContent='Caricamento etichette…';
+  run(async()=>{
+   try{
+    const items=await readLabels(api+'/'+encodeURIComponent(option.value)+'/componenti','componenti');
+    const style=doc.createElement('style');
+    style.textContent='body{font:16px system-ui} main{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px} article{display:flex;gap:8px;align-items:center;border:1px solid;padding:8px;break-inside:avoid;overflow-wrap:anywhere} @media print{button{display:none}}';
+    doc.head.append(style);
+    const title=doc.createElement('h1');title.textContent=option.textContent;
+    const print=doc.createElement('button');print.textContent='Stampa';print.disabled=true;print.onclick=()=>sheet.print();
+    const grid=doc.createElement('main');
+    const images=[];
+    for(const [name,code] of [['QR della zona','SKF-Z-'+option.value],...items.map(item=>[item.tipo,'SKF-P-'+item.id])]){
+     const card=doc.createElement('article');
+     const qr=doc.createElement('img');qr.width=84;qr.height=84;qr.alt=code;
+     images.push(new Promise((resolve,reject)=>{qr.onload=resolve;qr.onerror=reject;}));
+     qr.src='https://api.qrserver.com/v1/create-qr-code/?size=240x240&qzone=4&data='+encodeURIComponent(code);
+     const caption=doc.createElement('div');caption.textContent=name+' · '+code;
+     card.append(qr,caption);grid.append(card);
+    }
+    doc.body.replaceChildren(title,print,grid);
+    await Promise.all(images);
+    print.disabled=false;
+   }catch(error){
+    doc.body.textContent='Etichette non disponibili. Chiudi questa scheda e riprova.';
+   }
+  });
+ };
  let draft;
  form.addEventListener('submit',event=>{
   event.preventDefault();if(selected)return;stopScan();
@@ -101,3 +154,4 @@
   };
  }
 })();
+

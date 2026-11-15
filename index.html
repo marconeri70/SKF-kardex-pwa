@@ -593,9 +593,9 @@
 }
 </style>
   <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script defer src="app.js?v=40.6"></script>
-  <script defer src="guidato.js?v=40.6"></script>
-  <script defer src="cloud.js?v=40.6"></script>
+  <script defer src="app.js?v=40.7"></script>
+  <script defer src="guidato.js?v=40.7"></script>
+  <script defer src="cloud.js?v=40.7"></script>
   <script defer src="v32.js?v=33.1"></script>
   <script defer src="v33.js?v=33.1"></script>
 </head>
@@ -744,7 +744,7 @@
         <div class="console-title">Console di prelievo <button type="button" id="returnToInventory" class="secondary" style="margin-left:12px">← Torna alla ricerca</button></div>
 
         <details id="movimentiGuidati" class="box" style="grid-column:1/-1" hidden>
-          <summary>Movimento guidato · Ripiano 2</summary>
+          <summary>Movimento guidato</summary>
           <p id="passaggioGuidato">1 di 2 · Identifica il componente</p>
           <form>
             <div class="row" id="movimentoAvvio">
@@ -766,6 +766,7 @@
           </form>
           <video playsinline muted hidden style="width:min(100%,360px)"></video>
           <p role="status"></p>
+          <details id="etichetteMovimenti"><summary>Stampa QR di zona e componenti</summary><label>Zona <select id="zonaEtichette"></select></label><button type="button" id="stampaEtichette">Prepara etichette</button></details>
           <h3>Movimenti da confermare</h3>
           <ul id="movimentiAperti"></ul>
           <details><summary>Storico movimenti</summary>
@@ -804,14 +805,15 @@
     <p class="muted" style="margin-top:10px">Dopo il primo caricamento, il sito funziona anche offline (Aggiungi a schermata Home).</p>
   </main>
 
-  <footer style="text-align:center;margin:16px 0" class="muted">Versione UI: <b>v40.6</b></footer>
+  <footer style="text-align:center;margin:16px 0" class="muted">Versione UI: <b>v40.7</b></footer>
 
   <script>
     if('serviceWorker' in navigator){
-      window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=40.6'));
+      window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=40.7'));
     }
   </script>
 <script>document.getElementById('openQrLabels')?.addEventListener('click',()=>window.location.assign('./etichette.html'));document.getElementById('openMainQr')?.addEventListener('click',()=>window.location.assign('./qr-principale.html'));</script></body>
 </html>
+
 
 

@@ -233,7 +233,24 @@ function updateUndefinedCounter(){
 let trayAdmin=false, trayLogged=false, selectedPosition='';
 const trayDialog=$('trayDialog');
 $('trayDialogClose')?.addEventListener('click',()=>trayDialog.close());
-window.addEventListener('kardex:auth',e=>{trayAdmin=!!e.detail?.admin;trayLogged=!!e.detail?.logged;if(trayDialog?.open)showTrayDialog();if($('positionDialog')?.open)showPositionDialog();if($('groupDialog')?.open)renderGroupDialog();});
+const shuttleControl=$('shuttleControl');
+const shuttleOpening=$('shuttleOpening');
+function setShuttleClosed(closed){
+ shuttleOpening.toggleAttribute('data-closed',closed);
+ $('trayMapButtons').inert=closed;
+ shuttleControl.setAttribute('aria-expanded',String(!closed));
+ shuttleControl.textContent=closed?'Apri serranda ↑':'Chiudi serranda ↓';
+}
+shuttleControl.addEventListener('click',()=>setShuttleClosed(!shuttleOpening.hasAttribute('data-closed')));
+window.addEventListener('kardex:auth',e=>{
+ const isAdmin=!!e.detail?.admin;
+ if(isAdmin!==trayAdmin){
+  setShuttleClosed(isAdmin);
+  shuttleOpening.toggleAttribute('data-operated',isAdmin);
+  shuttleControl.hidden=!isAdmin;
+  $('shuttleIndicator').hidden=isAdmin;
+ }
+ trayAdmin=isAdmin;trayLogged=!!e.detail?.logged;if(trayDialog?.open)showTrayDialog();if($('positionDialog')?.open)showPositionDialog();if($('groupDialog')?.open)renderGroupDialog();});
 window.addEventListener('kardex:tray-result',e=>{const m=$('trayDialogMessage');if(m)m.textContent=e.detail?.error||e.detail?.message||'';if(e.detail?.ok){if($('positionDialog')?.open)showPositionDialog();else showTrayDialog();}});
 
 const positionDialog=$('positionDialog');

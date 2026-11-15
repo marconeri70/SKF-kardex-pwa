@@ -107,10 +107,18 @@
    try{
     const items=await readLabels(api+'/'+encodeURIComponent(option.value)+'/componenti','componenti');
     const style=doc.createElement('style');
-    style.textContent='body{font:16px system-ui} main{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px} article{display:flex;gap:8px;align-items:center;border:1px solid;padding:8px;break-inside:avoid;overflow-wrap:anywhere} @media print{button{display:none}}';
+    style.textContent='body{font:16px system-ui} main{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px} article{display:flex;gap:8px;align-items:center;border:1px solid;padding:8px;break-inside:avoid;overflow-wrap:anywhere} .print-all{margin-bottom:10px} .label-print{display:flex;gap:8px;align-items:center;width:100%;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer} .label-print:focus-visible{outline:2px solid #005a93;outline-offset:4px} @media print{.print-all,.print-help{display:none} body[data-single] h1,body[data-single] article:not([data-selected]){display:none} body[data-single] main{display:block} body[data-single] article{display:inline-flex;max-width:220px}}';
     doc.head.append(style);
     const title=doc.createElement('h1');title.textContent=option.textContent;
-    const print=doc.createElement('button');print.textContent='Stampa';print.disabled=true;print.onclick=()=>sheet.print();
+    const print=doc.createElement('button');print.textContent='Stampa tutte le etichette';print.className='print-all';print.disabled=true;
+    let selected=null;
+    const clearSelection=()=>{
+      selected?.removeAttribute('data-selected');
+      selected=null;
+      doc.body.removeAttribute('data-single');
+    };
+    sheet.addEventListener('afterprint',clearSelection);
+    print.onclick=()=>{clearSelection();sheet.print();};
     const grid=doc.createElement('main');
     const images=[];
     for(const [name,code] of [['QR della zona','SKF-Z-'+option.value],...items.map(item=>[item.tipo,'SKF-P-'+item.id])]){
@@ -119,10 +127,25 @@
      images.push(new Promise((resolve,reject)=>{qr.onload=resolve;qr.onerror=reject;}));
      qr.src='https://api.qrserver.com/v1/create-qr-code/?size=240x240&qzone=4&data='+encodeURIComponent(code);
      const caption=doc.createElement('div');caption.textContent=name+' · '+code;
-     card.append(qr,caption);grid.append(card);
+     const label=doc.createElement('button');
+     label.type='button';
+     label.className='label-print';
+     label.setAttribute('aria-label','Stampa etichetta '+caption.textContent);
+     label.onclick=()=>{
+       clearSelection();
+       selected=card;
+       card.setAttribute('data-selected','');
+       doc.body.setAttribute('data-single','');
+       sheet.print();
+     };
+     label.append(qr,caption);card.append(label);grid.append(card);
     }
     doc.body.replaceChildren(title,print,grid);
     await Promise.all(images);
+    const help=doc.createElement('p');
+    help.className='print-help';
+    help.textContent='Seleziona un QR o il suo nome per stampare una sola etichetta.';
+    grid.before(help);
     print.disabled=false;
    }catch(error){
     doc.body.textContent='Etichette non disponibili. Chiudi questa scheda e riprova.';

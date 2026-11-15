@@ -1,14 +1,14 @@
-const CACHE_NAME = 'kardex-cache-v40.10';
+const CACHE_NAME = 'kardex-cache-v40.11';
 const ASSETS = [
   './manifest.webmanifest?v=30.1',
   './assets/icon-192.png?v=30.1',
   './assets/icon-512.png?v=30.1',
   './data/kardex.json',
   './data/warehouse-index-2026.json',
-  './app.js?v=40.10',
-  './cloud.js?v=40.10',
-  './guidato.js?v=40.10',
-  './index.html?v=40.10',
+  './app.js?v=40.11',
+  './cloud.js?v=40.11',
+  './guidato.js?v=40.11',
+  './index.html?v=40.11',
   './catalogo.html?v=37.2',
   './ripiano.html'
 ];

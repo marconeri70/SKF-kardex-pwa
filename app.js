@@ -355,7 +355,10 @@ function showPositionDialog(){
  if(trayAdmin)root.append(addForm('add-type','＋ Aggiungi tipologia','Nome nuova tipologia'));
  const unassigned=document.createElement('section');
  const header=document.createElement('h3');header.textContent='Zone della posizione';unassigned.append(header);
- for(const g of groups){const card=document.createElement('section');card.className='tray-dialog-entry position-group-card';const open=document.createElement('button');open.type='button';open.className='position-group-open';open.textContent='Apri '+g.nome+' · '+g.numero_componenti+(Number(g.numero_componenti)===1?' componente':' componenti')+' ›';open.onclick=()=>openGroup(g);card.append(open);
+ for(const g of groups){const card=document.createElement('section');card.className='tray-dialog-entry position-group-card';const open=document.createElement('button');open.type='button';open.className='position-group-open';const zoneName=document.createElement('span');
+ zoneName.textContent=g.nome+' · '+g.numero_componenti+(Number(g.numero_componenti)===1?' componente':' componenti');
+ const openLabel=document.createElement('strong');openLabel.textContent='Apri zona →';
+ open.append(zoneName,openLabel);open.onclick=()=>openGroup(g);card.append(open);
  const preview=document.createElement('p');preview.className='muted';preview.textContent='Caricamento riepilogo…';card.append(preview);
  fetch('https://skf-kardex-api.vocidicassino.workers.dev/api/gruppi/'+encodeURIComponent(g.id)+'/componenti',{cache:'no-store'})
  .then(async res=>{if(!res.ok)throw Error('HTTP '+res.status);return res.json();})
@@ -425,7 +428,7 @@ function showTrayDialog(){
    count.append(zonesLine);
   }
   if(!positionTypes.length&&!zoneCount)count.textContent='Vuota';
-  const arrow=document.createElement('span');arrow.className='tray-position-arrow';arrow.setAttribute('aria-hidden','true');arrow.textContent='›';
+  const arrow=document.createElement('span');arrow.className='tray-position-arrow';arrow.setAttribute('aria-hidden','true');arrow.textContent='Apri →';
   btn.append(name,count,arrow);
   btn.onclick=()=>{selectedPosition=p;trayDialog.close();showPositionDialog();positionDialog.showModal();};section.append(btn);
  }
@@ -440,7 +443,7 @@ function renderTrayMap(){
  buttons.replaceChildren();content.replaceChildren();
  for(const tray of trays){
   const b=document.createElement('button');b.type='button';b.className=selectedTray===tray?'selected':'secondary';
-  const items=ROWS.filter(r=>String(r.RIPIANO||'').trim()===tray);const heading=document.createElement('span');heading.className='tray-map-card-top';const number=document.createElement('strong');number.textContent=tray;const arrow=document.createElement('span');arrow.className='tray-map-card-arrow';arrow.textContent='›';heading.append(number,arrow);const types=document.createElement('span');types.className='tray-map-card-types';const trayTypes=(window.KARDEX_TIPOLOGIE||ROWS).filter(r=>String(r.RIPIANO).trim()===tray);for(const type of [...new Set(trayTypes.map(r=>String(r.TIPO||'').trim()).filter(Boolean))]){const line=document.createElement('span');line.textContent=type;types.append(line);}const count=document.createElement('span');count.className='tray-map-card-count';count.textContent=items.length+' component'+(items.length===1?'e':'i')+' · Apri ripiano';b.append(heading,types,count);b.setAttribute('aria-label','Apri ripiano '+tray+', '+items.length+' componenti');b.setAttribute('aria-pressed',String(selectedTray===tray));
+  const items=ROWS.filter(r=>String(r.RIPIANO||'').trim()===tray);const heading=document.createElement('span');heading.className='tray-map-card-top';const number=document.createElement('strong');number.textContent=tray;const arrow=document.createElement('span');arrow.className='tray-map-card-arrow';arrow.textContent='›';heading.append(number,arrow);const types=document.createElement('span');types.className='tray-map-card-types';const trayTypes=(window.KARDEX_TIPOLOGIE||ROWS).filter(r=>String(r.RIPIANO).trim()===tray);for(const type of [...new Set(trayTypes.map(r=>String(r.TIPO||'').trim()).filter(Boolean))]){const line=document.createElement('span');line.textContent=type;types.append(line);}const count=document.createElement('span');count.className='tray-map-card-count';count.textContent=items.length+' component'+(items.length===1?'e':'i');const action=document.createElement('span');action.className='tray-card-action';action.textContent='Apri ripiano →';b.append(heading,types,count,action);b.setAttribute('aria-label','Apri ripiano '+tray+', '+items.length+' componenti');b.setAttribute('aria-pressed',String(selectedTray===tray));
   b.onclick=()=>{selectedTray=tray;renderTrayMap();$('trayDialogMessage').textContent='';showTrayDialog();if(!trayDialog.open)trayDialog.showModal();};
   buttons.append(b);
  }

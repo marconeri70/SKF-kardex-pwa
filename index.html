@@ -591,11 +591,18 @@
  #movimentiGuidati ul {padding-inline-start:18px}
  #movimentiGuidati input,#movimentiGuidati select {width:100%;min-width:0;font-size:16px}
 }
+#positionDialog .position-group-open{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;background:#005195;color:white;border:2px solid #00437b;padding:10px 12px;cursor:pointer}
+#positionDialog .position-group-open strong{background:white;color:#00437b;border-radius:6px;padding:5px 9px}
+.tray-position-arrow,.tray-card-action{display:inline-block;background:#005195;color:white;border-radius:6px;padding:5px 9px;font-size:.875rem;font-weight:700;white-space:nowrap}
+#trayMap .tray-card-action{justify-self:start}
+#positionDialog .position-group-open:hover,.tray-position-arrow:hover,.tray-card-action:hover{background:#003b69}
+#trayMap button:focus-visible,#trayDialog button:focus-visible,#positionDialog button:focus-visible,#positionDialog summary:focus-visible,#groupDialog button:focus-visible{outline:3px solid #ffbd47;outline-offset:3px}
+#positionDialog .tray-dialog-entry details > summary{cursor:pointer;min-height:44px;align-content:center}
 </style>
   <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script defer src="app.js?v=40.10"></script>
-  <script defer src="guidato.js?v=40.10"></script>
-  <script defer src="cloud.js?v=40.10"></script>
+  <script defer src="app.js?v=40.11"></script>
+  <script defer src="guidato.js?v=40.11"></script>
+  <script defer src="cloud.js?v=40.11"></script>
   <script defer src="v32.js?v=33.1"></script>
   <script defer src="v33.js?v=33.1"></script>
 </head>
@@ -805,11 +812,11 @@
     <p class="muted" style="margin-top:10px">Dopo il primo caricamento, il sito funziona anche offline (Aggiungi a schermata Home).</p>
   </main>
 
-  <footer style="text-align:center;margin:16px 0" class="muted">Versione UI: <b>v40.10</b></footer>
+  <footer style="text-align:center;margin:16px 0" class="muted">Versione UI: <b>v40.11</b></footer>
 
   <script>
     if('serviceWorker' in navigator){
-      window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=40.10'));
+      window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=40.11'));
     }
   </script>
 <script>document.getElementById('openQrLabels')?.addEventListener('click',()=>window.location.assign('./etichette.html'));document.getElementById('openMainQr')?.addEventListener('click',()=>window.location.assign('./qr-principale.html'));</script></body>

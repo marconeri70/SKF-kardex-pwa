@@ -42,6 +42,10 @@
  document.addEventListener('visibilitychange',()=>{if(document.hidden)stopScan();});
  document.getElementById('returnToInventory').addEventListener('click',stopScan);
  window.addEventListener('kardex:auth',event=>{
+  const pickOnly=event.detail.ruolo==='solo_prelievo';
+  const loadOption=form.azione.querySelector('[value="carica"]');
+  loadOption.disabled=loadOption.hidden=pickOnly;
+  if(pickOnly)form.azione.value='preleva';
   panel.hidden=!event.detail.logged;
   if(panel.hidden){stopScan();list.replaceChildren();pending.replaceChildren();select(null);form.reset();}
   else if(panel.open&&request&&!busy)run(refresh);

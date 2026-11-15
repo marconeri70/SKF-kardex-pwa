@@ -25,9 +25,9 @@ function renderUser(){
   $('cloudImportAdmin').classList.toggle('hidden',!user||user.ruolo!=='admin');
   if(user)$('cloudLoginArea').classList.add('hidden');
   $('cloudUserArea').classList.toggle('hidden',!user);
-  $('cloudEditor').classList.toggle('hidden',!user);
+  $('cloudEditor').classList.toggle('hidden',!user||user.ruolo==='solo_prelievo');
   $('cloudUser').textContent=user?user.nome+' · '+user.ruolo:'';
-  window.dispatchEvent(new CustomEvent('kardex:auth',{detail:{logged:!!user,admin:user?.ruolo==='admin'}}));
+  window.dispatchEvent(new CustomEvent('kardex:auth',{detail:{logged:!!user,admin:user?.ruolo==='admin',ruolo:user?.ruolo}}));
   document.querySelectorAll('.cloudActions').forEach(el=>{
     el.replaceChildren();
     if(!user||!el.dataset.id)return;
@@ -150,7 +150,7 @@ async function refresh(){
  window.KARDEX_CLOUD_ONLINE=true;
  render();if(typeof analyzeTray==='function'&&$('c_vassoio_target'))analyzeTray($('c_vassoio_target').value);
  renderUser();status('Online · '+ROWS.length+' voci generali · '+groups.length+' gruppi');
- window.dispatchEvent(new CustomEvent('kardex:auth',{detail:{logged:!!user,admin:user?.ruolo==='admin'}}));
+ window.dispatchEvent(new CustomEvent('kardex:auth',{detail:{logged:!!user,admin:user?.ruolo==='admin',ruolo:user?.ruolo}}));
 }
 function resetForm(){$('cloudForm').reset();$('cloudId').value='';}
 window.addEventListener('kardex:render',renderUser);
@@ -214,18 +214,21 @@ async function loadOperators(){
   opMessage('');
   try{
     const data=await request('/api/operatori');
+    const pickOption=$('operatorPickOnly');
+    pickOption.disabled=pickOption.hidden=data.solo_prelievo!==true;
+    if(pickOption.disabled&&pickOption.selected)$('operatorRole').value='operatore';
     const list=Array.isArray(data)?data:(data.operatori||[]);
     const root=$('operatorList');root.replaceChildren();
     if(!list.length){root.textContent='Nessun operatore nell’elenco';return;}
     for(const op of list){
       const row=document.createElement('div');row.className='row';row.style.cssText='padding:8px 0;border-bottom:1px solid var(--border)';
-      const label=document.createElement('span');label.style.flex='1';label.textContent=(op.nome||op.email)+' · '+op.email+' · '+op.ruolo+' · '+(op.attivo?'Attivo':'Disattivato');
+      const label=document.createElement('span');label.style.flex='1';label.textContent=(op.nome||op.email)+' · '+op.email+' · '+(op.ruolo==='solo_prelievo'?'Solo prelievo':op.ruolo)+' · '+(op.attivo?'Attivo':'Disattivato');
       row.append(label);
       if(String(op.id)!==String(user.id)){
         const btn=document.createElement('button');btn.className='secondary';btn.textContent=op.attivo?'Disattiva':'Riattiva';
         btn.onclick=async()=>{
           if(!confirm((op.attivo?'Disattivare':'Riattivare')+' '+op.email+'?'))return;
-          try{await request('/api/operatori/'+encodeURIComponent(op.id),'PATCH',{attivo:op.attivo?0:1});await loadOperators();}
+          try{await request('/api/operatori/'+encodeURIComponent(op.id)+'/stato','PATCH',{attivo:!op.attivo});await loadOperators();}
           catch(e){opMessage(e.message);}
         };row.append(btn);
       }

@@ -230,7 +230,7 @@ function updateUndefinedCounter(){
   const n=ROWS.filter(r=>norm(r.POSIZIONE)==='da definire').length;
   el.textContent=n+' posizioni da definire';
 }
-let trayAdmin=false, trayLogged=false, selectedPosition='';
+let trayAdmin=false, trayLogged=false, trayPickOnly=false, selectedPosition='';
 const trayDialog=$('trayDialog');
 $('trayDialogClose')?.addEventListener('click',()=>trayDialog.close());
 const shuttleControl=$('shuttleControl');
@@ -250,7 +250,7 @@ window.addEventListener('kardex:auth',e=>{
   shuttleControl.hidden=!isAdmin;
   $('shuttleIndicator').hidden=isAdmin;
  }
- trayAdmin=isAdmin;trayLogged=!!e.detail?.logged;if(trayDialog?.open)showTrayDialog();if($('positionDialog')?.open)showPositionDialog();if($('groupDialog')?.open)renderGroupDialog();});
+ trayAdmin=isAdmin;trayLogged=!!e.detail?.logged;trayPickOnly=e.detail?.ruolo==='solo_prelievo';if(trayDialog?.open)showTrayDialog();if($('positionDialog')?.open)showPositionDialog();if($('groupDialog')?.open)renderGroupDialog();});
 window.addEventListener('kardex:tray-result',e=>{const m=$('trayDialogMessage');if(m)m.textContent=e.detail?.error||e.detail?.message||'';if(e.detail?.ok){if($('positionDialog')?.open)showPositionDialog();else showTrayDialog();}});
 
 const positionDialog=$('positionDialog');
@@ -308,7 +308,9 @@ function renderStock(group, item) {
  form.onsubmit = event => event.preventDefault();
  take.onclick = () => move('preleva');
  load.onclick = () => move('carica');
- form.append(label,take,load,feedback);
+ form.append(label,take);
+ if(!trayPickOnly)form.append(load);
+ form.append(feedback);
  section.append(form);
  return section;
 }
@@ -337,9 +339,9 @@ async function renderGroupDialog(){
  }
  const items=data.componenti||[];$('groupDialogMessage').textContent=items.length+' component'+(items.length===1?'e':'i');
  const makeForm=(item)=>{const f=document.createElement('form');f.className='tray-dialog-form';const label=document.createElement('label');label.textContent='Codice / tipologia';const input=document.createElement('input');input.required=true;input.maxLength=150;input.value=item?.tipo||'';input.placeholder='Codice del componente';label.append(input);const btn=document.createElement('button');btn.type='submit';btn.textContent=item?'Salva modifica':'Aggiungi componente';f.append(label,btn);f.onsubmit=e=>{e.preventDefault();const tipo=input.value.trim();if(!tipo)return;btn.disabled=true;groupAction(item?'edit-item':'add-item',g,item,tipo);};return f;};
- for(const item of items){const card=document.createElement('section');card.className='tray-dialog-entry position-component-card';const title=document.createElement('strong');title.textContent=item.tipo;card.append(title);if(Object.hasOwn(item,'giacenza'))card.append(renderStock(g,item));if(trayLogged){const actions=document.createElement('div');actions.className='tray-dialog-actions';const edit=document.createElement('button');edit.type='button';edit.className='secondary';edit.textContent='Modifica';const del=document.createElement('button');del.type='button';del.className='secondary';del.textContent='Elimina';const f=makeForm(item);f.hidden=true;edit.onclick=()=>{f.hidden=!f.hidden;};del.onclick=()=>{if(confirm('Eliminare «'+item.tipo+'» dal gruppo '+g.nome+'?'))groupAction('delete-item',g,item);};actions.append(edit,del);card.append(actions,f);}root.append(card);}
+ for(const item of items){const card=document.createElement('section');card.className='tray-dialog-entry position-component-card';const title=document.createElement('strong');title.textContent=item.tipo;card.append(title);if(Object.hasOwn(item,'giacenza'))card.append(renderStock(g,item));if(trayLogged&&!trayPickOnly){const actions=document.createElement('div');actions.className='tray-dialog-actions';const edit=document.createElement('button');edit.type='button';edit.className='secondary';edit.textContent='Modifica';const del=document.createElement('button');del.type='button';del.className='secondary';del.textContent='Elimina';const f=makeForm(item);f.hidden=true;edit.onclick=()=>{f.hidden=!f.hidden;};del.onclick=()=>{if(confirm('Eliminare «'+item.tipo+'» dal gruppo '+g.nome+'?'))groupAction('delete-item',g,item);};actions.append(edit,del);card.append(actions,f);}root.append(card);}
  if(!items.length){const p=document.createElement('p');p.className='muted';p.textContent='Questo gruppo non contiene ancora componenti.';root.append(p);}
- if(trayLogged){const section=document.createElement('section');section.className='tray-dialog-entry position-add-card';const h=document.createElement('strong');h.textContent='＋ Nuovo componente';section.append(h,makeForm(null));root.append(section);}
+ if(trayLogged&&!trayPickOnly){const section=document.createElement('section');section.className='tray-dialog-entry position-add-card';const h=document.createElement('strong');h.textContent='＋ Nuovo componente';section.append(h,makeForm(null));root.append(section);}
 }
 $('groupDialogBack')?.addEventListener('click',()=>{$('groupDialog').close();showPositionDialog();positionDialog.showModal();});
 window.addEventListener('kardex:group-result',e=>{const d=e.detail||{};if(d.ok){renderGroupDialog();window.dispatchEvent(new Event('kardex:groups-refresh'));}else $(positionDialog.open?'positionDialogMessage':'groupDialogMessage').textContent=d.error||'Errore';});
@@ -354,14 +356,14 @@ function showPositionDialog(){
  const root=$('positionDialogRows');root.replaceChildren();
  if(groups.length){
   const guide=document.createElement('p');
-  guide.textContent=trayLogged?'Apri una zona, scegli il componente e indica la quantità. Poi premi Preleva o Carica.':'Apri una zona per vedere i componenti e le disponibilità.';
+  guide.textContent=trayLogged?'Apri una zona, scegli il componente e indica la quantità. Poi premi '+(trayPickOnly?'Preleva.':'Preleva o Carica.'):'Apri una zona per vedere i componenti e le disponibilità.';
   root.append(guide);
  }
  const h=document.createElement('h3');h.textContent='Tipologie dell’indice generale';root.append(h);
  for(const r of matches){
  const entry=document.createElement('section');entry.className='tray-dialog-entry';
  const name=document.createElement('strong');name.textContent=r.TIPO;entry.append(name);
- if(trayLogged){
+ if(trayLogged&&!trayPickOnly){
   const form=document.createElement('form');form.className='tray-dialog-form';form.hidden=true;
   const typeLabel=document.createElement('label');typeLabel.textContent='Nome componente';const typeInput=document.createElement('input');typeInput.value=r.TIPO;typeInput.maxLength=150;typeInput.required=true;typeLabel.append(typeInput);
   const positionLabel=document.createElement('label');positionLabel.textContent='Posizione nel ripiano';const posSelect=document.createElement('select');
@@ -375,7 +377,7 @@ function showPositionDialog(){
  const summary=document.createElement('summary');
  const count=groups.filter(g=>g.tipologia_id===r.id).length;
  summary.textContent=count?'Mostra '+count+(count===1?' zona':' zone'):'Nessuna zona associata';
- zones.hidden=!count&&!trayLogged;
+ zones.hidden=!count&&(!trayLogged||trayPickOnly);
  zones.append(summary);entry.append(zones);typeZones.set(r.id,zones);
  root.append(entry);
 }
@@ -400,7 +402,7 @@ function showPositionDialog(){
  .then(async res=>{if(!res.ok)throw Error('HTTP '+res.status);return res.json();})
  .then(data=>{if(!card.isConnected)return;const items=Array.isArray(data.componenti)?data.componenti:[];preview.textContent=items.length?items.map(x=>x.tipo).join(' · '):'Zona vuota';})
  .catch(()=>{if(card.isConnected)preview.textContent='Riepilogo non disponibile';});
- if(trayLogged){const actions=document.createElement('div');actions.className='tray-dialog-actions';const rename=document.createElement('button');rename.type='button';rename.className='secondary';rename.textContent='Rinomina gruppo';rename.onclick=()=>{const name=prompt('Nuovo nome del gruppo',g.nome);if(name&&name.trim()&&name.trim()!==g.nome)groupAction('rename-group',g,null,name.trim());};const del=document.createElement('button');del.type='button';del.className='secondary';del.textContent='Elimina gruppo';del.disabled=Number(g.numero_componenti)>0;del.title=del.disabled?'Svuota prima il gruppo':'';del.onclick=()=>{if(confirm('Eliminare il gruppo '+g.nome+'?'))groupAction('delete-group',g);};actions.append(rename,del);card.append(actions);}
+ if(trayLogged&&!trayPickOnly){const actions=document.createElement('div');actions.className='tray-dialog-actions';const rename=document.createElement('button');rename.type='button';rename.className='secondary';rename.textContent='Rinomina gruppo';rename.onclick=()=>{const name=prompt('Nuovo nome del gruppo',g.nome);if(name&&name.trim()&&name.trim()!==g.nome)groupAction('rename-group',g,null,name.trim());};const del=document.createElement('button');del.type='button';del.className='secondary';del.textContent='Elimina gruppo';del.disabled=Number(g.numero_componenti)>0;del.title=del.disabled?'Svuota prima il gruppo':'';del.onclick=()=>{if(confirm('Eliminare il gruppo '+g.nome+'?'))groupAction('delete-group',g);};actions.append(rename,del);card.append(actions);}
  if(trayAdmin&&matches.length){
   const label=document.createElement('label');label.textContent='Tipologia ';
   const select=document.createElement('select');
@@ -413,10 +415,10 @@ function showPositionDialog(){
  }
  (typeZones.get(g.tipologia_id)||unassigned).append(card);
  }
- if(trayLogged){
+ if(trayLogged&&!trayPickOnly){
   for(const [id,zones] of typeZones)zones.append(addForm('add-group','＋ Crea zona','Nome nuova zona',id));
  }
- if(trayLogged)unassigned.append(addForm('add-group','＋ Crea zona','Nome nuova zona',null));
+ if(trayLogged&&!trayPickOnly)unassigned.append(addForm('add-group','＋ Crea zona','Nome nuova zona',null));
  if(unassigned.children.length>1){
   if(groups.some(g=>!typeZones.has(g.tipologia_id)))h.before(unassigned);
   else root.append(unassigned);

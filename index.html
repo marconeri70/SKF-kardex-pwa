@@ -610,9 +610,9 @@
 @media(prefers-reduced-motion:reduce){.shuttle-opening[data-operated],.shuttle-opening .shuttle-door{transition:none}}
 </style>
   <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script defer src="app.js?v=40.13"></script>
-  <script defer src="guidato.js?v=40.13"></script>
-  <script defer src="cloud.js?v=40.13"></script>
+  <script defer src="app.js?v=40.14"></script>
+  <script defer src="guidato.js?v=40.14"></script>
+  <script defer src="cloud.js?v=40.14"></script>
   <script defer src="v32.js?v=33.1"></script>
   <script defer src="v33.js?v=33.1"></script>
 </head>
@@ -671,7 +671,7 @@
             <input id="operatorName" placeholder="Nome e cognome" required maxlength="100">
             <input id="operatorEmail" type="email" placeholder="Email operatore" required>
             <input id="operatorPassword" type="password" placeholder="Password provvisoria (12+)" minlength="12" required autocomplete="new-password">
-            <select id="operatorRole"><option value="operatore">Operatore</option><option value="admin">Amministratore</option></select>
+            <select id="operatorRole"><option value="operatore">Operatore</option><option id="operatorPickOnly" value="solo_prelievo" hidden disabled>Solo prelievo</option></select>
             <button type="submit">Crea operatore</button>
           </form>
           <p id="operatorMessage" class="muted" role="status"></p>
@@ -823,11 +823,11 @@
     <p class="muted" style="margin-top:10px">Offline puoi consultare i dati locali. Per registrare prelievi e carichi serve una connessione.</p>
   </main>
 
-  <footer style="text-align:center;margin:16px 0" class="muted">Versione UI: <b>v40.13</b></footer>
+  <footer style="text-align:center;margin:16px 0" class="muted">Versione UI: <b>v40.14</b></footer>
 
   <script>
     if('serviceWorker' in navigator){
-      window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=40.13'));
+      window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=40.14'));
     }
   </script>
 <script>document.getElementById('openQrLabels')?.addEventListener('click',()=>window.location.assign('./etichette.html'));document.getElementById('openMainQr')?.addEventListener('click',()=>window.location.assign('./qr-principale.html'));</script></body>

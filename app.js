@@ -366,7 +366,11 @@ function printQrLabels(headingText,labels,message){
   const card=doc.createElement('article'), image=doc.createElement('img'), title=doc.createElement('strong');
   image.alt='QR '+label;
   title.textContent=label;
-  card.append(image,title);grid.append(card);
+  const save=doc.createElement('button');
+  save.type='button';save.textContent='Scarica PNG';save.setAttribute('aria-label','Scarica PNG '+label);
+  save.onclick=()=>window.kardexDownloadQr(payload,label,status,save);
+  const info=doc.createElement('div');info.append(title,doc.createElement('br'),save);
+  card.append(image,info);grid.append(card);
   return new Promise(resolve=>{
    image.onload=()=>resolve(true);
    image.onerror=()=>resolve(false);

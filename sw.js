@@ -1,14 +1,15 @@
-const CACHE_NAME = 'kardex-cache-v40.18';
+const CACHE_NAME = 'kardex-cache-v40.19';
 const ASSETS = [
   './manifest.webmanifest?v=30.1',
   './assets/icon-192.png?v=30.1',
   './assets/icon-512.png?v=30.1',
   './data/kardex.json',
   './data/warehouse-index-2026.json',
-  './app.js?v=40.18',
-  './cloud.js?v=40.18',
-  './guidato.js?v=40.18',
-  './index.html?v=40.18',
+  './app.js?v=40.19',
+  './qr-download.js?v=40.19',
+  './cloud.js?v=40.19',
+  './guidato.js?v=40.19',
+  './index.html?v=40.19',
   './catalogo.html?v=37.2',
   './ripiano.html'
 ];
@@ -28,7 +29,7 @@ self.addEventListener('fetch',event=>{
     event.respondWith(fetch(req,{cache:'no-store'}).then(res=>{
       if(res.ok){const copy=res.clone();event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.put(req,copy)));}
       return res;
-    }).catch(()=>caches.match(req).then(cached=>cached||caches.match(url.pathname.endsWith('/ripiano.html')?'./ripiano.html':url.pathname.endsWith('/catalogo.html')?'./catalogo.html?v=37.2':'./index.html?v=40.18'))));
+    }).catch(()=>caches.match(req).then(cached=>cached||caches.match(url.pathname.endsWith('/ripiano.html')?'./ripiano.html':url.pathname.endsWith('/catalogo.html')?'./catalogo.html?v=37.2':'./index.html?v=40.19'))));
     return;
   }
   if(url.pathname.endsWith('/app.js')||url.pathname.endsWith('/cloud.js')){

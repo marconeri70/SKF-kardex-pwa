@@ -61,6 +61,7 @@ async function loadData(){
   loadState();
   render();
   buildConsolePresetSelect();
+  openPositionFromQr();
 }
 
 /* ======= Ricerca / Filtri ======= */
@@ -345,6 +346,61 @@ async function renderGroupDialog(){
 }
 $('groupDialogBack')?.addEventListener('click',()=>{$('groupDialog').close();showPositionDialog();positionDialog.showModal();});
 window.addEventListener('kardex:group-result',e=>{const d=e.detail||{};if(d.ok){renderGroupDialog();window.dispatchEvent(new Event('kardex:groups-refresh'));}else $(positionDialog.open?'positionDialogMessage':'groupDialogMessage').textContent=d.error||'Errore';});
+const positionQrParams=new URLSearchParams(location.search);
+function openPositionFromQr(){
+ const tray=positionQrParams.get('ripiano')?.trim();
+ const position=positionQrParams.get('posizione')?.trim();
+ if(!tray||!position||tray.length>80||position.length>80)return;
+ showData();
+ selectedTray=tray;
+ selectedPosition=position;
+ showPositionDialog();
+ positionDialog.showModal();
+}
+function printPositionLabels(tray,positions,message){
+ const sheet=window.open('','_blank');
+ if(!sheet){message.textContent='Consenti l’apertura della pagina per stampare i QR.';return;}
+ sheet.opener=null;
+ const doc=sheet.document;
+ doc.title='QR posizioni · Ripiano '+tray;
+ doc.documentElement.lang='it';
+ const style=doc.createElement('style');
+ style.textContent='body{font:16px system-ui;margin:16px}main{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}article{border:1px solid;padding:12px;break-inside:avoid;display:flex;align-items:center;gap:12px;overflow-wrap:anywhere}img{width:85px;height:85px}button{margin-bottom:12px}@media print{button,[role=status]{display:none}}';
+ doc.head.append(style);
+ const heading=doc.createElement('h1');heading.textContent='Ripiano '+tray+' · QR posizioni';
+ const print=doc.createElement('button');print.textContent='Stampa etichette';print.disabled=true;
+ print.onclick=()=>sheet.print();
+ const status=doc.createElement('p');status.setAttribute('role','status');status.textContent='Caricamento dei QR…';
+ const grid=doc.createElement('main');
+ doc.body.append(heading,print,status,grid);
+ const ready=positions.map(position=>{
+  const url=new URL('./index.html',location.href);
+  url.searchParams.set('ripiano',tray);
+  url.searchParams.set('posizione',position);
+  const card=doc.createElement('article'), image=doc.createElement('img'), title=doc.createElement('strong');
+  image.alt='QR '+position;
+  title.textContent='Ripiano '+tray+' · '+position;
+  card.append(image,title);grid.append(card);
+  return new Promise(resolve=>{
+   image.onload=()=>resolve(true);
+   image.onerror=()=>resolve(false);
+   image.src='https://api.qrserver.com/v1/create-qr-code/?size=320x320&qzone=4&data='+encodeURIComponent(url.href);
+  });
+ });
+ Promise.all(ready).then(results=>{
+  print.disabled=!results.every(Boolean);
+  status.textContent=print.disabled?'Uno o più QR non sono disponibili. Riapri le etichette per riprovare.':'';
+ });
+}
+function positionPrintButton(label,positions,message){
+ const button=document.createElement('button');
+ button.type='button';
+ button.className='secondary';
+ button.textContent=label;
+ const tray=selectedTray;
+ button.onclick=()=>printPositionLabels(tray,positions,$(message));
+ return button;
+}
 function showPositionDialog(){
  $('positionDialogClose').textContent=consoleView.classList.contains('hidden')?'← Torna al ripiano':'← Torna al vassoio';
  if(!positionDialog||!selectedTray||!selectedPosition)return;
@@ -354,6 +410,7 @@ function showPositionDialog(){
  $('positionDialogSummary').textContent=matches.length+' voci generali · '+groups.length+' gruppi';
  const typeZones=new Map();
  const root=$('positionDialogRows');root.replaceChildren();
+ if(trayAdmin)root.append(positionPrintButton('Stampa QR di questa posizione',[selectedPosition],'positionDialogMessage'));
  if(groups.length){
   const guide=document.createElement('p');
   guide.textContent=trayLogged?'Apri una zona, scegli il componente e indica la quantità. Poi premi '+(trayPickOnly?'Preleva.':'Preleva o Carica.'):'Apri una zona per vedere i componenti e le disponibilità.';
@@ -377,6 +434,7 @@ function showPositionDialog(){
  const summary=document.createElement('summary');
  const count=groups.filter(g=>g.tipologia_id===r.id).length;
  summary.textContent=count?'Mostra '+count+(count===1?' zona':' zone'):'Nessuna zona associata';
+ zones.open=!!count&&positionQrParams.get('ripiano')===selectedTray&&positionQrParams.get('posizione')===selectedPosition;
  zones.hidden=!count&&(!trayLogged||trayPickOnly);
  zones.append(summary);entry.append(zones);typeZones.set(r.id,zones);
  root.append(entry);
@@ -448,6 +506,7 @@ function showTrayDialog(){
  const section=document.createElement('section');section.className='position-nav';
  const heading=document.createElement('h3');heading.textContent='Posizioni del ripiano';section.append(heading);
  const positions=[...new Set([...(window.KARDEX_POSITIONS||['Sinistra','Centrale','Destra','Da definire']),...matches.map(r=>r.POSIZIONE),...groups.map(g=>g.posizione)].filter(Boolean))];
+ if(trayAdmin)root.append(positionPrintButton('Stampa QR delle posizioni',positions,'trayDialogMessage'));
  for(const p of positions){
   const positionTypes=[...new Set(visibleTypes.filter(r=>r.POSIZIONE===p).map(r=>r.TIPO).filter(Boolean))];
   const zones=groups.filter(g=>g.posizione===p);

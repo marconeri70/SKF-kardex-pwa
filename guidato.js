@@ -6,7 +6,7 @@
  const pending=panel.querySelector('#movimentiAperti');
  const start=panel.querySelector('#movimentoAvvio');
  const step=panel.querySelector('#passaggioGuidato');
- let request, busy=false, selected;
+ let request, busy=false, selected, draft, expected;
  const scanButtons=panel.querySelectorAll('[data-scan]');
  let stream, scanVersion=0;
  const video=panel.querySelector('video');
@@ -19,7 +19,7 @@
   stopScan();
   status.textContent='';
   if(!navigator.mediaDevices?.getUserMedia){
-   status.textContent='Usa un lettore QR oppure inserisci il codice nel campo.';
+   status.textContent='Fotocamera non disponibile. Per continuare serve la scansione.';
    field.focus();return;
   }
   const version=scanVersion;
@@ -28,7 +28,7 @@
    try{if(window.BarcodeDetector)detector=new window.BarcodeDetector({formats:['qr_code']});}catch{}
    const canvas=document.createElement('canvas');
    const context=canvas.getContext('2d',{willReadFrequently:true});
-   if(!detector&&(!window.jsQR||!context))throw Error('Lettore QR non disponibile. Inserisci il codice manualmente.');
+   if(!detector&&(!window.jsQR||!context))throw Error('Lettore QR non disponibile. Per continuare serve la scansione.');
    const camera=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}}});
    if(version!==scanVersion){camera.getTracks().forEach(track=>track.stop());return;}
    stream=camera;video.srcObject=stream;video.hidden=false;await video.play();
@@ -38,7 +38,7 @@
      try{value=(await detector.detect(video))[0]?.rawValue;}catch{detector=null;}
     }
     if(!detector){
-     if(!window.jsQR||!context)throw Error('Lettore QR non disponibile. Inserisci il codice manualmente.');
+     if(!window.jsQR||!context)throw Error('Lettore QR non disponibile. Per continuare serve la scansione.');
      if(video.videoWidth&&video.videoHeight){
       const scale=Math.min(1,960/Math.max(video.videoWidth,video.videoHeight));
       canvas.width=Math.round(video.videoWidth*scale);
@@ -49,10 +49,14 @@
      }
     }
     if(version!==scanVersion)return;
-    if(value){field.value=value;stopScan();field.focus();return;}
+    if(value){
+     if(field===form.pezzo&&expected&&value!==expected.pezzo){
+      stopScan();status.textContent='QR diverso dal componente selezionato. Scansiona '+expected.nome+'.';return;
+     }
+     field.value=value;stopScan();field.focus();return;}
     await new Promise(resolve=>setTimeout(resolve,150));
    }
-  }catch(error){if(version===scanVersion){stopScan();status.textContent=error.name==='NotAllowedError'?'Consenti l’accesso alla fotocamera oppure inserisci il codice manualmente.':error.name==='NotFoundError'?'Fotocamera non trovata. Inserisci il codice manualmente.':error.message;}}
+  }catch(error){if(version===scanVersion){stopScan();status.textContent=error.name==='NotAllowedError'?'Consenti l’accesso alla fotocamera e riprova.':error.name==='NotFoundError'?'Fotocamera non trovata. Per continuare serve la scansione.':error.message;}}
  }
  scanButtons.forEach(button=>button.onclick=()=>scan(document.getElementById(button.dataset.scan)));
  panel.addEventListener('toggle',()=>{if(panel.open&&request)run(refresh);else stopScan();});
@@ -64,7 +68,7 @@
   loadOption.disabled=loadOption.hidden=pickOnly;
   if(pickOnly)form.azione.value='preleva';
   panel.hidden=!event.detail.logged;
-  if(panel.hidden){stopScan();list.replaceChildren();pending.replaceChildren();select(null);form.reset();}
+  if(panel.hidden){expected=null;draft=null;stopScan();list.replaceChildren();pending.replaceChildren();select(null);form.reset();}
   else if(panel.open&&request&&!busy)run(refresh);
  });
  window.KARDEX_GUIDATO_CONNECT=callback=>{request=callback;};
@@ -100,20 +104,35 @@
   panel.querySelector('#movimentoConferma').hidden=!movement;
   form.zona.value='';
  }
- let draft;
+ window.addEventListener('kardex:guided-start',event=>{
+  if(panel.hidden)return;
+  panel.open=true;
+  panel.scrollIntoView({block:'start'});
+  if(busy||selected){status.textContent='Completa o annulla il movimento in corso.';return;}
+  stopScan();
+  expected=event.detail;
+  form.azione.value=expected.azione;
+  form.quantita.value=expected.quantita;
+  form.pezzo.value='';draft=null;
+  step.textContent='1 di 2 · Scansiona '+expected.nome;
+  panel.querySelector('[data-scan="codiceMovimentoPezzo"]').focus();
+ });
  form.addEventListener('submit',event=>{
-  event.preventDefault();if(selected)return;stopScan();
+  event.preventDefault();if(selected)return;
+  if(!form.pezzo.value){status.textContent='Scansiona il QR del componente prima di avviare.';return;}
+  stopScan();
   run(async()=>{
    const data={azione:form.azione.value,quantita:form.quantita.valueAsNumber,pezzo:form.pezzo.value.trim()};
    const key=JSON.stringify(data);
    if(draft?.key!==key)draft={key,id:crypto.randomUUID()};
    const {movimento}=await request({comando:'avvia',id:draft.id,...data});
-   draft=null;select(movimento);form.zona.focus();await refresh();
+   draft=null;expected=null;select(movimento);form.zona.focus();await refresh();
   });
  });
  for(const comando of ['conferma','annulla']){
   panel.querySelector('[data-command='+comando+']').onclick=()=>{
    if(!selected)return;
+   if(comando==='conferma'&&!form.zona.value){status.textContent='Scansiona il QR della zona prima di confermare.';return;}
    stopScan();
    run(async()=>{
     await request({comando,id:selected.id,zona:form.zona.value.trim()});

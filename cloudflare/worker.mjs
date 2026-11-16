@@ -104,34 +104,8 @@ if(path==='/api/movimenti-guidati'){
 }
 const movement = /^\/api\/gruppi\/(\d+)\/componenti\/(\d+)\/giacenza$/.exec(path);
 if (movement && req.method === 'POST') {
-  const actor = await authenticated(req, env);
-  if (!actor) return send({error:'Accesso richiesto'},401);
-  const {azione, quantita} = await readBody(req) ?? {};
-  if (!['preleva','carica'].includes(azione) || !Number.isSafeInteger(quantita) ||
-      quantita < 1 || quantita > 2147483647) {
-    return send({error:'Inserisci una quantità intera positiva'},400);
-  }
- if(actor.ruolo==='solo_prelievo'&&azione==='carica')return send({error:'Account abilitato al solo prelievo'},403);
-  const delta = azione === 'carica' ? quantita : -quantita;
-  const itemId = Number(movement[2]);
-  const groupId = Number(movement[1]);
-  const [updated] = await env.DB.batch([env.DB.prepare(`
-    UPDATE componenti_gruppo
-    SET giacenza = COALESCE(giacenza, 0) + ?, aggiornato_il = CURRENT_TIMESTAMP
-    WHERE id = ? AND gruppo_id = ?
-      AND COALESCE(giacenza, 0) + ? BETWEEN 0 AND 2147483647
-    RETURNING giacenza
-  ` ).bind(delta, itemId, groupId, delta),
-    env.DB.prepare("INSERT INTO registro_modifiche(operatore_id,azione,tabella,record_id,dettagli) SELECT ?,?,'componenti_gruppo',?,? WHERE changes()=1")
-      .bind(actor.id,azione,itemId,JSON.stringify({gruppo_id:groupId,quantita}))
-  ]);
-  if (updated.results?.length) return send(updated.results[0]);
-  const item = await env.DB.prepare('SELECT giacenza FROM componenti_gruppo WHERE id=? AND gruppo_id=?')
-    .bind(itemId, groupId).first();
-  if (!item) return send({error:'Componente non trovato'},404);
-  const error = azione === 'carica' ? 'Limite di giacenza superato' :
-    item.giacenza === null ? 'Registra prima la quantità presente con Carica' : 'Giacenza insufficiente';
-  return send({error,giacenza:item.giacenza},409);
+  if(!await authenticated(req,env))return send({error:'Accesso richiesto'},401);
+  return send({error:'Usa il movimento guidato per prelievi e carichi'},403);
 }
 const gm=/^\/api\/gruppi\/(\d+)(?:\/componenti(?:\/(\d+))?)?$/.exec(path);
 if(gm&&req.method==='GET'&&gm[2]===undefined&&path.endsWith('/componenti')){

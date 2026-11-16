@@ -281,37 +281,25 @@ function renderStock(group, item) {
  label.append(quantity);
  const take = document.createElement('button');
  const load = document.createElement('button');
- const feedback = document.createElement('p');
- feedback.className = 'stock-feedback';
- feedback.setAttribute('role','status');
  take.type = load.type = 'button';
  take.textContent = 'Preleva';
  load.textContent = 'Carica';
  load.className = 'secondary';
  take.disabled = !(item.giacenza > 0);
 
- async function move(action) {
-  if (load.disabled || !quantity.reportValidity()) return;
-  take.disabled = load.disabled = true;
-  feedback.textContent = 'Salvataggio…';
-  try {
-   const result = await window.KARDEX_MOVIMENTA(group.id,item.id,action,quantity.valueAsNumber);
-   item.giacenza = result.giacenza;
-   updateStock();
-   feedback.textContent = action === 'preleva' ? 'Prelievo registrato' : 'Carico registrato';
-  } catch (error) {
-   feedback.textContent = error.message;
-  } finally {
-   load.disabled = false;
-   take.disabled = !(item.giacenza > 0);
-  }
+ function move(azione) {
+  if(!quantity.reportValidity())return;
+  document.querySelector('dialog[open]')?.close();
+  showConsole();
+  window.dispatchEvent(new CustomEvent('kardex:guided-start',{detail:{
+   azione,quantita:quantity.valueAsNumber,pezzo:'SKF-P-'+item.id,nome:item.tipo
+  }}));
  }
  form.onsubmit = event => event.preventDefault();
  take.onclick = () => move('preleva');
  load.onclick = () => move('carica');
  form.append(label,take);
  if(!trayPickOnly)form.append(load);
- form.append(feedback);
  section.append(form);
  return section;
 }

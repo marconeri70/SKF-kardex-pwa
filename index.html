@@ -608,11 +608,12 @@
 .shuttle-opening .shuttle-door{position:absolute;inset:0;height:auto;pointer-events:none;transform:translateY(-101%);transition:transform .55s ease}
 .shuttle-opening[data-closed] .shuttle-door{transform:translateY(0)}
 @media(prefers-reduced-motion:reduce){.shuttle-opening[data-operated],.shuttle-opening .shuttle-door{transition:none}}
+.qr-title{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.qr-title button.qr-print{display:inline-flex;align-items:center;gap:5px;min-height:44px;background:white;color:#005195;border:1px solid #82a4bf;padding:5px 8px}.qr-print img{width:30px;height:30px}.qr-title .position-group-open{flex:1 1 175px;width:auto}
 </style>
   <script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script defer src="app.js?v=40.15"></script>
-  <script defer src="guidato.js?v=40.15"></script>
-  <script defer src="cloud.js?v=40.15"></script>
+  <script defer src="app.js?v=40.16"></script>
+  <script defer src="guidato.js?v=40.16"></script>
+  <script defer src="cloud.js?v=40.16"></script>
   <script defer src="v32.js?v=33.1"></script>
   <script defer src="v33.js?v=33.1"></script>
 </head>
@@ -794,7 +795,7 @@
           </form>
           <video playsinline muted hidden style="width:min(100%,360px)"></video>
           <p role="status"></p>
-          <details id="etichetteMovimenti"><summary>Stampa QR di zona e componenti</summary><label>Zona <select id="zonaEtichette"></select></label><button type="button" id="stampaEtichette">Prepara etichette</button></details>
+
           <h3 id="guidedPendingTitle">Movimenti da completare</h3>
           <ul id="movimentiAperti"></ul>
           <details><summary>Storico movimenti</summary>
@@ -823,11 +824,11 @@
     <p class="muted" style="margin-top:10px">Offline puoi consultare i dati locali. Per registrare prelievi e carichi serve una connessione.</p>
   </main>
 
-  <footer style="text-align:center;margin:16px 0" class="muted">Versione UI: <b>v40.15</b></footer>
+  <footer style="text-align:center;margin:16px 0" class="muted">Versione UI: <b>v40.16</b></footer>
 
   <script>
     if('serviceWorker' in navigator){
-      window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=40.15'));
+      window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=40.16'));
     }
   </script>
 <script>document.getElementById('openQrLabels')?.addEventListener('click',()=>window.location.assign('./etichette.html'));document.getElementById('openMainQr')?.addEventListener('click',()=>window.location.assign('./qr-principale.html'));</script></body>

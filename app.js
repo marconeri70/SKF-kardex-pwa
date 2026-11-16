@@ -318,7 +318,7 @@ function renderStock(group, item) {
 let groupRenderVersion=0;
 async function renderGroupDialog(){
  const g=currentGroup,root=$('groupDialogRows');if(!g||!root)return;
- $('groupDialogTitle').textContent=g.nome;$('groupDialogSummary').textContent='Ripiano '+g.ripiano+' · '+g.posizione;
+ $('groupDialogTitle').textContent=g.nome;const zoneLabel=itemQr(g.nome,'SKF-Z-'+g.id);attachQr($('groupDialogTitle'),zoneLabel,'groupDialogMessage');$('groupDialogSummary').textContent='Ripiano '+g.ripiano+' · '+g.posizione;
  const version=++groupRenderVersion;
  const isCurrent=()=>version===groupRenderVersion&&currentGroup===g;
  root.replaceChildren();$('groupDialogMessage').textContent='Caricamento componenti…';
@@ -339,8 +339,9 @@ async function renderGroupDialog(){
   root.append(login);
  }
  const items=data.componenti||[];$('groupDialogMessage').textContent=items.length+' component'+(items.length===1?'e':'i');
+ if(trayAdmin&&items.length)root.append(qrPrintButton('Stampa zona e componenti',g.nome,[zoneLabel,...items.map(item=>itemQr(item.tipo,'SKF-P-'+item.id))],'groupDialogMessage'));
  const makeForm=(item)=>{const f=document.createElement('form');f.className='tray-dialog-form';const label=document.createElement('label');label.textContent='Codice / tipologia';const input=document.createElement('input');input.required=true;input.maxLength=150;input.value=item?.tipo||'';input.placeholder='Codice del componente';label.append(input);const btn=document.createElement('button');btn.type='submit';btn.textContent=item?'Salva modifica':'Aggiungi componente';f.append(label,btn);f.onsubmit=e=>{e.preventDefault();const tipo=input.value.trim();if(!tipo)return;btn.disabled=true;groupAction(item?'edit-item':'add-item',g,item,tipo);};return f;};
- for(const item of items){const card=document.createElement('section');card.className='tray-dialog-entry position-component-card';const title=document.createElement('strong');title.textContent=item.tipo;card.append(title);if(Object.hasOwn(item,'giacenza'))card.append(renderStock(g,item));if(trayLogged&&!trayPickOnly){const actions=document.createElement('div');actions.className='tray-dialog-actions';const edit=document.createElement('button');edit.type='button';edit.className='secondary';edit.textContent='Modifica';const del=document.createElement('button');del.type='button';del.className='secondary';del.textContent='Elimina';const f=makeForm(item);f.hidden=true;edit.onclick=()=>{f.hidden=!f.hidden;};del.onclick=()=>{if(confirm('Eliminare «'+item.tipo+'» dal gruppo '+g.nome+'?'))groupAction('delete-item',g,item);};actions.append(edit,del);card.append(actions,f);}root.append(card);}
+ for(const item of items){const card=document.createElement('section');card.className='tray-dialog-entry position-component-card';const title=document.createElement('strong');title.textContent=item.tipo;card.append(title);if(trayAdmin)attachQr(title,itemQr(item.tipo,'SKF-P-'+item.id),'groupDialogMessage');if(Object.hasOwn(item,'giacenza'))card.append(renderStock(g,item));if(trayLogged&&!trayPickOnly){const actions=document.createElement('div');actions.className='tray-dialog-actions';const edit=document.createElement('button');edit.type='button';edit.className='secondary';edit.textContent='Modifica';const del=document.createElement('button');del.type='button';del.className='secondary';del.textContent='Elimina';const f=makeForm(item);f.hidden=true;edit.onclick=()=>{f.hidden=!f.hidden;};del.onclick=()=>{if(confirm('Eliminare «'+item.tipo+'» dal gruppo '+g.nome+'?'))groupAction('delete-item',g,item);};actions.append(edit,del);card.append(actions,f);}root.append(card);}
  if(!items.length){const p=document.createElement('p');p.className='muted';p.textContent='Questo gruppo non contiene ancora componenti.';root.append(p);}
  if(trayLogged&&!trayPickOnly){const section=document.createElement('section');section.className='tray-dialog-entry position-add-card';const h=document.createElement('strong');h.textContent='＋ Nuovo componente';section.append(h,makeForm(null));root.append(section);}
 }
@@ -357,34 +358,31 @@ function openPositionFromQr(){
  showPositionDialog();
  positionDialog.showModal();
 }
-function printPositionLabels(tray,positions,message){
+function printQrLabels(headingText,labels,message){
  const sheet=window.open('','_blank');
  if(!sheet){message.textContent='Consenti l’apertura della pagina per stampare i QR.';return;}
  sheet.opener=null;
  const doc=sheet.document;
- doc.title='QR posizioni · Ripiano '+tray;
+ doc.title=headingText;
  doc.documentElement.lang='it';
  const style=doc.createElement('style');
  style.textContent='body{font:16px system-ui;margin:16px}main{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}article{border:1px solid;padding:12px;break-inside:avoid;display:flex;align-items:center;gap:12px;overflow-wrap:anywhere}img{width:85px;height:85px}button{margin-bottom:12px}@media print{button,[role=status]{display:none}}';
  doc.head.append(style);
- const heading=doc.createElement('h1');heading.textContent='Ripiano '+tray+' · QR posizioni';
- const print=doc.createElement('button');print.textContent='Stampa etichette';print.disabled=true;
+ const heading=doc.createElement('h1');heading.textContent=headingText;
+ const print=doc.createElement('button');print.textContent=labels.length===1?'Stampa etichetta':'Stampa tutte le etichette';print.disabled=true;
  print.onclick=()=>sheet.print();
  const status=doc.createElement('p');status.setAttribute('role','status');status.textContent='Caricamento dei QR…';
  const grid=doc.createElement('main');
  doc.body.append(heading,print,status,grid);
- const ready=positions.map(position=>{
-  const url=new URL('./index.html',location.href);
-  url.searchParams.set('ripiano',tray);
-  url.searchParams.set('posizione',position);
+ const ready=labels.map(({label,payload})=>{
   const card=doc.createElement('article'), image=doc.createElement('img'), title=doc.createElement('strong');
-  image.alt='QR '+position;
-  title.textContent='Ripiano '+tray+' · '+position;
+  image.alt='QR '+label;
+  title.textContent=label;
   card.append(image,title);grid.append(card);
   return new Promise(resolve=>{
    image.onload=()=>resolve(true);
    image.onerror=()=>resolve(false);
-   image.src='https://api.qrserver.com/v1/create-qr-code/?size=320x320&qzone=4&data='+encodeURIComponent(url.href);
+   image.src=qrImageUrl(payload);
   });
  });
  Promise.all(ready).then(results=>{
@@ -392,14 +390,39 @@ function printPositionLabels(tray,positions,message){
   status.textContent=print.disabled?'Uno o più QR non sono disponibili. Riapri le etichette per riprovare.':'';
  });
 }
-function positionPrintButton(label,positions,message){
+function qrImageUrl(payload){
+ return 'https://api.qrserver.com/v1/create-qr-code/?size=320x320&qzone=4&data='+encodeURIComponent(payload);
+}
+function locationQr(tray,position){
+ const url=new URL(position?'./index.html':'./ripiano.html',location.href);
+ url.searchParams.set('ripiano',tray);
+ if(position)url.searchParams.set('posizione',position);
+ return {label:'Ripiano '+tray+(position?' · '+position:''),payload:url.href};
+}
+function itemQr(name,payload){return {label:name+' · '+payload,payload};}
+function qrPrintButton(text,heading,labels,message,preview=false){
  const button=document.createElement('button');
  button.type='button';
- button.className='secondary';
- button.textContent=label;
- const tray=selectedTray;
- button.onclick=()=>printPositionLabels(tray,positions,$(message));
+ button.className=preview?'qr-print':'secondary';
+ if(preview){
+  const img=document.createElement('img');
+  img.alt='';img.loading='lazy';img.src=qrImageUrl(labels[0].payload);img.onerror=()=>{img.hidden=true;};
+  button.append(img);
+  button.setAttribute('aria-label','Stampa QR '+labels[0].label);
+ }
+ button.append(text);
+ button.onclick=()=>printQrLabels(heading,labels,$(message));
  return button;
+}
+function attachQr(title,label,message){
+ let row=title.parentElement;
+ if(!row.classList.contains('qr-title')){
+  const wrapper=document.createElement('div');
+  wrapper.className='qr-title';
+  title.before(wrapper);wrapper.append(title);row=wrapper;
+ }
+ row.querySelector('.qr-print')?.remove();
+ if(trayAdmin)row.append(qrPrintButton('Stampa QR',label.label,[label],message,true));
 }
 function showPositionDialog(){
  $('positionDialogClose').textContent=consoleView.classList.contains('hidden')?'← Torna al ripiano':'← Torna al vassoio';
@@ -410,7 +433,7 @@ function showPositionDialog(){
  $('positionDialogSummary').textContent=matches.length+' voci generali · '+groups.length+' gruppi';
  const typeZones=new Map();
  const root=$('positionDialogRows');root.replaceChildren();
- if(trayAdmin)root.append(positionPrintButton('Stampa QR di questa posizione',[selectedPosition],'positionDialogMessage'));
+ attachQr($('positionDialogTitle'),locationQr(selectedTray,selectedPosition),'positionDialogMessage');
  if(groups.length){
   const guide=document.createElement('p');
   guide.textContent=trayLogged?'Apri una zona, scegli il componente e indica la quantità. Poi premi '+(trayPickOnly?'Preleva.':'Preleva o Carica.'):'Apri una zona per vedere i componenti e le disponibilità.';
@@ -454,7 +477,7 @@ function showPositionDialog(){
  for(const g of groups){const card=document.createElement('section');card.className='tray-dialog-entry position-group-card';const open=document.createElement('button');open.type='button';open.className='position-group-open';const zoneName=document.createElement('span');
  zoneName.textContent=g.nome+' · '+g.numero_componenti+(Number(g.numero_componenti)===1?' componente':' componenti');
  const openLabel=document.createElement('strong');openLabel.textContent='Apri zona →';
- open.append(zoneName,openLabel);open.onclick=()=>openGroup(g);card.append(open);
+ open.append(zoneName,openLabel);open.onclick=()=>openGroup(g);card.append(open);if(trayAdmin)attachQr(open,itemQr(g.nome,'SKF-Z-'+g.id),'positionDialogMessage');
  const preview=document.createElement('p');preview.className='muted';preview.textContent='Caricamento riepilogo…';card.append(preview);
  fetch('https://skf-kardex-api.vocidicassino.workers.dev/api/gruppi/'+encodeURIComponent(g.id)+'/componenti',{cache:'no-store'})
  .then(async res=>{if(!res.ok)throw Error('HTTP '+res.status);return res.json();})
@@ -506,7 +529,8 @@ function showTrayDialog(){
  const section=document.createElement('section');section.className='position-nav';
  const heading=document.createElement('h3');heading.textContent='Posizioni del ripiano';section.append(heading);
  const positions=[...new Set([...(window.KARDEX_POSITIONS||['Sinistra','Centrale','Destra','Da definire']),...matches.map(r=>r.POSIZIONE),...groups.map(g=>g.posizione)].filter(Boolean))];
- if(trayAdmin)root.append(positionPrintButton('Stampa QR delle posizioni',positions,'trayDialogMessage'));
+ attachQr($('trayDialogTitle'),locationQr(selectedTray),'trayDialogMessage');
+ if(trayAdmin)root.append(qrPrintButton('Stampa QR delle posizioni','Ripiano '+selectedTray+' · Posizioni',positions.map(position=>locationQr(selectedTray,position)),'trayDialogMessage'));
  for(const p of positions){
   const positionTypes=[...new Set(visibleTypes.filter(r=>r.POSIZIONE===p).map(r=>r.TIPO).filter(Boolean))];
   const zones=groups.filter(g=>g.posizione===p);

@@ -8,8 +8,6 @@
  const step=panel.querySelector('#passaggioGuidato');
  let request, busy=false, selected;
  const scanButtons=panel.querySelectorAll('[data-scan]');
- const canScan=!!window.BarcodeDetector&&!!navigator.mediaDevices?.getUserMedia;
- scanButtons.forEach(button=>{button.hidden=!canScan;});
  let stream, scanVersion=0;
  const video=panel.querySelector('video');
  function stopScan(){
@@ -19,23 +17,42 @@
  }
  async function scan(field){
   stopScan();
-  if(!window.BarcodeDetector){
+  status.textContent='';
+  if(!navigator.mediaDevices?.getUserMedia){
    status.textContent='Usa un lettore QR oppure inserisci il codice nel campo.';
    field.focus();return;
   }
   const version=scanVersion;
   try {
-   const detector=new BarcodeDetector({formats:['qr_code']});
+   let detector;
+   try{if(window.BarcodeDetector)detector=new window.BarcodeDetector({formats:['qr_code']});}catch{}
+   const canvas=document.createElement('canvas');
+   const context=canvas.getContext('2d',{willReadFrequently:true});
+   if(!detector&&(!window.jsQR||!context))throw Error('Lettore QR non disponibile. Inserisci il codice manualmente.');
    const camera=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}}});
    if(version!==scanVersion){camera.getTracks().forEach(track=>track.stop());return;}
    stream=camera;video.srcObject=stream;video.hidden=false;await video.play();
    while(version===scanVersion){
-    const codes=await detector.detect(video);
+    let value;
+    if(detector){
+     try{value=(await detector.detect(video))[0]?.rawValue;}catch{detector=null;}
+    }
+    if(!detector){
+     if(!window.jsQR||!context)throw Error('Lettore QR non disponibile. Inserisci il codice manualmente.');
+     if(video.videoWidth&&video.videoHeight){
+      const scale=Math.min(1,960/Math.max(video.videoWidth,video.videoHeight));
+      canvas.width=Math.round(video.videoWidth*scale);
+      canvas.height=Math.round(video.videoHeight*scale);
+      context.drawImage(video,0,0,canvas.width,canvas.height);
+      const frame=context.getImageData(0,0,canvas.width,canvas.height);
+      value=window.jsQR(frame.data,frame.width,frame.height)?.data;
+     }
+    }
     if(version!==scanVersion)return;
-    if(codes.length){field.value=codes[0].rawValue;stopScan();field.focus();return;}
+    if(value){field.value=value;stopScan();field.focus();return;}
     await new Promise(resolve=>setTimeout(resolve,150));
    }
-  }catch(error){if(version===scanVersion){stopScan();status.textContent=error.message;}}
+  }catch(error){if(version===scanVersion){stopScan();status.textContent=error.name==='NotAllowedError'?'Consenti l’accesso alla fotocamera oppure inserisci il codice manualmente.':error.name==='NotFoundError'?'Fotocamera non trovata. Inserisci il codice manualmente.':error.message;}}
  }
  scanButtons.forEach(button=>button.onclick=()=>scan(document.getElementById(button.dataset.scan)));
  panel.addEventListener('toggle',()=>{if(panel.open&&request)run(refresh);else stopScan();});
